@@ -1,0 +1,14 @@
+# Built artifacts
+/.gradle/
+/build/
+/app/build/
+/local.properties
+/.idea/
+*.iml
+*.apk
+*.ap_
+*.dex
+.DS_Store
+/.jdk_env
+/.research/
+/captures/
