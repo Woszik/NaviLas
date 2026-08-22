@@ -3,6 +3,7 @@ package pl.navilas.finder.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ import pl.navilas.finder.data.osm.NominatimGeocoder
 import pl.navilas.finder.data.osm.OverpassRoadClient
 import pl.navilas.finder.data.osm.PersistentLocalityGeocodeStore
 import pl.navilas.finder.data.osm.RoadProximityAnalyzer
+import pl.navilas.finder.data.saved.SavedPointsStore
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.BdlDataScope
 import pl.navilas.finder.domain.OfflineBdlConfig
@@ -40,6 +42,9 @@ import pl.navilas.finder.domain.RestSiteResult
 import pl.navilas.finder.domain.RoadAssessment
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
+import pl.navilas.finder.domain.ListViewMode
+import pl.navilas.finder.domain.SavedPoint
+import pl.navilas.finder.domain.SavedPointCategory
 import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujFilterMode
 import pl.navilas.finder.domain.ZanocujStatus
@@ -47,6 +52,15 @@ import pl.navilas.finder.location.AppLocationProvider
 import pl.navilas.finder.location.LocationOutcome
 import pl.navilas.finder.nav.NavigationTargets
 import pl.navilas.finder.util.GeoUtils
+import pl.navilas.finder.BuildConfig
+import pl.navilas.finder.R
+import pl.navilas.finder.update.AppUpdateChecker
+import pl.navilas.finder.update.AppUpdateDownloader
+import pl.navilas.finder.update.AppUpdateInstaller
+import pl.navilas.finder.update.AppUpdateLogic
+import pl.navilas.finder.update.AppUpdateOffer
+import pl.navilas.finder.update.AppUpdatePreferences
+import java.io.File
 import java.io.IOException
 import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicLong
@@ -84,7 +98,26 @@ data class UiState(
     val message: AppMessage? = null,
     val searchConfig: SearchConfig = SearchConfig.DEFAULT,
     val offlineBdl: OfflineBdlState = OfflineBdlState(),
+    val listViewMode: ListViewMode = ListViewMode.SEARCH,
+    val savedPoints: Map<String, SavedPoint> = emptyMap(),
+    val savedCategories: List<SavedPointCategory> = emptyList(),
+    /** null = all categories in saved list. */
+    val savedCategoryFilterId: String? = null,
+    val savedListResults: List<RestSiteResult> = emptyList(),
+    val appUpdateOffer: AppUpdateOffer? = null,
+    val appUpdateDownloading: Boolean = false,
+    val appUpdateDownloadPercent: Int? = null,
+    val appUpdateInstallFile: File? = null,
+    val appUpdateError: String? = null,
 ) {
+    fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
+        ListViewMode.SEARCH -> results
+        ListViewMode.SAVED -> savedListResults
+    }
+
+    fun isSaved(siteId: String): Boolean = savedPoints.containsKey(siteId)
+
+    fun savedPoint(siteId: String): SavedPoint? = savedPoints[siteId]
     /** Position used for BDL search radius and result distances. */
     fun searchOrigin(): UserPosition? = when (searchOriginMode) {
         SearchOriginMode.MAP, SearchOriginMode.LOCALITY ->
@@ -117,15 +150,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         assessmentCache = roadAssessmentCache,
     )
     private val localityGeocoder = NominatimGeocoder(localityStore = localityStore)
+    private val savedPointsStore = SavedPointsStore.fromAppFilesDir(application.filesDir)
+    private val appUpdatePrefs = AppUpdatePreferences(application)
+    private val appUpdateChecker = AppUpdateChecker(BuildConfig.UPDATE_MANIFEST_URL)
+    private val appUpdateDownloader = AppUpdateDownloader()
     private val cameraToken = AtomicLong(1L)
     private val searchGeneration = AtomicLong(0L)
     private var lastBdlSearchContext: BdlSearchContext? = null
 
-    private val _state = MutableStateFlow(UiState(offlineBdl = loadOfflineState()))
+    private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<UiState> = _state.asStateFlow()
+
+    private fun loadInitialState(): UiState {
+        val saved = savedPointsStore.allPoints().associateBy { it.site.id }
+        val categories = savedPointsStore.allCategories()
+        val base = UiState(
+            offlineBdl = loadOfflineState(),
+            savedPoints = saved,
+            savedCategories = categories,
+        )
+        return base.copy(savedListResults = buildSavedListResults(base))
+    }
 
     init {
         refreshOfflineStateFromDisk()
+        viewModelScope.launch {
+            delay(2_000)
+            checkForAppUpdate(force = false)
+        }
     }
 
     private fun invalidateBdlSessionCache() {
@@ -320,7 +372,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setProfile(profile: TravelProfile) {
         _state.update { current ->
-            current.copy(
+            val next = current.copy(
                 profile = profile,
                 results = buildResults(
                     current.allSites,
@@ -330,6 +382,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current.roadBySiteId,
                 ),
             )
+            next.copy(savedListResults = buildSavedListResults(next))
         }
     }
 
@@ -346,6 +399,164 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ),
             )
         }
+    }
+
+    fun setListViewMode(mode: ListViewMode) {
+        _state.update { current ->
+            current.copy(listViewMode = mode)
+        }
+    }
+
+    fun setSavedCategoryFilter(categoryId: String?) {
+        _state.update { current ->
+            val updated = current.copy(savedCategoryFilterId = categoryId)
+            updated.copy(savedListResults = buildSavedListResults(updated))
+        }
+    }
+
+    fun toggleSave(site: RestSite) {
+        val existing = savedPointsStore.getPoint(site.id)
+        if (existing != null) {
+            savedPointsStore.removePoint(site.id)
+            _state.update { current ->
+                val next = current.copy(
+                    savedPoints = current.savedPoints.filterKeys { it != site.id },
+                    message = AppMessage.Info("Usunięto „${site.name}” z zapisanych."),
+                )
+                next.copy(savedListResults = buildSavedListResults(next))
+            }
+            return
+        }
+        val point = SavedPoint(
+            site = site,
+            savedAtMs = System.currentTimeMillis(),
+            categoryIds = emptySet(),
+            userComment = null,
+        )
+        savedPointsStore.savePoint(point)
+        _state.update { current ->
+            val next = current.copy(
+                savedPoints = current.savedPoints + (site.id to point),
+                message = AppMessage.Info("Zapisano „${site.name}”."),
+            )
+            next.copy(savedListResults = buildSavedListResults(next))
+        }
+    }
+
+    fun updateSavedPoint(
+        siteId: String,
+        categoryIds: Set<String>,
+        userComment: String?,
+    ) {
+        val existing = savedPointsStore.getPoint(siteId) ?: return
+        val validIds = categoryIds.intersect(savedPointsStore.allCategories().map { it.id }.toSet())
+        val updated = existing.copy(
+            categoryIds = validIds,
+            userComment = userComment?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        savedPointsStore.savePoint(updated)
+        _state.update { current ->
+            val next = current.copy(
+                savedPoints = current.savedPoints + (siteId to updated),
+                message = AppMessage.Info("Zaktualizowano zapisane miejsce."),
+            )
+            next.copy(savedListResults = buildSavedListResults(next))
+        }
+    }
+
+    fun addSavedCategory(name: String) {
+        val category = savedPointsStore.addCategory(name)
+        _state.update { current ->
+            current.copy(
+                savedCategories = savedPointsStore.allCategories(),
+                message = AppMessage.Info("Dodano kategorię „${category.name}”."),
+            )
+        }
+    }
+
+    fun renameSavedCategory(categoryId: String, newName: String) {
+        savedPointsStore.renameCategory(categoryId, newName)
+        _state.update { current ->
+            current.copy(
+                savedCategories = savedPointsStore.allCategories(),
+                savedListResults = buildSavedListResults(current),
+                message = AppMessage.Info("Zmieniono nazwę kategorii."),
+            )
+        }
+    }
+
+    fun deleteSavedCategory(categoryId: String) {
+        savedPointsStore.deleteCategory(categoryId)
+        _state.update { current ->
+            val filter = if (current.savedCategoryFilterId == categoryId) null else current.savedCategoryFilterId
+            val saved = savedPointsStore.allPoints().associateBy { it.site.id }
+            val next = current.copy(
+                savedPoints = saved,
+                savedCategories = savedPointsStore.allCategories(),
+                savedCategoryFilterId = filter,
+            )
+            next.copy(savedListResults = buildSavedListResults(next))
+        }
+    }
+
+    private fun buildSavedListResults(state: UiState): List<RestSiteResult> {
+        val origin = state.searchOrigin()
+        val categoryOrder = state.savedCategories.associate { it.id to it.sortOrder }
+        val categoryName = state.savedCategories.associate { it.id to it.name }
+        return state.savedPoints.values
+            .filter { point ->
+                state.savedCategoryFilterId == null ||
+                    state.savedCategoryFilterId in point.categoryIds
+            }
+            .sortedWith(
+                compareBy<SavedPoint>(
+                    { point -> primaryCategorySortKey(point.categoryIds, categoryOrder) },
+                    { point -> primaryCategoryLabel(point.categoryIds, categoryName) },
+                    { it.site.name },
+                ),
+            )
+            .map { buildResultFromSaved(it, origin, state.profile, state.roadBySiteId) }
+    }
+
+    private fun primaryCategorySortKey(
+        categoryIds: Set<String>,
+        categoryOrder: Map<String, Int>,
+    ): Int = categoryIds.minOfOrNull { categoryOrder[it] ?: Int.MAX_VALUE } ?: Int.MAX_VALUE
+
+    private fun primaryCategoryLabel(
+        categoryIds: Set<String>,
+        categoryName: Map<String, String>,
+    ): String = if (categoryIds.isEmpty()) {
+        "Bez kategorii"
+    } else {
+        categoryIds.mapNotNull { categoryName[it] }.sorted().joinToString(", ")
+    }
+
+    private fun buildResultFromSaved(
+        saved: SavedPoint,
+        origin: UserPosition?,
+        profile: TravelProfile,
+        roadBySiteId: Map<String, RoadAssessment>,
+    ): RestSiteResult {
+        val site = saved.site
+        val distanceKm = origin?.let {
+            GeoUtils.distanceKm(it.latitude, it.longitude, site.latitude, site.longitude)
+        } ?: 0.0
+        val assessment = if (profile == TravelProfile.MOTORCYCLE) roadBySiteId[site.id] else null
+        val (target, kind) = when (profile) {
+            TravelProfile.CAR -> NavigationTargets.forCar(site)
+            TravelProfile.MOTORCYCLE -> {
+                NavigationTargets.forMotorcycle(assessment)
+                    ?: (LatLon(site.latitude, site.longitude) to NavigationTargetKind.REST_SITE)
+            }
+        }
+        return RestSiteResult(
+            site = site,
+            distanceKm = distanceKm,
+            roadAssessment = assessment,
+            navigationTarget = target,
+            navigationTargetKind = kind,
+        )
     }
 
     /** Empty-map tap: set search centre (does not run search until ZNAJDŹ). */
@@ -425,6 +636,111 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun consumeMessage() {
         _state.update { it.copy(message = null) }
+    }
+
+    fun checkForAppUpdate(force: Boolean) {
+        viewModelScope.launch {
+            if (!force) {
+                val elapsed = System.currentTimeMillis() - appUpdatePrefs.lastCheckAtMs
+                if (elapsed < AppUpdatePreferences.CHECK_INTERVAL_MS) return@launch
+            }
+            appUpdatePrefs.lastCheckAtMs = System.currentTimeMillis()
+            try {
+                val manifest = withContext(Dispatchers.IO) { appUpdateChecker.fetchManifest() }
+                val offer = AppUpdateLogic.evaluateOffer(
+                    manifest = manifest,
+                    currentVersionCode = BuildConfig.VERSION_CODE,
+                    dismissedVersionCode = appUpdatePrefs.dismissedVersionCode,
+                )
+                if (offer != null) {
+                    _state.update { it.copy(appUpdateOffer = offer, appUpdateError = null) }
+                } else if (force) {
+                    _state.update {
+                        it.copy(message = AppMessage.Info(getApplication<Application>().getString(
+                            R.string.app_update_up_to_date,
+                        )))
+                    }
+                }
+            } catch (_: IOException) {
+                if (force) {
+                    _state.update {
+                        it.copy(message = AppMessage.Error(getApplication<Application>().getString(
+                            R.string.app_update_network_error,
+                        )))
+                    }
+                }
+            } catch (e: Exception) {
+                if (force) {
+                    _state.update {
+                        it.copy(message = AppMessage.Error("Aktualizacja: ${e.message ?: "błąd"}"))
+                    }
+                }
+            }
+        }
+    }
+
+    fun dismissAppUpdate() {
+        val offer = _state.value.appUpdateOffer ?: return
+        if (offer.mandatory) return
+        appUpdatePrefs.dismissedVersionCode = offer.versionCode
+        _state.update { it.copy(appUpdateOffer = null) }
+    }
+
+    fun startAppUpdateDownload() {
+        val offer = _state.value.appUpdateOffer ?: return
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    appUpdateDownloading = true,
+                    appUpdateDownloadPercent = null,
+                    appUpdateError = null,
+                    appUpdateInstallFile = null,
+                )
+            }
+            val apkFile = AppUpdateInstaller.apkFile(getApplication())
+            try {
+                withContext(Dispatchers.IO) {
+                    appUpdateDownloader.download(offer.apkUrl, apkFile) { downloaded, total ->
+                        val percent = total?.takeIf { it > 0L }?.let {
+                            ((downloaded * 100) / it).toInt().coerceIn(0, 100)
+                        }
+                        _state.update { state -> state.copy(appUpdateDownloadPercent = percent) }
+                    }
+                }
+                val valid = withContext(Dispatchers.IO) {
+                    appUpdateDownloader.verifySha256(apkFile, offer.sha256)
+                }
+                if (!valid) {
+                    apkFile.delete()
+                    throw IOException("Niezgodna suma kontrolna pliku APK")
+                }
+                _state.update {
+                    it.copy(
+                        appUpdateDownloading = false,
+                        appUpdateDownloadPercent = null,
+                        appUpdateOffer = null,
+                        appUpdateInstallFile = apkFile,
+                    )
+                }
+            } catch (e: Exception) {
+                apkFile.delete()
+                _state.update {
+                    it.copy(
+                        appUpdateDownloading = false,
+                        appUpdateDownloadPercent = null,
+                        appUpdateError = e.message ?: "Błąd pobierania",
+                    )
+                }
+            }
+        }
+    }
+
+    fun consumeAppUpdateInstall() {
+        _state.update { it.copy(appUpdateInstallFile = null) }
+    }
+
+    fun consumeAppUpdateError() {
+        _state.update { it.copy(appUpdateError = null) }
     }
 
     fun onBackPressed(): Boolean {
@@ -754,7 +1070,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (searchGeneration.get() != generation) return@launch
                 _state.update { current ->
                     if (searchGeneration.get() != generation) return@update current
-                    current.copy(
+                    val next = current.copy(
                         isAnalyzingRoads = false,
                         roadBySiteId = roadBySiteId,
                         results = buildResults(
@@ -765,6 +1081,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             roadBySiteId,
                         ),
                     )
+                    next.copy(savedListResults = buildSavedListResults(next))
                 }
             } catch (e: Exception) {
                 if (searchGeneration.get() != generation) return@launch

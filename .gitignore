@@ -8,6 +8,8 @@
 *.apk
 *.ap_
 *.dex
+*.keystore
+/.navilas-secrets/
 .DS_Store
 /.jdk_env
 /.research/

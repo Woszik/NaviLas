@@ -55,4 +55,42 @@
     <string name="offline_status_downloading">Pobieranie… %1$s</string>
     <string name="offline_status_error">Błąd pobierania: %1$s</string>
     <string name="offline_hint">Zmiana zakresu lub jakości stref usuwa wcześniej pobrane dane. Wyszukiwanie LP działa offline; analiza dróg OSM wymaga internetu.</string>
+
+    <string name="list_mode_search">Wyniki wyszukiwania</string>
+    <string name="list_mode_saved">Zapisane</string>
+    <string name="saved_empty">Brak zapisanych miejsc. Użyj ZAPISZ przy wyniku wyszukiwania.</string>
+    <string name="saved_manage_categories">Kategorie…</string>
+    <string name="saved_filter_all">Wszystkie kategorie</string>
+    <string name="saved_category_none">Bez kategorii</string>
+    <string name="btn_save">ZAPISZ</string>
+    <string name="btn_unsave">USUŃ Z ZAPISANYCH</string>
+    <string name="btn_edit_saved">EDYTUJ</string>
+    <string name="saved_dialog_title">Zapisane miejsce</string>
+    <string name="saved_comment_hint">Twój komentarz (opcjonalnie)</string>
+    <string name="saved_category_label">Kategoria</string>
+    <string name="saved_categories_pick">Kategorie (opcjonalnie)</string>
+    <string name="saved_categories_pick_hint">Możesz wybrać wiele kategorii albo żadnej — punkt zostanie zapisany i tak.</string>
+    <string name="saved_no_categories_defined">Brak kategorii. Dodaj je przyciskiem „Kategorie…” na liście Zapisane.</string>
+    <string name="saved_add_category">Dodaj kategorię</string>
+    <string name="saved_category_name_hint">Nazwa kategorii</string>
+    <string name="saved_categories_title">Kategorie zapisanych miejsc</string>
+    <string name="saved_rename_category">Zmień nazwę</string>
+    <string name="saved_delete_category">Usuń kategorię</string>
+    <string name="saved_delete_category_confirm">Usunąć kategorię „%1$s”? Miejsca trafią do „Bez kategorii”.</string>
+    <string name="saved_item_category">Kategoria: %1$s</string>
+    <string name="saved_item_categories">Kategorie: %1$s</string>
+    <string name="saved_item_comment">Komentarz: %1$s</string>
+
+    <string name="app_version_label">Wersja %1$s</string>
+    <string name="app_check_updates">Sprawdź aktualizacje</string>
+    <string name="app_update_title">Dostępna aktualizacja %1$s</string>
+    <string name="app_update_current">Obecna wersja: %1$s</string>
+    <string name="app_update_action">Aktualizuj</string>
+    <string name="app_update_later">Później</string>
+    <string name="app_update_downloading">Pobieranie aktualizacji…</string>
+    <string name="app_update_download_percent">Pobieranie… %1$d%%</string>
+    <string name="app_update_up_to_date">Masz najnowszą wersję.</string>
+    <string name="app_update_network_error">Brak połączenia — nie sprawdzono aktualizacji.</string>
+    <string name="app_update_install_sources">Zezwól na instalację z tego źródła, aby zaktualizować aplikację.</string>
+    <string name="app_update_open_settings">Ustawienia</string>
 </resources>
