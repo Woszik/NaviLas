@@ -1,14 +1,14 @@
-# Szablon — skopiuj do fdroiddata/metadata/pl.navilas.finder.yml
-# Zobacz docs/fdroid/README.md
-
 Categories:
   - Navigation
   - Sports & Health
 License: GPL-3.0-or-later
+AuthorName: Woszik
+AuthorEmail: woszi@pm.me
 SourceCode: https://github.com/Woszik/NaviLas
 IssueTracker: https://github.com/Woszik/NaviLas/issues
 WebSite: https://github.com/Woszik/NaviLas-releases
 Changelog: https://github.com/Woszik/NaviLas-releases/releases
+Donate:
 
 AutoName: NaviLas
 Summary: Miejsca odpoczynku w lasach (BDL, OSM)
@@ -20,6 +20,11 @@ Description: |
   Wersja F-Droid nie pobiera aktualizacji z GitHub — aktualizuj przez klienta F-Droid.
 
   Zmiana kanału instalacji (GitHub ↔ F-Droid): wyeksportuj zapisane miejsca przed odinstalowaniem.
+
+  Kod: https://github.com/Woszik/NaviLas (GPL-3.0)
+
+AntiFeatures:
+  - TetheredNet
 
 RepoType: git
 Repo: https://github.com/Woszik/NaviLas
