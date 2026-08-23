@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.appcompat.widget.PopupMenu
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -64,6 +65,10 @@ import pl.navilas.finder.domain.SavedPointCategory
 import pl.navilas.finder.domain.ZanocujPolygonQuality
 import pl.navilas.finder.domain.estimatedSizeLabel
 import pl.navilas.finder.domain.toStars
+import pl.navilas.finder.data.saved.SavedPointsBackupCodec
+import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
+import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
+import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.nav.NavigationLinks
 import java.io.File
 import java.util.Locale
@@ -97,6 +102,7 @@ class MainActivity : AppCompatActivity() {
     private var installSessionStarted = false
     private var installReceiverRegistered = false
     private var waitingForSystemInstallerUi = false
+    private var pendingImportSnapshot: SavedPointsBackupSnapshot? = null
 
     private enum class PendingAfterInstallPermission {
         START_DOWNLOAD,
@@ -177,6 +183,18 @@ class MainActivity : AppCompatActivity() {
         resumePendingAfterInstallPermission()
     }
 
+    private val exportSavedPointsLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(SavedPointsBackupCodec.MIME_TYPE),
+    ) { uri ->
+        if (uri != null) writeSavedPointsExport(uri)
+    }
+
+    private val importSavedPointsLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) readSavedPointsImport(uri)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         MapLibre.getInstance(this)
@@ -227,6 +245,15 @@ class MainActivity : AppCompatActivity() {
         })
 
         binding.pageLabels.text = getString(R.string.page_labels)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_about -> {
+                    showAboutDialog()
+                    true
+                }
+                else -> false
+            }
+        }
 
         setupPageChromeNavigation()
         setupSearchPage()
@@ -252,6 +279,20 @@ class MainActivity : AppCompatActivity() {
         binding.pageIndicatorBar.onSwipeToPrevious = goPrev
         binding.btnPageNext.setOnClickListener { goNext() }
         binding.btnPagePrev.setOnClickListener { goPrev() }
+    }
+
+    private fun showAboutDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_about, null)
+        view.findViewById<TextView>(R.id.aboutVersion).text = getString(
+            R.string.about_version_format,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.VERSION_CODE,
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.about_title)
+            .setView(view)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun setupSearchPage() {
@@ -352,6 +393,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.setListViewMode(mode)
         }
         listBinding.btnManageCategories.setOnClickListener { showManageCategoriesDialog() }
+        listBinding.btnSavedBackup.setOnClickListener { showSavedBackupMenu(it) }
         listBinding.savedCategoryFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
@@ -370,6 +412,164 @@ class MainActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
+    }
+
+    private fun showSavedBackupMenu(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menuInflater.inflate(R.menu.menu_saved_backup, menu)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_saved_export -> {
+                        startSavedPointsExport()
+                        true
+                    }
+                    R.id.action_saved_import -> {
+                        importSavedPointsLauncher.launch(arrayOf(SavedPointsBackupCodec.MIME_TYPE, "*/*"))
+                        true
+                    }
+                    else -> false
+                }
+            }
+            show()
+        }
+    }
+
+    private fun startSavedPointsExport() {
+        if (viewModel.savedPointsCount() == 0) {
+            Snackbar.make(binding.root, R.string.saved_export_empty, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        exportSavedPointsLauncher.launch(SavedPointsBackupCodec.suggestedExportFilename())
+    }
+
+    private fun writeSavedPointsExport(uri: Uri) {
+        lifecycleScope.launch {
+            val json = withContext(Dispatchers.Default) {
+                viewModel.buildSavedPointsExportJson()
+            }
+            val count = viewModel.savedPointsCount()
+            val written = withContext(Dispatchers.IO) {
+                runCatching {
+                    contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(json.toByteArray(Charsets.UTF_8))
+                    } ?: error("no stream")
+                }.isSuccess
+            }
+            if (written) {
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.saved_export_success, count),
+                    Snackbar.LENGTH_LONG,
+                ).show()
+            } else {
+                Snackbar.make(binding.root, R.string.saved_export_error, Snackbar.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private suspend fun readSavedPointsImportText(uri: Uri): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val bytes = stream.readBytes()
+                if (bytes.size > SavedPointsBackupCodec.MAX_FILE_BYTES) return@runCatching null
+                bytes.toString(Charsets.UTF_8)
+            }
+        }.getOrNull()
+    }
+
+    private fun readSavedPointsImport(uri: Uri) {
+        lifecycleScope.launch {
+            val text = readSavedPointsImportText(uri)
+            if (text == null) {
+                Snackbar.make(binding.root, R.string.saved_import_read_error, Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+            showSavedPointsImportDialog(text)
+        }
+    }
+
+    private fun showSavedPointsImportDialog(jsonText: String) {
+        lifecycleScope.launch {
+            val parsed = withContext(Dispatchers.Default) {
+                viewModel.parseSavedPointsImport(jsonText)
+            }
+            when (parsed) {
+                is SavedPointsBackupParseResult.Failure -> {
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.saved_import_error, parsed.message),
+                        Snackbar.LENGTH_LONG,
+                    ).show()
+                }
+                is SavedPointsBackupParseResult.Success -> {
+                    pendingImportSnapshot = parsed.snapshot
+                    val skippedSuffix = if (parsed.skippedPoints > 0) {
+                        getString(R.string.saved_import_skipped_suffix, parsed.skippedPoints)
+                    } else {
+                        ""
+                    }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(R.string.saved_import)
+                        .setMessage(
+                            getString(
+                                R.string.saved_import_preview,
+                                parsed.snapshot.points.size,
+                                parsed.snapshot.categories.size,
+                                skippedSuffix,
+                            ),
+                        )
+                        .setPositiveButton(R.string.saved_import_merge) { _, _ ->
+                            applySavedPointsImport(SavedPointsImportMode.MERGE)
+                        }
+                        .setNeutralButton(R.string.saved_import_replace) { _, _ ->
+                            confirmReplaceSavedPointsImport()
+                        }
+                        .setNegativeButton(android.R.string.cancel) { _, _ ->
+                            pendingImportSnapshot = null
+                        }
+                        .show()
+                }
+            }
+        }
+    }
+
+    private fun confirmReplaceSavedPointsImport() {
+        val count = viewModel.savedPointsCount()
+        if (count == 0) {
+            applySavedPointsImport(SavedPointsImportMode.REPLACE)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setMessage(getString(R.string.saved_import_replace_confirm, count))
+            .setPositiveButton(R.string.saved_import_replace) { _, _ ->
+                applySavedPointsImport(SavedPointsImportMode.REPLACE)
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                pendingImportSnapshot = null
+            }
+            .show()
+    }
+
+    private fun applySavedPointsImport(mode: SavedPointsImportMode) {
+        val snapshot = pendingImportSnapshot ?: return
+        pendingImportSnapshot = null
+        val result = viewModel.importSavedPoints(snapshot, mode)
+        val skippedSuffix = if (result.skippedPoints > 0) {
+            getString(R.string.saved_import_skipped_points_suffix, result.skippedPoints)
+        } else {
+            ""
+        }
+        Snackbar.make(
+            binding.root,
+            getString(
+                R.string.saved_import_success,
+                result.addedPoints + result.updatedPoints,
+                result.addedPoints,
+                result.updatedPoints,
+                skippedSuffix,
+            ),
+            Snackbar.LENGTH_LONG,
+        ).show()
     }
 
     private fun setupMapCard() {

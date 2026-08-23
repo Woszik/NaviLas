@@ -93,7 +93,7 @@ class BdlRepository(
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
-            .header("User-Agent", "NaviLas/0.1-checkpoint1A (Android; prototype)")
+            .header("User-Agent", "NaviLas/${pl.navilas.finder.BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)")
             .get()
             .build()
 

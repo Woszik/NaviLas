@@ -82,6 +82,23 @@
     <string name="saved_item_category">Kategoria: %1$s</string>
     <string name="saved_item_categories">Kategorie: %1$s</string>
     <string name="saved_item_comment">Komentarz: %1$s</string>
+    <string name="saved_backup_menu">Kopia</string>
+    <string name="saved_export">Eksportuj zapisane…</string>
+    <string name="saved_import">Importuj zapisane…</string>
+    <string name="saved_export_empty">Brak zapisanych miejsc do eksportu.</string>
+    <string name="saved_export_success">Wyeksportowano %1$d miejsc.</string>
+    <string name="saved_export_error">Nie udało się zapisać kopii.</string>
+    <string name="saved_import_preview">Znaleziono: %1$d miejsc, %2$d kategorii.%3$s\n\nJak zaimportować?</string>
+    <string name="saved_import_skipped_suffix">\nPominięto %1$d niepoprawnych wpisów.</string>
+    <string name="saved_import_merge">Scal (dodaj nowe)</string>
+    <string name="saved_import_replace">Zastąp wszystko</string>
+    <string name="saved_import_replace_confirm">To usunie wszystkie obecnie zapisane miejsca (%1$d) i wczyta kopię z pliku. Kontynuować?</string>
+    <string name="saved_import_success">Zaimportowano %1$d miejsc (%2$d nowych, %3$d zaktualizowanych).%4$s</string>
+    <string name="saved_import_skipped_points_suffix"> Pominięto %1$d istniejących.</string>
+    <string name="saved_import_error">Nie udało się wczytać kopii: %1$s</string>
+    <string name="saved_import_read_error">Nie udało się odczytać pliku.</string>
+    <string name="about_section_backup">Kopia zapisanych miejsc</string>
+    <string name="about_backup">Zapisane miejsca i kategorie możesz wyeksportować do pliku JSON (lista Zapisane → Kopia → Eksportuj). Plik zapisujesz w wybranym folderze (np. Pobrane) — przetrwa odinstalowanie aplikacji. Po ponownej instalacji użyj Importuj, aby przywrócić punkty. Aplikacja nie wysyła kopii automatycznie nigdzie poza Twoim urządzeniem.</string>
 
     <string name="app_version_label">Wersja %1$s</string>
     <string name="app_check_updates">Sprawdź aktualizacje</string>
@@ -98,4 +115,21 @@
     <string name="app_update_install_sources">Aby zaktualizować aplikację, zezwól na instalację z tego źródła. Potem pobieranie i instalacja uruchomią się automatycznie.</string>
     <string name="app_update_open_settings">Ustawienia</string>
     <string name="app_update_permission_denied">Bez tego uprawnienia nie można zainstalować aktualizacji.</string>
+
+    <string name="about_title">O aplikacji</string>
+    <string name="about_app_name">NaviLas</string>
+    <string name="about_tagline">Aplikacja do wyszukiwania miejsc odpoczynku w lasach — na podstawie otwartych danych przestrzennych.</string>
+    <string name="about_section_version">Ta wersja</string>
+    <string name="about_version_format">Wersja: %1$s\nKompilacja: %2$d</string>
+    <string name="about_distribution">Dystrybucja i aktualizacje: oficjalne wydania na GitHub\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej wersji. Aktualizację zatwierdzasz Ty.</string>
+    <string name="about_section_features">Co robi NaviLas</string>
+    <string name="about_features">• wyszukuje miejsca odpoczynku wokół lokalizacji GPS, punktu na mapie lub miejscowości,\n• pokazuje wyniki na mapie oraz strefy programu „Zanocuj w lesie”,\n• pomaga ocenić dojazd (profil samochód / motocykl),\n• umożliwia pobranie danych BDL do użycia offline,\n• zapisuje wybrane miejsca lokalnie na telefonie (kategorie, komentarze),\n• umożliwia eksport i import zapisanych miejsc do pliku (kopia zapasowa).</string>
+    <string name="about_section_sources">Źródła danych</string>
+    <string name="about_sources">Bank Danych o Lasach (BDL)\nŹródło: Państwowe Gospodarstwo Leśne Lasy Państwowe / Biuro Urządzania Lasu i Geodezji Leśnej.\nW NaviLas: lokalizacje i cechy miejsc odpoczynku, obiekty powiązane, strefy „Zanocuj w lesie”; opcjonalna kopia danych na urządzeniu (tryb offline).\nZasady: dane publiczne, dostęp powszechny i nieodpłatny; korzystanie zgodnie z regulaminem BDL oraz przepisami o dostępie do informacji publicznej i o udostępnianiu informacji o środowisku.\nhttps://www.bdl.lasy.gov.pl/portal/regulamin\n\nDane mapowe BDL mają charakter poglądowy i nie stanowią dokumentu urzędowego.\n\nOpenStreetMap\nW NaviLas: mapa tła, analiza dróg dojazdu, wyszukiwanie miejscowości.\nZasady: dane na licencji Open Database License (ODbL).\n© OpenStreetMap contributors\nhttps://www.openstreetmap.org/copyright\n\nOpenFreeMap / OpenMapTiles\nW NaviLas: styl i kafelki mapy.\nZasady: zgodnie z warunkami projektu OpenFreeMap; wymagana atrybucja (widoczna także na mapie).\n\nMapLibre\nSilnik wyświetlania mapy (oprogramowanie open source).</string>
+    <string name="about_section_thanks">Podziękowania</string>
+    <string name="about_thanks">Dziękujemy twórcom i opiekunom Banku Danych o Lasach oraz społeczności OpenStreetMap za udostępnianie danych, dzięki którym NaviLas może działać.\nDziękujemy również projektom OpenFreeMap, OpenMapTiles i MapLibre.</string>
+    <string name="about_section_privacy">Prywatność</string>
+    <string name="about_privacy">• Lokalizacja jest używana do wyszukiwania w pobliżu (za Twoją zgodą systemową).\n• Zapisane miejsca i komentarze pozostają na tym urządzeniu.\n• Eksport kopii zapisanych miejsc tworzysz sam — plik trafia tylko tam, gdzie go zapiszesz.\n• NaviLas nie wymaga konta ani logowania.\n• Zapytania o mapę i dane mogą być kierowane do serwisów BDL oraz OpenStreetMap / powiązanych usług (mapa, geokodowanie, drogi) — w zakresie potrzebnym do działania funkcji.</string>
+    <string name="about_section_legal">Informacje prawne</string>
+    <string name="about_legal">NaviLas nie jest oficjalną aplikacją Lasów Państwowych ani Banku Danych o Lasach.\n\nInformacje w aplikacji mają charakter pomocniczy. Obowiązujące przepisy, zakazy wstępu do lasu oraz zasady biwakowania / „Zanocuj w lesie” zawsze sprawdzaj w aktualnych, oficjalnych źródłach.\n\nKontakt: woszi@pm.me</string>
 </resources>

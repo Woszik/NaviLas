@@ -25,6 +25,11 @@ import pl.navilas.finder.data.osm.OverpassRoadClient
 import pl.navilas.finder.data.osm.PersistentLocalityGeocodeStore
 import pl.navilas.finder.data.osm.RoadProximityAnalyzer
 import pl.navilas.finder.data.saved.SavedPointsStore
+import pl.navilas.finder.data.saved.SavedPointsBackupCodec
+import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
+import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
+import pl.navilas.finder.data.saved.SavedPointsImportMode
+import pl.navilas.finder.data.saved.SavedPointsImportResult
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.BdlDataScope
 import pl.navilas.finder.domain.OfflineBdlConfig
@@ -494,6 +499,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 savedPoints = saved,
                 savedCategories = savedPointsStore.allCategories(),
                 savedCategoryFilterId = filter,
+            )
+            next.copy(savedListResults = buildSavedListResults(next))
+        }
+    }
+
+    fun savedPointsCount(): Int = savedPointsStore.allPoints().size
+
+    fun buildSavedPointsExportJson(): String =
+        SavedPointsBackupCodec.encodeExport(
+            store = savedPointsStore,
+            appVersion = BuildConfig.VERSION_NAME,
+            exportedAtMs = System.currentTimeMillis(),
+        )
+
+    fun parseSavedPointsImport(text: String): SavedPointsBackupParseResult =
+        SavedPointsBackupCodec.parseImport(text) { root ->
+            savedPointsStore.parseSnapshot(root)
+        }
+
+    fun importSavedPoints(
+        snapshot: SavedPointsBackupSnapshot,
+        mode: SavedPointsImportMode,
+    ): SavedPointsImportResult {
+        val result = savedPointsStore.importSnapshot(snapshot, mode)
+        refreshSavedPointsState()
+        return result
+    }
+
+    private fun refreshSavedPointsState() {
+        _state.update { current ->
+            val saved = savedPointsStore.allPoints().associateBy { it.site.id }
+            val next = current.copy(
+                savedPoints = saved,
+                savedCategories = savedPointsStore.allCategories(),
             )
             next.copy(savedListResults = buildSavedListResults(next))
         }

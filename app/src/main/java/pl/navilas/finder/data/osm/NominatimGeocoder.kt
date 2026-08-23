@@ -6,6 +6,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import pl.navilas.finder.BuildConfig
 import pl.navilas.finder.domain.LatLon
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -61,7 +62,7 @@ class NominatimGeocoder(
 
     companion object {
         private const val BASE_URL = "https://nominatim.openstreetmap.org/search"
-        private const val USER_AGENT = "NaviLas/0.4-locality (Android; contact@navilas.local)"
+        private val USER_AGENT = "NaviLas/${BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)"
 
         fun parseFirstResult(payload: String): GeocodedPlace? {
             val arr = JSONArray(payload)

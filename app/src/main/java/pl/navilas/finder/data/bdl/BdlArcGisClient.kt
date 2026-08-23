@@ -98,7 +98,7 @@ class BdlArcGisClient(
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
-            .header("User-Agent", "NaviLas/0.4-offline (Android)")
+            .header("User-Agent", "NaviLas/${pl.navilas.finder.BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)")
             .get()
             .build()
         client.newCall(request).execute().use { response ->

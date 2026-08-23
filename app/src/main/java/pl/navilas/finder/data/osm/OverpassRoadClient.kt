@@ -5,6 +5,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import pl.navilas.finder.BuildConfig
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.Road
 import java.io.IOException
@@ -143,7 +144,7 @@ class OverpassRoadClient(
         const val DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
         const val DEFAULT_RADIUS_METERS = 400.0
         const val BATCH_SIZE = 20
-        const val USER_AGENT = "NaviLas/0.2-checkpoint2 (Android; prototype; contact: local-dev)"
+        val USER_AGENT = "NaviLas/${BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)"
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)

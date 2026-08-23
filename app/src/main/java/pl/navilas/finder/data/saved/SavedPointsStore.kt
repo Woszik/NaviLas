@@ -75,35 +75,7 @@ class SavedPointsStore(
         persistToDisk()
     }
 
-    private fun loadFromDisk() {
-        if (!file.exists()) return
-        runCatching {
-            val root = JSONObject(file.readText())
-            categories.clear()
-            root.optJSONArray("categories")?.let { arr ->
-                for (i in 0 until arr.length()) {
-                    val item = arr.getJSONObject(i)
-                    val category = SavedPointCategory(
-                        id = item.getString("id"),
-                        name = item.getString("name"),
-                        sortOrder = item.optInt("sortOrder", i),
-                    )
-                    categories[category.id] = category
-                }
-            }
-            points.clear()
-            val pointsObj = root.optJSONObject("points") ?: return
-            val keys = pointsObj.keys()
-            while (keys.hasNext()) {
-                val siteId = keys.next()
-                parsePoint(pointsObj.getJSONObject(siteId))?.let { points[siteId] = it }
-            }
-        }
-    }
-
-    private fun persistToDisk() {
-        file.parentFile?.mkdirs()
-        val root = JSONObject()
+    fun writeSnapshotTo(root: JSONObject) {
         val categoriesArr = JSONArray()
         allCategories().forEach { category ->
             categoriesArr.put(
@@ -119,6 +91,112 @@ class SavedPointsStore(
             pointsObj.put(point.site.id, toJson(point))
         }
         root.put("points", pointsObj)
+    }
+
+    fun parseSnapshot(root: JSONObject): SavedPointsBackupParseResult {
+        val parsedCategories = linkedMapOf<String, SavedPointCategory>()
+        root.optJSONArray("categories")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val item = arr.getJSONObject(i)
+                val name = item.optString("name").trim()
+                val id = item.optString("id").trim()
+                if (id.isBlank() || name.length < 2 || name.length > 80) continue
+                parsedCategories[id] = SavedPointCategory(
+                    id = id,
+                    name = name,
+                    sortOrder = item.optInt("sortOrder", i),
+                )
+            }
+        }
+        val parsedPoints = linkedMapOf<String, SavedPoint>()
+        var skippedPoints = 0
+        val pointsObj = root.optJSONObject("points")
+        if (pointsObj != null) {
+            val keys = pointsObj.keys()
+            while (keys.hasNext()) {
+                val siteId = keys.next()
+                val point = parsePoint(pointsObj.getJSONObject(siteId))
+                if (point == null) {
+                    skippedPoints++
+                    continue
+                }
+                if (point.site.id != siteId) {
+                    skippedPoints++
+                    continue
+                }
+                parsedPoints[siteId] = point
+            }
+        }
+        return SavedPointsBackupParseResult.Success(
+            snapshot = SavedPointsBackupSnapshot(
+                categories = parsedCategories.values.toList(),
+                points = parsedPoints.values.toList(),
+            ),
+            skippedPoints = skippedPoints,
+        )
+    }
+
+    fun importSnapshot(snapshot: SavedPointsBackupSnapshot, mode: SavedPointsImportMode): SavedPointsImportResult {
+        if (mode == SavedPointsImportMode.REPLACE) {
+            categories.clear()
+            points.clear()
+        }
+        var addedCategories = 0
+        snapshot.categories.forEach { imported ->
+            if (imported.id !in categories) {
+                categories[imported.id] = imported
+                addedCategories++
+            }
+        }
+        var addedPoints = 0
+        var updatedPoints = 0
+        var skippedPoints = 0
+        snapshot.points.forEach { imported ->
+            val siteId = imported.site.id
+            val existing = points[siteId]
+            when {
+                existing == null -> {
+                    val validCategoryIds = imported.categoryIds.filter { it in categories }.toSet()
+                    points[siteId] = imported.copy(categoryIds = validCategoryIds)
+                    addedPoints++
+                }
+                mode == SavedPointsImportMode.REPLACE -> {
+                    val validCategoryIds = imported.categoryIds.filter { it in categories }.toSet()
+                    points[siteId] = imported.copy(categoryIds = validCategoryIds)
+                    updatedPoints++
+                }
+                else -> skippedPoints++
+            }
+        }
+        persistToDisk()
+        return SavedPointsImportResult(
+            addedPoints = addedPoints,
+            updatedPoints = updatedPoints,
+            skippedPoints = skippedPoints,
+            addedCategories = addedCategories,
+        )
+    }
+
+    private fun loadFromDisk() {
+        if (!file.exists()) return
+        runCatching {
+            val root = JSONObject(file.readText())
+            categories.clear()
+            points.clear()
+            when (val parsed = parseSnapshot(root)) {
+                is SavedPointsBackupParseResult.Success -> {
+                    parsed.snapshot.categories.forEach { categories[it.id] = it }
+                    parsed.snapshot.points.forEach { points[it.site.id] = it }
+                }
+                is SavedPointsBackupParseResult.Failure -> Unit
+            }
+        }
+    }
+
+    private fun persistToDisk() {
+        file.parentFile?.mkdirs()
+        val root = JSONObject()
+        writeSnapshotTo(root)
         file.writeText(root.toString())
     }
 
@@ -207,11 +285,13 @@ class SavedPointsStore(
             distanceToZanocujBoundaryMeters = siteJson.optDouble("distanceToZanocujBoundaryMeters")
                 .takeIf { !it.isNaN() },
         )
+        val comment = json.optString("userComment").takeIf { it.isNotBlank() }
+        if (comment != null && comment.length > 2000) return null
         return SavedPoint(
             site = site,
-            savedAtMs = json.getLong("savedAtMs"),
+            savedAtMs = json.optLong("savedAtMs", System.currentTimeMillis()),
             categoryIds = parseCategoryIds(json),
-            userComment = json.optString("userComment").takeIf { it.isNotBlank() },
+            userComment = comment,
         )
     }
 
