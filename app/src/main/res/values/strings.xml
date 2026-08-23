@@ -93,6 +93,7 @@
     <string name="app_update_download_percent">Pobieranie… %1$d%%</string>
     <string name="app_update_up_to_date">Masz najnowszą wersję.</string>
     <string name="app_update_network_error">Brak połączenia — nie sprawdzono aktualizacji.</string>
-    <string name="app_update_install_sources">Zezwól na instalację z tego źródła, aby zaktualizować aplikację.</string>
+    <string name="app_update_install_sources">Aby zaktualizować aplikację, zezwól na instalację z tego źródła. Potem pobieranie i instalacja uruchomią się automatycznie.</string>
     <string name="app_update_open_settings">Ustawienia</string>
+    <string name="app_update_permission_denied">Bez tego uprawnienia nie można zainstalować aktualizacji.</string>
 </resources>

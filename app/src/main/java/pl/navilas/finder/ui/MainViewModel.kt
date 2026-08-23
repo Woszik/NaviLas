@@ -687,6 +687,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _state.update {
                 it.copy(
+                    appUpdateOffer = null,
                     appUpdateDownloading = true,
                     appUpdateDownloadPercent = null,
                     appUpdateError = null,
@@ -714,7 +715,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         appUpdateDownloading = false,
                         appUpdateDownloadPercent = null,
-                        appUpdateOffer = null,
                         appUpdateInstallFile = apkFile,
                     )
                 }

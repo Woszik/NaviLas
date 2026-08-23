@@ -84,6 +84,14 @@ class MainActivity : AppCompatActivity() {
     private var updateProgressText: TextView? = null
     private var shownUpdateVersionCode: Int? = null
     private var pendingInstallApk: File? = null
+    /** After returning from unknown-sources settings: start download or install once. */
+    private var pendingAfterInstallPermission: PendingAfterInstallPermission? = null
+    private var installIntentLaunched = false
+
+    private enum class PendingAfterInstallPermission {
+        START_DOWNLOAD,
+        INSTALL_APK,
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -103,11 +111,7 @@ class MainActivity : AppCompatActivity() {
     private val unknownSourcesLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) {
-        pendingInstallApk?.let { apk ->
-            if (AppUpdateInstaller.canInstallPackages(this)) {
-                launchApkInstall(apk)
-            }
-        }
+        resumePendingAfterInstallPermission()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -439,32 +443,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleAppUpdateState(state: UiState) {
-        if (state.appUpdateDownloading) {
-            dismissUpdateOfferDialog()
-            showUpdateProgressDialog(state.appUpdateDownloadPercent)
-        } else {
-            dismissUpdateProgressDialog()
+        when {
+            state.appUpdateDownloading -> {
+                dismissUpdateOfferDialog()
+                showUpdateProgressDialog(state.appUpdateDownloadPercent)
+                return
+            }
+            state.appUpdateInstallFile != null -> {
+                dismissUpdateProgressDialog()
+                dismissUpdateOfferDialog()
+                val apk = state.appUpdateInstallFile
+                viewModel.consumeAppUpdateInstall()
+                beginApkInstall(apk)
+                return
+            }
+            state.appUpdateError != null -> {
+                dismissUpdateProgressDialog()
+                Snackbar.make(binding.root, state.appUpdateError, Snackbar.LENGTH_LONG).show()
+                viewModel.consumeAppUpdateError()
+                return
+            }
+            state.appUpdateOffer != null -> {
+                dismissUpdateProgressDialog()
+                val offer = state.appUpdateOffer
+                if (shownUpdateVersionCode == offer.versionCode && updateOfferDialog?.isShowing == true) {
+                    return
+                }
+                showUpdateOfferDialog(offer)
+            }
+            else -> {
+                dismissUpdateProgressDialog()
+                if (updateOfferDialog?.isShowing != true) {
+                    shownUpdateVersionCode = null
+                }
+            }
         }
-
-        state.appUpdateInstallFile?.let { apk ->
-            beginApkInstall(apk)
-            return
-        }
-
-        state.appUpdateError?.let { error ->
-            Snackbar.make(binding.root, error, Snackbar.LENGTH_LONG).show()
-            viewModel.consumeAppUpdateError()
-            return
-        }
-
-        val offer = state.appUpdateOffer
-        if (offer == null) {
-            dismissUpdateOfferDialog()
-            shownUpdateVersionCode = null
-            return
-        }
-        if (shownUpdateVersionCode == offer.versionCode && updateOfferDialog?.isShowing == true) return
-        showUpdateOfferDialog(offer)
     }
 
     private fun showUpdateOfferDialog(offer: AppUpdateOffer) {
@@ -482,7 +495,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage(message)
             .setCancelable(!offer.mandatory)
             .setPositiveButton(R.string.app_update_action) { _, _ ->
-                viewModel.startAppUpdateDownload()
+                onUpdateActionClicked()
             }
             .setOnDismissListener {
                 updateOfferDialog = null
@@ -494,6 +507,59 @@ class MainActivity : AppCompatActivity() {
             }
         }
         updateOfferDialog = builder.show()
+    }
+
+    private fun onUpdateActionClicked() {
+        dismissUpdateOfferDialog()
+        shownUpdateVersionCode = null
+        installIntentLaunched = false
+        ensureInstallPermissionThen(PendingAfterInstallPermission.START_DOWNLOAD) {
+            viewModel.startAppUpdateDownload()
+        }
+    }
+
+    private fun ensureInstallPermissionThen(
+        pending: PendingAfterInstallPermission,
+        onReady: () -> Unit,
+    ) {
+        if (AppUpdateInstaller.canInstallPackages(this)) {
+            onReady()
+            return
+        }
+        pendingAfterInstallPermission = pending
+        AlertDialog.Builder(this)
+            .setMessage(R.string.app_update_install_sources)
+            .setPositiveButton(R.string.app_update_open_settings) { _, _ ->
+                unknownSourcesLauncher.launch(AppUpdateInstaller.unknownSourcesSettingsIntent(this))
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                pendingAfterInstallPermission = null
+                pendingInstallApk = null
+                Snackbar.make(binding.root, R.string.app_update_permission_denied, Snackbar.LENGTH_LONG).show()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun resumePendingAfterInstallPermission() {
+        val pending = pendingAfterInstallPermission ?: return
+        if (!AppUpdateInstaller.canInstallPackages(this)) {
+            pendingAfterInstallPermission = null
+            pendingInstallApk = null
+            Snackbar.make(binding.root, R.string.app_update_permission_denied, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        pendingAfterInstallPermission = null
+        when (pending) {
+            PendingAfterInstallPermission.START_DOWNLOAD -> {
+                if (viewModel.state.value.appUpdateOffer != null) {
+                    viewModel.startAppUpdateDownload()
+                }
+            }
+            PendingAfterInstallPermission.INSTALL_APK -> {
+                pendingInstallApk?.let { launchApkInstallOnce(it) }
+            }
+        }
     }
 
     private fun dismissUpdateOfferDialog() {
@@ -548,24 +614,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun beginApkInstall(apkFile: File) {
-        viewModel.consumeAppUpdateInstall()
-        if (!AppUpdateInstaller.canInstallPackages(this)) {
-            pendingInstallApk = apkFile
-            AlertDialog.Builder(this)
-                .setMessage(R.string.app_update_install_sources)
-                .setPositiveButton(R.string.app_update_open_settings) { _, _ ->
-                    unknownSourcesLauncher.launch(AppUpdateInstaller.unknownSourcesSettingsIntent(this))
-                }
-                .setNegativeButton(android.R.string.cancel) { _, _ ->
-                    pendingInstallApk = null
-                }
-                .show()
-            return
+        pendingInstallApk = apkFile
+        installIntentLaunched = false
+        ensureInstallPermissionThen(PendingAfterInstallPermission.INSTALL_APK) {
+            launchApkInstallOnce(apkFile)
         }
-        launchApkInstall(apkFile)
     }
 
-    private fun launchApkInstall(apkFile: File) {
+    private fun launchApkInstallOnce(apkFile: File) {
+        if (installIntentLaunched) return
+        installIntentLaunched = true
+        pendingInstallApk = null
+        dismissUpdateProgressDialog()
         startActivity(
             AppUpdateInstaller.installIntent(
                 this,
@@ -573,7 +633,6 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.file_provider_authority),
             ),
         )
-        pendingInstallApk = null
     }
 
     private fun applyCameraRequest(
@@ -1112,11 +1171,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (::mapView.isInitialized) mapView.onResume()
-        pendingInstallApk?.let { apk ->
-            if (AppUpdateInstaller.canInstallPackages(this)) {
-                launchApkInstall(apk)
-            }
-        }
+        resumePendingAfterInstallPermission()
     }
 
     override fun onPause() {
