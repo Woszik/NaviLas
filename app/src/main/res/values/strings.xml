@@ -91,6 +91,8 @@
     <string name="app_update_later">Później</string>
     <string name="app_update_downloading">Pobieranie aktualizacji…</string>
     <string name="app_update_download_percent">Pobieranie… %1$d%%</string>
+    <string name="app_update_installing">Instalowanie…</string>
+    <string name="app_update_preparing_installer">Uruchamianie instalatora…</string>
     <string name="app_update_up_to_date">Masz najnowszą wersję.</string>
     <string name="app_update_network_error">Brak połączenia — nie sprawdzono aktualizacji.</string>
     <string name="app_update_install_sources">Aby zaktualizować aplikację, zezwól na instalację z tego źródła. Potem pobieranie i instalacja uruchomią się automatycznie.</string>

@@ -1,8 +1,13 @@
 package pl.navilas.finder.ui
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageInstaller
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,6 +17,7 @@ import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
@@ -19,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -28,10 +35,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
 import org.maplibre.android.maps.MapView
-import android.widget.ProgressBar
 import pl.navilas.finder.BuildConfig
 import pl.navilas.finder.R
 import pl.navilas.finder.update.AppUpdateInstaller
@@ -86,11 +94,66 @@ class MainActivity : AppCompatActivity() {
     private var pendingInstallApk: File? = null
     /** After returning from unknown-sources settings: start download or install once. */
     private var pendingAfterInstallPermission: PendingAfterInstallPermission? = null
-    private var installIntentLaunched = false
+    private var installSessionStarted = false
+    private var installReceiverRegistered = false
+    private var waitingForSystemInstallerUi = false
 
     private enum class PendingAfterInstallPermission {
         START_DOWNLOAD,
         INSTALL_APK,
+    }
+
+    private val installStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Int.MIN_VALUE)) {
+                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                    val confirm = if (Build.VERSION.SDK_INT >= 33) {
+                        intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(Intent.EXTRA_INTENT)
+                    }
+                    if (confirm != null) {
+                        waitingForSystemInstallerUi = true
+                        setUpdateProgressPhase(getString(R.string.app_update_preparing_installer), indeterminate = true)
+                        startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }
+                PackageInstaller.STATUS_SUCCESS -> {
+                    waitingForSystemInstallerUi = false
+                    dismissUpdateProgressDialog()
+                    unregisterInstallReceiver()
+                }
+                PackageInstaller.STATUS_FAILURE,
+                PackageInstaller.STATUS_FAILURE_ABORTED,
+                PackageInstaller.STATUS_FAILURE_BLOCKED,
+                PackageInstaller.STATUS_FAILURE_CONFLICT,
+                PackageInstaller.STATUS_FAILURE_INCOMPATIBLE,
+                PackageInstaller.STATUS_FAILURE_INVALID,
+                PackageInstaller.STATUS_FAILURE_STORAGE,
+                -> {
+                    waitingForSystemInstallerUi = false
+                    dismissUpdateProgressDialog()
+                    unregisterInstallReceiver()
+                    val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                        ?: getString(R.string.app_update_permission_denied)
+                    Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+                }
+                else -> {
+                    if (status != Int.MIN_VALUE && status < 0) {
+                        waitingForSystemInstallerUi = false
+                        dismissUpdateProgressDialog()
+                        unregisterInstallReceiver()
+                        Snackbar.make(
+                            binding.root,
+                            intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                                ?: "Instalacja nie powiodła się ($status)",
+                            Snackbar.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+        }
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -446,25 +509,40 @@ class MainActivity : AppCompatActivity() {
         when {
             state.appUpdateDownloading -> {
                 dismissUpdateOfferDialog()
-                showUpdateProgressDialog(state.appUpdateDownloadPercent)
+                ensureUpdateProgressDialog()
+                val percent = state.appUpdateDownloadPercent
+                if (percent == null) {
+                    setUpdateProgressPhase(getString(R.string.app_update_downloading), indeterminate = true)
+                } else {
+                    setUpdateProgressPhase(
+                        getString(R.string.app_update_download_percent, percent),
+                        indeterminate = false,
+                        progress = percent,
+                    )
+                }
                 return
             }
             state.appUpdateInstallFile != null -> {
-                dismissUpdateProgressDialog()
                 dismissUpdateOfferDialog()
+                ensureUpdateProgressDialog()
+                setUpdateProgressPhase(getString(R.string.app_update_installing), indeterminate = true)
                 val apk = state.appUpdateInstallFile
                 viewModel.consumeAppUpdateInstall()
                 beginApkInstall(apk)
                 return
             }
             state.appUpdateError != null -> {
-                dismissUpdateProgressDialog()
+                if (!waitingForSystemInstallerUi) {
+                    dismissUpdateProgressDialog()
+                }
                 Snackbar.make(binding.root, state.appUpdateError, Snackbar.LENGTH_LONG).show()
                 viewModel.consumeAppUpdateError()
                 return
             }
             state.appUpdateOffer != null -> {
-                dismissUpdateProgressDialog()
+                if (!waitingForSystemInstallerUi && !installSessionStarted) {
+                    dismissUpdateProgressDialog()
+                }
                 val offer = state.appUpdateOffer
                 if (shownUpdateVersionCode == offer.versionCode && updateOfferDialog?.isShowing == true) {
                     return
@@ -472,7 +550,9 @@ class MainActivity : AppCompatActivity() {
                 showUpdateOfferDialog(offer)
             }
             else -> {
-                dismissUpdateProgressDialog()
+                if (!waitingForSystemInstallerUi && !installSessionStarted) {
+                    dismissUpdateProgressDialog()
+                }
                 if (updateOfferDialog?.isShowing != true) {
                     shownUpdateVersionCode = null
                 }
@@ -512,7 +592,10 @@ class MainActivity : AppCompatActivity() {
     private fun onUpdateActionClicked() {
         dismissUpdateOfferDialog()
         shownUpdateVersionCode = null
-        installIntentLaunched = false
+        installSessionStarted = false
+        waitingForSystemInstallerUi = false
+        ensureUpdateProgressDialog()
+        setUpdateProgressPhase(getString(R.string.app_update_downloading), indeterminate = true)
         ensureInstallPermissionThen(PendingAfterInstallPermission.START_DOWNLOAD) {
             viewModel.startAppUpdateDownload()
         }
@@ -535,6 +618,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(android.R.string.cancel) { _, _ ->
                 pendingAfterInstallPermission = null
                 pendingInstallApk = null
+                dismissUpdateProgressDialog()
                 Snackbar.make(binding.root, R.string.app_update_permission_denied, Snackbar.LENGTH_LONG).show()
             }
             .setCancelable(false)
@@ -546,18 +630,21 @@ class MainActivity : AppCompatActivity() {
         if (!AppUpdateInstaller.canInstallPackages(this)) {
             pendingAfterInstallPermission = null
             pendingInstallApk = null
+            dismissUpdateProgressDialog()
             Snackbar.make(binding.root, R.string.app_update_permission_denied, Snackbar.LENGTH_LONG).show()
             return
         }
         pendingAfterInstallPermission = null
         when (pending) {
             PendingAfterInstallPermission.START_DOWNLOAD -> {
+                ensureUpdateProgressDialog()
+                setUpdateProgressPhase(getString(R.string.app_update_downloading), indeterminate = true)
                 if (viewModel.state.value.appUpdateOffer != null) {
                     viewModel.startAppUpdateDownload()
                 }
             }
             PendingAfterInstallPermission.INSTALL_APK -> {
-                pendingInstallApk?.let { launchApkInstallOnce(it) }
+                pendingInstallApk?.let { startPackageInstallerSession(it) }
             }
         }
     }
@@ -567,11 +654,8 @@ class MainActivity : AppCompatActivity() {
         updateOfferDialog = null
     }
 
-    private fun showUpdateProgressDialog(percent: Int?) {
-        if (updateProgressDialog?.isShowing == true) {
-            bindUpdateProgress(percent)
-            return
-        }
+    private fun ensureUpdateProgressDialog() {
+        if (updateProgressDialog?.isShowing == true) return
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 16)
@@ -581,6 +665,7 @@ class MainActivity : AppCompatActivity() {
         }
         val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
+            isIndeterminate = true
         }
         container.addView(text)
         container.addView(progress)
@@ -591,18 +676,22 @@ class MainActivity : AppCompatActivity() {
             .setView(container)
             .setCancelable(false)
             .create()
-        bindUpdateProgress(percent)
         updateProgressDialog?.show()
     }
 
-    private fun bindUpdateProgress(percent: Int?) {
-        if (percent == null) {
-            updateProgressText?.setText(R.string.app_update_downloading)
-            updateProgressBar?.isIndeterminate = true
-        } else {
-            updateProgressText?.text = getString(R.string.app_update_download_percent, percent)
-            updateProgressBar?.isIndeterminate = false
-            updateProgressBar?.progress = percent
+    private fun setUpdateProgressPhase(message: String, indeterminate: Boolean, progress: Int = 0) {
+        ensureUpdateProgressDialog()
+        updateProgressText?.text = message
+        updateProgressDialog?.setTitle(
+            when {
+                message.contains("%") || message == getString(R.string.app_update_downloading) ->
+                    getString(R.string.app_update_downloading)
+                else -> getString(R.string.app_update_installing)
+            },
+        )
+        updateProgressBar?.isIndeterminate = indeterminate
+        if (!indeterminate) {
+            updateProgressBar?.progress = progress
         }
     }
 
@@ -615,24 +704,54 @@ class MainActivity : AppCompatActivity() {
 
     private fun beginApkInstall(apkFile: File) {
         pendingInstallApk = apkFile
-        installIntentLaunched = false
+        installSessionStarted = false
         ensureInstallPermissionThen(PendingAfterInstallPermission.INSTALL_APK) {
-            launchApkInstallOnce(apkFile)
+            startPackageInstallerSession(apkFile)
         }
     }
 
-    private fun launchApkInstallOnce(apkFile: File) {
-        if (installIntentLaunched) return
-        installIntentLaunched = true
+    private fun startPackageInstallerSession(apkFile: File) {
+        if (installSessionStarted) return
+        installSessionStarted = true
         pendingInstallApk = null
-        dismissUpdateProgressDialog()
-        startActivity(
-            AppUpdateInstaller.installIntent(
-                this,
-                apkFile,
-                getString(R.string.file_provider_authority),
-            ),
+        ensureUpdateProgressDialog()
+        setUpdateProgressPhase(getString(R.string.app_update_preparing_installer), indeterminate = true)
+        registerInstallReceiver()
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    AppUpdateInstaller.commitSession(this@MainActivity, apkFile)
+                }
+            } catch (e: Exception) {
+                installSessionStarted = false
+                waitingForSystemInstallerUi = false
+                unregisterInstallReceiver()
+                dismissUpdateProgressDialog()
+                Snackbar.make(
+                    binding.root,
+                    e.message ?: "Nie udało się uruchomić instalacji",
+                    Snackbar.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
+    private fun registerInstallReceiver() {
+        if (installReceiverRegistered) return
+        val filter = IntentFilter(AppUpdateInstaller.ACTION_INSTALL_STATUS)
+        ContextCompat.registerReceiver(
+            this,
+            installStatusReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        installReceiverRegistered = true
+    }
+
+    private fun unregisterInstallReceiver() {
+        if (!installReceiverRegistered) return
+        runCatching { unregisterReceiver(installStatusReceiver) }
+        installReceiverRegistered = false
     }
 
     private fun applyCameraRequest(
@@ -1176,6 +1295,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (::mapView.isInitialized) mapView.onPause()
+        if (waitingForSystemInstallerUi) {
+            // System installer is on top — drop our overlay to avoid flicker underneath.
+            dismissUpdateProgressDialog()
+        }
         super.onPause()
     }
 
@@ -1195,6 +1318,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        unregisterInstallReceiver()
         if (::mapView.isInitialized) mapView.onDestroy()
         super.onDestroy()
     }
