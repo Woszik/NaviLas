@@ -11,8 +11,8 @@ android {
         applicationId = "pl.navilas.finder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.5.0-app-update"
+        versionCode = 3
+        versionName = "0.5.1-page-nav"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
             "String",

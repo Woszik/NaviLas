@@ -25,6 +25,8 @@
     <string name="page_search">WYSZUKIWANIE</string>
     <string name="page_map">MAPA</string>
     <string name="page_list">LISTA</string>
+    <string name="page_prev">Poprzedni ekran</string>
+    <string name="page_next">Następny ekran</string>
     <string name="search_page_hint">Wybierz źródło wyszukiwania (GPS, mapa lub miejscowość), potem ZNAJDŹ. Parametry filtrują wyniki dopiero po ponownym wyszukiwaniu.</string>
     <string name="zanocuj_in_zone_emoji">🌲 W strefie „Zanocuj w lesie”</string>
     <string name="zanocuj_near_zone_emoji">🌲 Blisko strefy „Zanocuj w lesie”</string>

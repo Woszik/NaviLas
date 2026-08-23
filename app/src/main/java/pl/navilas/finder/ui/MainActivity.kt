@@ -161,12 +161,30 @@ class MainActivity : AppCompatActivity() {
 
         binding.pageLabels.text = getString(R.string.page_labels)
 
+        setupPageChromeNavigation()
         setupSearchPage()
         setupListPage()
         setupMapCard()
         setupBackHandler()
         observeState()
         requestLocationPermissions()
+    }
+
+    private fun setupPageChromeNavigation() {
+        val goNext = {
+            val next = PagerNavigation.pageAfterSwipeLeft(viewModel.state.value.currentPage)
+            viewModel.setCurrentPage(next)
+        }
+        val goPrev = {
+            val prev = PagerNavigation.pageAfterSwipeRight(viewModel.state.value.currentPage)
+            viewModel.setCurrentPage(prev)
+        }
+        binding.toolbarSwipeZone.onSwipeToNext = goNext
+        binding.toolbarSwipeZone.onSwipeToPrevious = goPrev
+        binding.pageIndicatorBar.onSwipeToNext = goNext
+        binding.pageIndicatorBar.onSwipeToPrevious = goPrev
+        binding.btnPageNext.setOnClickListener { goNext() }
+        binding.btnPagePrev.setOnClickListener { goPrev() }
     }
 
     private fun setupSearchPage() {
@@ -840,6 +858,10 @@ class MainActivity : AppCompatActivity() {
         binding.pageLabels.text = labels.mapIndexed { index, label ->
             if (index == page) "【$label】" else label
         }.joinToString("  ·  ")
+        binding.btnPagePrev.isEnabled = page > AppPages.SEARCH
+        binding.btnPageNext.isEnabled = page < AppPages.LIST
+        binding.btnPagePrev.alpha = if (binding.btnPagePrev.isEnabled) 1f else 0.35f
+        binding.btnPageNext.alpha = if (binding.btnPageNext.isEnabled) 1f else 0.35f
     }
 
     private fun buildStatus(state: UiState): String {
