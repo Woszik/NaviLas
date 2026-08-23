@@ -121,7 +121,6 @@
     <string name="about_tagline">Aplikacja do wyszukiwania miejsc odpoczynku w lasach — na podstawie otwartych danych przestrzennych.</string>
     <string name="about_section_version">Ta wersja</string>
     <string name="about_version_format">Wersja: %1$s\nKompilacja: %2$d</string>
-    <string name="about_distribution">Dystrybucja i aktualizacje: oficjalne wydania na GitHub\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej wersji. Aktualizację zatwierdzasz Ty.</string>
     <string name="about_section_features">Co robi NaviLas</string>
     <string name="about_features">• wyszukuje miejsca odpoczynku wokół lokalizacji GPS, punktu na mapie lub miejscowości,\n• pokazuje wyniki na mapie oraz strefy programu „Zanocuj w lesie”,\n• pomaga ocenić dojazd (profil samochód / motocykl),\n• umożliwia pobranie danych BDL do użycia offline,\n• zapisuje wybrane miejsca lokalnie na telefonie (kategorie, komentarze),\n• umożliwia eksport i import zapisanych miejsc do pliku (kopia zapasowa).</string>
     <string name="about_section_sources">Źródła danych</string>
@@ -131,5 +130,7 @@
     <string name="about_section_privacy">Prywatność</string>
     <string name="about_privacy">• Lokalizacja jest używana do wyszukiwania w pobliżu (za Twoją zgodą systemową).\n• Zapisane miejsca i komentarze pozostają na tym urządzeniu.\n• Eksport kopii zapisanych miejsc tworzysz sam — plik trafia tylko tam, gdzie go zapiszesz.\n• NaviLas nie wymaga konta ani logowania.\n• Zapytania o mapę i dane mogą być kierowane do serwisów BDL oraz OpenStreetMap / powiązanych usług (mapa, geokodowanie, drogi) — w zakresie potrzebnym do działania funkcji.</string>
     <string name="about_section_legal">Informacje prawne</string>
+    <string name="about_section_license">Licencja</string>
+    <string name="about_license">NaviLas — Copyright (C) 2026 Woszik.\n\nProgram jest wolnym oprogramowaniem: możesz je rozpowszechniać i/lub modyfikować na warunkach GNU General Public License w wersji 3 lub (według własnego wyboru) dowolnej późniejszej.\n\nPełny tekst licencji: plik LICENSE w repozytorium źródeł\nhttps://github.com/Woszik/NaviLas\n\nKod źródłowy: https://github.com/Woszik/NaviLas</string>
     <string name="about_legal">NaviLas nie jest oficjalną aplikacją Lasów Państwowych ani Banku Danych o Lasach.\n\nInformacje w aplikacji mają charakter pomocniczy. Obowiązujące przepisy, zakazy wstępu do lasu oraz zasady biwakowania / „Zanocuj w lesie” zawsze sprawdzaj w aktualnych, oficjalnych źródłach.\n\nKontakt: woszi@pm.me</string>
 </resources>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_distribution">Dystrybucja i aktualizacje: oficjalne wydania na GitHub\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej wersji. Aktualizację zatwierdzasz Ty.\n\nZmiana kanału (np. na F-Droid): najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia).</string>
+</resources>

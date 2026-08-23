@@ -179,9 +179,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         refreshOfflineStateFromDisk()
-        viewModelScope.launch {
-            delay(2_000)
-            checkForAppUpdate(force = false)
+        if (BuildConfig.APP_UPDATE_ENABLED) {
+            viewModelScope.launch {
+                delay(2_000)
+                checkForAppUpdate(force = false)
+            }
         }
     }
 
@@ -678,6 +680,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkForAppUpdate(force: Boolean) {
+        if (!BuildConfig.APP_UPDATE_ENABLED) return
         viewModelScope.launch {
             appUpdatePrefs.lastCheckAtMs = System.currentTimeMillis()
             try {

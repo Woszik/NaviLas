@@ -1,14 +1,18 @@
 # Aktualizacje NaviLas z GitHub
 
-NaviLas pobiera informacje o nowej wersji z publicznego repozytorium **NaviLas-releases**. Kod źródłowy pozostaje w prywatnym repo **NaviLas**.
+Dotyczy wyłącznie buildu **`github`** (`BuildConfig.APP_UPDATE_ENABLED = true`).  
+Flavor **`fdroid`** nie łączy się z GitHub — aktualizacje tylko przez klienta F-Droid.
+
+NaviLas pobiera informacje o nowej wersji z publicznego repozytorium **NaviLas-releases**.
 
 ## Architektura
 
 | Element | Lokalizacja |
 |---------|-------------|
-| Kod aplikacji | `Woszik/NaviLas` (prywatne) |
+| Kod aplikacji | `Woszik/NaviLas` (publiczne) |
 | APK + `latest.json` | `Woszik/NaviLas-releases` (publiczne) |
-| URL manifestu w aplikacji | `BuildConfig.UPDATE_MANIFEST_URL` |
+| URL manifestu | `BuildConfig.UPDATE_MANIFEST_URL` (flavor `github`) |
+| Build CI | `./gradlew :app:assembleGithubRelease` |
 
 ## Pierwsze uruchomienie (jednorazowo)
 

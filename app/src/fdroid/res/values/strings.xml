@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_distribution">Dystrybucja: wersja F-Droid (oficjalny katalog F-Droid).\n\nAktualizacje wyłącznie przez klienta F-Droid — ta wersja nie łączy się z GitHub w celu pobierania APK.\n\nZmiana kanału (np. na GitHub Releases): najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia).</string>
+</resources>

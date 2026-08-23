@@ -317,7 +317,10 @@ class MainActivity : AppCompatActivity() {
         searchBinding.btnLocate.setOnClickListener { requestLocationPermissions() }
         searchBinding.btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
         searchBinding.appVersionLabel.text = getString(R.string.app_version_label, BuildConfig.VERSION_NAME)
-        searchBinding.btnCheckUpdate.setOnClickListener { viewModel.checkForAppUpdate(force = true) }
+        searchBinding.btnCheckUpdate.isVisible = BuildConfig.APP_UPDATE_ENABLED
+        if (BuildConfig.APP_UPDATE_ENABLED) {
+            searchBinding.btnCheckUpdate.setOnClickListener { viewModel.checkForAppUpdate(force = true) }
+        }
         setupSearchOriginSection()
         setupOfflineSection()
     }

@@ -46,12 +46,12 @@ jobs:
             export RELEASE_KEYSTORE_PATH=release.keystore
           fi
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon
+          ./gradlew :app:assembleGithubRelease --no-daemon
 
       - name: Compute SHA-256
         id: sha
         run: |
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/github/release/app-github-release.apk"
           SHA=$(sha256sum "$APK" | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
 
@@ -88,7 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk "${{ steps.version.outputs.apk_name }}"
+          cp app/build/outputs/apk/github/release/app-github-release.apk "${{ steps.version.outputs.apk_name }}"
           if gh release view "v${{ steps.version.outputs.tag }}" --repo Woszik/NaviLas-releases >/dev/null 2>&1; then
             gh release upload "v${{ steps.version.outputs.tag }}" \
               "${{ steps.version.outputs.apk_name }}" \

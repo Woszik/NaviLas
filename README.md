@@ -2,58 +2,71 @@
 
 Aplikacja Android do wyszukiwania miejsc odpoczynku w lasach — na podstawie otwartych danych przestrzennych (Bank Danych o Lasach, OpenStreetMap).
 
-## Instalacja (testy)
+**Licencja:** [GNU GPL v3](LICENSE) — Copyright (C) 2026 Woszik.
 
-Oficjalne wydania APK i aktualizacje:
+## Dystrybucja (dwa kanały)
 
-**https://github.com/Woszik/NaviLas-releases**
+| Kanał | Instalacja | Aktualizacje |
+|-------|------------|--------------|
+| **GitHub** (testerzy) | [NaviLas-releases](https://github.com/Woszik/NaviLas-releases) | In-app z GitHub (`github` flavor) |
+| **F-Droid** | Klient F-Droid (po akceptacji w katalogu) | Tylko F-Droid (`fdroid` flavor) |
 
-Aplikacja sprawdza dostępność nowszej wersji przy starcie. Aktualizację zatwierdzasz samodzielnie.
+**Ważne:** APK z GitHub i z F-Droid mają **różne podpisy**. Nie instalujesz ich na zmianę bez reinstalacji. Przed zmianą kanału: **Lista → Zapisane → Kopia → Eksportuj**, potem import po instalacji z drugiego źródła.
 
-> **Play Protect:** Przy instalacji APK spoza Google Play system może pokazać ostrzeżenie — to normalne przy dystrybucji spoza sklepu. Instalujesz na własną odpowiedzialność z zaufanego źródła (link powyżej).
+### GitHub (testy)
 
-## Kopia zapisanych miejsc (eksport / import)
+https://github.com/Woszik/NaviLas-releases
 
-Zapisane miejsca i kategorie możesz **zabezpieczyć przed utratą** (np. przed odinstalowaniem aplikacji lub zmianą telefonu):
+Aplikacja (`github`) sprawdza nowszą wersję przy starcie. Aktualizację zatwierdzasz samodzielnie.
 
-1. Otwórz ekran **Lista** → **Zapisane**
-2. Kliknij **Kopia** → **Eksportuj zapisane…**
-3. Zapisz plik JSON w wybranym miejscu (np. **Pobrane** lub chmura)
+> **Play Protect:** Ostrzeżenie przy APK spoza Google Play jest normalne — instaluj tylko z powyższego linku.
 
-Po ponownej instalacji NaviLas:
+## Kopia zapisanych miejsc
 
-1. **Lista** → **Zapisane** → **Kopia** → **Importuj zapisane…**
-2. Wybierz wcześniej zapisany plik
-3. Wybierz **Scal** (dodaje brakujące) lub **Zastąp wszystko** (przywraca kopię na czysto)
+1. **Lista → Zapisane → Kopia → Eksportuj…** — zapis JSON (np. Pobrane)
+2. Po reinstalacji: **Importuj…** → Scal lub Zastąp
 
-Plik kopii jest zwykłym JSON — aplikacja **nie wysyła go automatycznie** nigdzie poza Twoim urządzeniem.
+Szczegóły: ikona **ⓘ** → O aplikacji.
 
-Więcej informacji: ikona **ⓘ** na górnym pasku → **O aplikacji**.
+## Budowanie ze źródeł
+
+Wymagania: JDK 17, Android SDK.
+
+```bash
+# Wersja dla GitHub (auto-update włączony)
+./gradlew :app:assembleGithubRelease
+
+# Wersja dla F-Droid (bez auto-update z GitHub)
+./gradlew :app:assembleFdroidRelease
+
+# Debug lokalny (GitHub flavor)
+./gradlew :app:assembleGithubDebug
+```
+
+Release keystore (opcjonalnie, dla podpisanego APK): zmienne `RELEASE_KEYSTORE_PATH`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
 
 ## Funkcje
 
-- Wyszukiwanie miejsc odpoczynku (GPS, punkt na mapie, miejscowość)
+- Wyszukiwanie miejsc odpoczynku (GPS, mapa, miejscowość)
 - Mapa ze strefami „Zanocuj w lesie”
-- Ocena dojazdu (samochód / motocykl)
-- Pobieranie danych BDL do użycia offline
-- Zapisywanie miejsc z kategoriami i komentarzami
-- Eksport i import zapisanych miejsc
-- Automatyczne sprawdzanie aktualizacji z GitHub
+- Dojazd samochód / motocykl
+- BDL offline
+- Zapisane miejsca z kategoriami i komentarzami
+- Eksport / import kopii zapasowej
 
 ## Źródła danych
 
 - [Bank Danych o Lasach (BDL)](https://www.bdl.lasy.gov.pl/)
-- [OpenStreetMap](https://www.openstreetmap.org/copyright)
+- [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL)
 - OpenFreeMap / MapLibre
 
 ## Kontakt
 
 woszi@pm.me
 
-## Dokumentacja developerska
+## Dokumentacja
 
-Szczegóły techniczne w katalogu [`docs/`](docs/):
-
-- [`APP_UPDATES.md`](docs/APP_UPDATES.md) — aktualizacje z GitHub
-- [`FDROID.md`](docs/FDROID.md) — plan publikacji w F-Droid
-- [`BDL_POINT_CATEGORIES.md`](docs/BDL_POINT_CATEGORIES.md) — kategorie punktów BDL
+- [`docs/FDROID.md`](docs/FDROID.md) — F-Droid, flavory, MR do fdroiddata
+- [`docs/fdroid/pl.navilas.finder.yml`](docs/fdroid/pl.navilas.finder.yml) — szablon metadanych F-Droid
+- [`docs/APP_UPDATES.md`](docs/APP_UPDATES.md) — auto-update (flavor `github`)
+- [`docs/BDL_POINT_CATEGORIES.md`](docs/BDL_POINT_CATEGORIES.md) — kategorie BDL
