@@ -31,6 +31,5 @@ class AppUpdatePreferences(context: Context) {
         private const val KEY_LAST_CHECK_AT = "last_check_at_ms"
         private const val KEY_DISMISSED_VERSION = "dismissed_version_code"
         private const val NO_DISMISS = -1
-        const val CHECK_INTERVAL_MS: Long = 24L * 60L * 60L * 1000L
     }
 }

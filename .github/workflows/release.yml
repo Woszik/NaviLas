@@ -65,7 +65,11 @@ jobs:
 
       - name: Build latest.json
         run: |
-          NOTES=$(echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | sed 's/"/\\"/g')
+          # User-facing notes: first paragraph of tag commit, without Co-authored-by trailers.
+          NOTES=$(git log -1 --pretty=%B | sed '/^Co-authored-by:/Id' | sed '/^$/q' | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/[[:space:]]*$//')
+          if [ -z "$NOTES" ]; then
+            NOTES="NaviLas ${{ steps.appmeta.outputs.version_name }}"
+          fi
           cat > latest.json <<EOF
           {
             "versionCode": ${{ steps.appmeta.outputs.version_code }},
@@ -78,6 +82,7 @@ jobs:
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
+          cat latest.json
 
       - name: Publish APK release
         env:

@@ -640,10 +640,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun checkForAppUpdate(force: Boolean) {
         viewModelScope.launch {
-            if (!force) {
-                val elapsed = System.currentTimeMillis() - appUpdatePrefs.lastCheckAtMs
-                if (elapsed < AppUpdatePreferences.CHECK_INTERVAL_MS) return@launch
-            }
             appUpdatePrefs.lastCheckAtMs = System.currentTimeMillis()
             try {
                 val manifest = withContext(Dispatchers.IO) { appUpdateChecker.fetchManifest() }

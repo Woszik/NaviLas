@@ -76,8 +76,8 @@ git push origin main --tags
 
 ## Zachowanie aplikacji
 
-- **Start:** sprawdzenie manifestu po ~2 s (max raz / 24 h).
-- **Ręcznie:** ekran Wyszukiwanie → „Sprawdź aktualizacje”.
+- **Start:** zawsze sprawdzenie manifestu po ~2 s. Brak update → cisza. Jest update → dialog.
+- **Ręcznie:** ekran Wyszukiwanie → „Sprawdź aktualizacje” (przy braku update: komunikat „masz najnowszą”).
 - **Nowa wersja:** dialog z release notes → „Aktualizuj” → pobieranie → weryfikacja SHA-256 → instalator systemowy.
 - **Później:** wersja zapisana jako odrzucona do czasu pojawienia się wyższego `versionCode`.
 - **Wymuszenie:** `minVersionCode` w manifest — dialog bez „Później”.
@@ -89,7 +89,7 @@ git push origin main --tags
 | „Masz najnowszą wersję” mimo nowego APK | `versionCode` w APK ≤ obecny na telefonie |
 | Błąd sumy kontrolnej | `sha256` w `latest.json` nie pasuje do APK |
 | Instalacja odrzucona | Inny klucz podpisu niż zainstalowana wersja |
-| Brak dialogu | Brak sieci / throttling 24 h / wersja odrzucona („Później”) |
+| Brak dialogu przy starcie | Brak sieci (auto milczy) / wersja odrzucona („Później”) / już masz tę wersję |
 | 404 manifestu | Repo `NaviLas-releases` nie istnieje lub brak `latest.json` na `main` |
 
 ## Bezpieczeństwo
