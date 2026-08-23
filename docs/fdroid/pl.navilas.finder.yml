@@ -8,20 +8,6 @@ SourceCode: https://github.com/Woszik/NaviLas
 IssueTracker: https://github.com/Woszik/NaviLas/issues
 WebSite: https://github.com/Woszik/NaviLas-releases
 Changelog: https://github.com/Woszik/NaviLas-releases/releases
-Donate:
-
-AutoName: NaviLas
-Summary: Miejsca odpoczynku w lasach (BDL, OSM)
-Description: |
-  NaviLas pomaga znaleźć miejsca odpoczynku w lasach na podstawie Banku Danych o Lasach
-  i OpenStreetMap: wyszukiwanie wokół GPS lub miejscowości, mapa ze strefami „Zanocuj w lesie”,
-  ocena dojazdu, dane offline, zapisywanie ulubionych miejsc.
-
-  Wersja F-Droid nie pobiera aktualizacji z GitHub — aktualizuj przez klienta F-Droid.
-
-  Zmiana kanału instalacji (GitHub ↔ F-Droid): wyeksportuj zapisane miejsca przed odinstalowaniem.
-
-  Kod: https://github.com/Woszik/NaviLas (GPL-3.0)
 
 AntiFeatures:
   - TetheredNet
@@ -32,7 +18,7 @@ Repo: https://github.com/Woszik/NaviLas
 Builds:
   - versionName: '0.5.7-fdroid-prep'
     versionCode: 9
-    commit: v0.5.7-fdroid-prep
+    commit: COMMIT_HASH_PLACEHOLDER
     gradle:
       - fdroidRelease
 

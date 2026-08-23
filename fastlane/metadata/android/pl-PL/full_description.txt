@@ -1,0 +1,13 @@
+<p>NaviLas pomaga znaleźć miejsca odpoczynku w lasach na podstawie otwartych danych Banku Danych o Lasach (BDL) i OpenStreetMap.</p>
+<p><b>Funkcje</b></p>
+<ul>
+<li>Wyszukiwanie wokół GPS, punktu na mapie lub miejscowości</li>
+<li>Mapa wyników i stref programu „Zanocuj w lesie”</li>
+<li>Profile dojazdu: samochód i motocykl</li>
+<li>Opcjonalne pobranie danych BDL do użycia offline</li>
+<li>Zapis ulubionych miejsc z kategoriami i komentarzami</li>
+<li>Eksport i import zapisanych miejsc (kopia JSON)</li>
+</ul>
+<p>Wersja F-Droid nie sprawdza aktualizacji na GitHub — aktualizuj przez klienta F-Droid. Przy zmianie kanału instalacji (GitHub ↔ F-Droid) wyeksportuj zapisane miejsca przed odinstalowaniem.</p>
+<p>To nie jest oficjalna aplikacja Lasów Państwowych ani BDL. Informacje mają charakter pomocniczy — zawsze weryfikuj przepisy w oficjalnych źródłach.</p>
+<p>Licencja: GPL-3.0. Kod: https://github.com/Woszik/NaviLas</p>

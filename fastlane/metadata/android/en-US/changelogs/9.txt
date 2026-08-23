@@ -1,0 +1,1 @@
+F-Droid preparation: fastlane metadata, github/fdroid flavors, GPL-3.0 public source.
