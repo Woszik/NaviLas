@@ -18,7 +18,7 @@ Repo: https://github.com/Woszik/NaviLas
 Builds:
   - versionName: '0.5.7-fdroid-prep'
     versionCode: 9
-    commit: COMMIT_HASH_PLACEHOLDER
+    commit: 2afd6253d1ebd04314eb64333cd2dcba5e4f4d12
     gradle:
       - fdroidRelease
 

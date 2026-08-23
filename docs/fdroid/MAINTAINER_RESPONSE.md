@@ -47,7 +47,7 @@ Thanks for the review. I updated the MR:
 
 - Switched to the App Inclusion template and checked the boxes.
 - Removed Summary/Description from fdroiddata; added fastlane metadata in https://github.com/Woszik/NaviLas/tree/main/fastlane/metadata/android
-- Replaced tag with full commit hash in Builds.commit: `<HASH>`
+- Replaced tag with full commit hash in Builds.commit: `2afd6253d1ebd04314eb64333cd2dcba5e4f4d12`
 
 Please let me know if anything else is needed.
 ```
