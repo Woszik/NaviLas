@@ -685,7 +685,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val offer = AppUpdateLogic.evaluateOffer(
                     manifest = manifest,
                     currentVersionCode = BuildConfig.VERSION_CODE,
-                    dismissedVersionCode = appUpdatePrefs.dismissedVersionCode,
+                    dismissedVersionCode = if (force) null else appUpdatePrefs.dismissedVersionCode,
                 )
                 if (offer != null) {
                     _state.update { it.copy(appUpdateOffer = offer, appUpdateError = null) }
