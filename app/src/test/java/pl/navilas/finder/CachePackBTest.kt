@@ -12,6 +12,7 @@ import pl.navilas.finder.data.bdl.ZanocujPolygon
 import pl.navilas.finder.data.cache.OsmRoadTileCache
 import pl.navilas.finder.data.cache.OsmRoadTileGrid
 import pl.navilas.finder.data.cache.OsmRoadTileKey
+import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
 import pl.navilas.finder.data.osm.OverpassBboxFetcher
 import pl.navilas.finder.data.osm.OverpassRoadClient
@@ -60,12 +61,54 @@ class CachePackBTest {
             bboxCalls++
             listOf(sampleRoad("way/cached"))
         }
-        val tileCache = OsmRoadTileCache()
-        val client = CachingOverpassRoadClient(delegate = delegate, tileCache = tileCache)
-        val point = LatLon(52.12, 21.08)
-        client.fetchHighwaysAround(listOf(point), radiusMeters = 400.0)
-        client.fetchHighwaysAround(listOf(point), radiusMeters = 400.0)
-        assertEquals(1, bboxCalls)
+        val dir = kotlin.io.path.createTempDirectory("osm-tiles").toFile()
+        try {
+            val tileCache = PersistentOsmRoadTileStore(dir = dir)
+            val client = CachingOverpassRoadClient(delegate = delegate, tileCache = tileCache)
+            val point = LatLon(52.12, 21.08)
+            client.fetchHighwaysAround(listOf(point), radiusMeters = 400.0)
+            client.fetchHighwaysAround(listOf(point), radiusMeters = 400.0)
+            assertEquals(1, bboxCalls)
+
+            // Survives new store instance (disk).
+            val reloaded = PersistentOsmRoadTileStore(dir = dir)
+            val client2 = CachingOverpassRoadClient(delegate = delegate, tileCache = reloaded)
+            client2.fetchHighwaysAround(listOf(point), radiusMeters = 400.0)
+            assertEquals(1, bboxCalls)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun persistent_tile_store_evicts_by_disk_budget() {
+        val dir = kotlin.io.path.createTempDirectory("osm-tiles-evict").toFile()
+        try {
+            val store = PersistentOsmRoadTileStore(
+                dir = dir,
+                memory = OsmRoadTileCache(maxEntries = 10, maxBytes = 10_000L),
+                maxDiskBytes = 800L,
+            )
+            val roads = listOf(
+                Road(
+                    id = "way/1",
+                    type = "service",
+                    access = null,
+                    motorVehicle = null,
+                    motorcycle = null,
+                    vehicle = null,
+                    name = null,
+                    geometry = List(30) { LatLon(52.0 + it * 0.001, 21.0) },
+                ),
+            )
+            store.put(OsmRoadTileKey(1, 1), roads)
+            store.put(OsmRoadTileKey(1, 2), roads)
+            store.put(OsmRoadTileKey(1, 3), roads)
+            assertTrue(store.diskBytesHeld() <= 800L)
+            assertTrue(store.diskEntryCount() <= 2)
+        } finally {
+            dir.deleteRecursively()
+        }
     }
 
     @Test

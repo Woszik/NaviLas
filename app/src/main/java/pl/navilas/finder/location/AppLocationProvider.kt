@@ -25,6 +25,7 @@ sealed class LocationOutcome {
 class AppLocationProvider(
     private val context: Context,
     private val lastGoodStore: LastGoodLocationStore = LastGoodLocationStore(),
+    private val lastGpsPreferences: LastGpsPreferences? = null,
 ) {
     private val locationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -109,7 +110,15 @@ class AppLocationProvider(
     private fun rememberGood(location: Location) {
         val approximate = permissionState() == PermissionState.COARSE_ONLY
         lastGoodStore.record(location, approximate)
+        lastGpsPreferences?.save(
+            latitude = location.latitude,
+            longitude = location.longitude,
+            approximate = approximate,
+            recordedAtMs = System.currentTimeMillis(),
+        )
     }
+
+    fun lastPersistedFix(): LastGoodLocationStore.StoredLocation? = lastGpsPreferences?.load()
 
     private fun LastGoodLocationStore.StoredLocation.toOutcome(): LocationOutcome {
         val location = Location("last-good").apply {

@@ -7,6 +7,12 @@ package pl.navilas.finder.ui
 sealed class MapCameraRequest {
     data class ShowAllResults(val token: Long) : MapCameraRequest()
     data class ShowPoi(val siteId: String, val token: Long) : MapCameraRequest()
+    data class CenterOn(
+        val latitude: Double,
+        val longitude: Double,
+        val zoom: Double = 12.0,
+        val token: Long,
+    ) : MapCameraRequest()
 }
 
 object AppPages {
@@ -38,6 +44,13 @@ object PagerNavigation {
 
     fun cameraForNewSearch(token: Long): MapCameraRequest =
         MapCameraRequest.ShowAllResults(token)
+
+    fun cameraForUserLocation(
+        latitude: Double,
+        longitude: Double,
+        token: Long,
+        zoom: Double = 12.0,
+    ): MapCameraRequest = MapCameraRequest.CenterOn(latitude, longitude, zoom, token)
 
     fun isFitBounds(request: MapCameraRequest?): Boolean =
         request is MapCameraRequest.ShowAllResults

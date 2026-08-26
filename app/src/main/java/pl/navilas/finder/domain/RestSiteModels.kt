@@ -90,17 +90,21 @@ data class SearchConfig(
 ) {
     init {
         require(searchRadiusKm > 0.0) { "searchRadiusKm must be positive" }
+        require(searchRadiusKm >= MIN_SEARCH_RADIUS_KM) {
+            "searchRadiusKm must be >= $MIN_SEARCH_RADIUS_KM"
+        }
         require(searchRadiusKm <= MAX_SEARCH_RADIUS_KM) {
             "searchRadiusKm must be <= $MAX_SEARCH_RADIUS_KM"
         }
     }
 
     companion object {
+        const val MIN_SEARCH_RADIUS_KM = 1.0
         const val MAX_SEARCH_RADIUS_KM = 100.0
         const val DEFAULT_SEARCH_RADIUS_KM = 25.0
 
-        /** Preset radii offered in the UI (km). */
-        val SEARCH_RADIUS_PRESETS_KM: List<Double> = listOf(5.0, 10.0, 25.0, 50.0, 100.0)
+        /** Preset radii offered in the UI (km). Custom values allowed up to [MAX_SEARCH_RADIUS_KM]. */
+        val SEARCH_RADIUS_PRESETS_KM: List<Double> = listOf(5.0, 10.0, 25.0, 50.0)
 
         val DEFAULT = SearchConfig()
     }

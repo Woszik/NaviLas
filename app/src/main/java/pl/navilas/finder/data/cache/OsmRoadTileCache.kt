@@ -65,9 +65,10 @@ class OsmRoadTileCache(
     )
 
     companion object {
-        const val MAX_ENTRIES = 15
+        /** Hot in-memory layer (disk budget is larger — see [PersistentOsmRoadTileStore]). */
+        const val MAX_ENTRIES = 40
         const val MAX_BYTES: Long = 20L * 1024 * 1024
-        const val DEFAULT_TTL_MS: Long = 7L * 24 * 60 * 60 * 1000
+        const val DEFAULT_TTL_MS: Long = 30L * 24 * 60 * 60 * 1000
 
         fun estimateBytes(roads: List<Road>): Long = roads.sumOf { road ->
             200L + road.geometry.size * 32L

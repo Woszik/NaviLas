@@ -11,16 +11,58 @@
         android:layout_height="wrap_content"
         android:paddingBottom="16dp">
 
+        <TextView
+            android:id="@+id/exploreModeLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/explore_mode_label"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/exploreModeToggle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="4dp"
+            app:checkedButton="@+id/btnExploreBrowse"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/exploreModeLabel"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExploreBrowse"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/explore_mode_browse" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExploreSearch"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/explore_mode_search" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/profileToggle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             app:checkedButton="@+id/btnProfileCar"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/exploreModeToggle"
             app:selectionRequired="true"
             app:singleSelection="true">
 
@@ -63,6 +105,37 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/radiusLabel" />
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/customRadiusLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="4dp"
+            android:hint="@string/search_radius_custom_hint"
+            app:layout_constraintEnd_toStartOf="@id/btnApplyCustomRadius"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/radiusSpinner">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/customRadiusInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                android:inputType="numberDecimal"
+                android:maxLines="1" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnApplyCustomRadius"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:text="@string/search_radius_apply"
+            app:layout_constraintBottom_toBottomOf="@id/customRadiusLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/customRadiusLayout" />
+
         <TextView
             android:id="@+id/searchOriginLabel"
             android:layout_width="0dp"
@@ -73,7 +146,7 @@
             android:textAppearance="?attr/textAppearanceBodySmall"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/radiusSpinner" />
+            app:layout_constraintTop_toBottomOf="@id/customRadiusLayout" />
 
         <RadioGroup
             android:id="@+id/searchOriginGroup"
@@ -103,7 +176,119 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/search_origin_locality" />
+
+            <RadioButton
+                android:id="@+id/radioSearchLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/search_origin_line" />
         </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/corridorPanel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/searchOriginGroup"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/corridorHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/corridor_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="#667766" />
+
+            <TextView
+                android:id="@+id/corridorStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="#335C33"
+                tools:text="Punkty linii: 0" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/corridorLeftLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:hint="@string/corridor_left_hint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/corridorLeftInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:maxLines="1"
+                        android:text="5" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/corridorRightLayout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/corridor_right_hint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/corridorRightInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
+                        android:maxLines="1"
+                        android:text="10" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLineGpsMap"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/corridor_gps_map" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLineGpsLocality"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/corridor_gps_locality" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLineLocalityLocality"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/corridor_locality_locality" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearCorridor"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/corridor_clear" />
+        </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/localityInputLayout"
@@ -114,7 +299,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/searchOriginGroup"
+            app:layout_constraintTop_toBottomOf="@id/corridorPanel"
             tools:visibility="visible">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -126,6 +311,42 @@
                 android:maxLines="1" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <LinearLayout
+            android:id="@+id/localityCandidatesPanel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/localityInputLayout"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/localityCandidatesTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/locality_pick_title"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+            <LinearLayout
+                android:id="@+id/localityCandidatesList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDismissLocalityCandidates"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@android:string/cancel" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/zanocujLabel"
             android:layout_width="0dp"
@@ -136,7 +357,7 @@
             android:textAppearance="?attr/textAppearanceBodySmall"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/localityInputLayout" />
+            app:layout_constraintTop_toBottomOf="@id/localityCandidatesPanel" />
 
         <RadioGroup
             android:id="@+id/zanocujFilter"
@@ -162,6 +383,33 @@
                 android:text="@string/zanocuj_only" />
         </RadioGroup>
 
+        <CheckBox
+            android:id="@+id/browseParkingOnly"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="4dp"
+            android:text="@string/map_browse_parking_only"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/zanocujFilter"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/mapBrowseHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="6dp"
+            android:text="@string/map_browse_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/browseParkingOnly"
+            tools:visibility="visible" />
+
         <LinearLayout
             android:id="@+id/actionRow"
             android:layout_width="0dp"
@@ -172,7 +420,7 @@
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/zanocujFilter">
+            app:layout_constraintTop_toBottomOf="@id/mapBrowseHint">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSearch"
@@ -343,7 +591,7 @@
                 android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="#335C33"
-                tools:text="Brak danych offline na telefonie." />
+                tools:text="Pobrano NaviLas · strefy dokładne · zajmuje 36 MB\nOstatnia aktualizacja: 22 sie 2026, 12:16" />
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/offlineProgress"

@@ -33,7 +33,15 @@ out tags geom;
 
 Obszary „Zanocuj w Lesie” (`PoiGeometryKind.AREA`) **nie** są punktami wejściowymi do `around` — bez rankingu drogowego.
 
-## Ograniczenia usługi
+## Cache (drogi)
+
+| Warstwa | Limit | TTL | Trwałość |
+|---|---|---|---|
+| RAM (`OsmRoadTileCache`) | 20 MB / 40 kafelków | 30 dni | sesja |
+| Dysk (`PersistentOsmRoadTileStore`) | **100 MB**, LRU | **30 dni** | między uruchomieniami |
+
+Kafelki ~5 km (`OsmRoadTileGrid`). Po restarcie aplikacji ponowne wyszukiwanie moto w tej samej okolicy nie musi pytać Overpass.
+
 
 Źródło: https://wiki.openstreetmap.org/wiki/Overpass_API
 

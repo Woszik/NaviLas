@@ -1,8 +1,8 @@
 package pl.navilas.finder.data.osm
 
-import pl.navilas.finder.data.cache.OsmRoadTileCache
 import pl.navilas.finder.data.cache.OsmRoadTileGrid
 import pl.navilas.finder.data.cache.OsmRoadTileKey
+import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.Road
 
@@ -12,7 +12,7 @@ import pl.navilas.finder.domain.Road
  */
 class CachingOverpassRoadClient(
     private val delegate: OverpassBboxFetcher = OverpassRoadClient(),
-    private val tileCache: OsmRoadTileCache,
+    private val tileCache: PersistentOsmRoadTileStore,
 ) : HighwayAroundFetcher {
     override fun fetchHighwaysAround(
         points: List<LatLon>,

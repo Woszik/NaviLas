@@ -3,62 +3,70 @@ package pl.navilas.finder.data.bdl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import pl.navilas.finder.domain.OfflineBdlConfig
-import pl.navilas.finder.domain.ZanocujPolygonQuality
+import java.io.File
 
 class BdlOfflineDownloader(
+    private val filesDir: File,
     private val client: BdlArcGisClient = BdlArcGisClient(),
-    private val store: BdlOfflineStore,
 ) {
     suspend fun download(
         config: OfflineBdlConfig,
         onProgress: (completedSteps: Int, totalSteps: Int, label: String) -> Unit,
     ): Unit = withContext(Dispatchers.IO) {
-        store.deleteAll()
-        val layerIds = BdlOfflineStore.layerIdsForScope(config.scope)
-        val pageCounts = layerIds.associateWith { layerId ->
-            val total = client.countAllFeatures(layerId)
-            val pageSize = downloadParamsFor(layerId, config).pageSize
-            if (total == 0) 0 else (total + pageSize - 1) / pageSize
-        }
-        val totalSteps = pageCounts.values.sum().coerceAtLeast(1)
-        var completed = 0
+        BdlOfflineStore.clearStaging(filesDir)
+        val staging = BdlOfflineStore.stagingFromAppFilesDir(filesDir)
+        try {
+            val layerIds = BdlOfflineStore.layerIdsForScope(config.scope)
+            val pageCounts = layerIds.associateWith { layerId ->
+                val total = client.countAllFeatures(layerId)
+                val pageSize = downloadParamsFor(layerId, config).pageSize
+                if (total == 0) 0 else (total + pageSize - 1) / pageSize
+            }
+            val totalSteps = pageCounts.values.sum().coerceAtLeast(1)
+            var completed = 0
 
-        for (layerId in layerIds) {
-            val pages = pageCounts[layerId] ?: 0
-            if (pages == 0) continue
-            val params = downloadParamsFor(layerId, config)
-            val outFields = outFieldsForLayer(layerId)
-            var offset = 0
-            store.openLayerWriter(layerId).use { writer ->
-                repeat(pages) { pageIndex ->
-                    onProgress(
-                        completed,
-                        totalSteps,
-                        "Warstwa $layerId (${pageIndex + 1}/$pages)",
-                    )
-                    val body = client.queryAllFeaturesPage(
-                        layerId = layerId,
-                        outFields = outFields,
-                        returnGeometry = true,
-                        maxAllowableOffset = params.maxAllowableOffset,
-                        resultOffset = offset,
-                        resultRecordCount = params.pageSize,
-                    )
-                    val pageFeatures = BdlMapper.parseFeatures(body)
-                    writer.appendPage(pageFeatures)
-                    offset += params.pageSize
-                    completed++
-                    onProgress(completed, totalSteps, "Warstwa $layerId (${pageIndex + 1}/$pages)")
+            for (layerId in layerIds) {
+                val pages = pageCounts[layerId] ?: 0
+                if (pages == 0) continue
+                val params = downloadParamsFor(layerId, config)
+                val outFields = outFieldsForLayer(layerId)
+                var offset = 0
+                staging.openLayerWriter(layerId).use { writer ->
+                    repeat(pages) { pageIndex ->
+                        onProgress(
+                            completed,
+                            totalSteps,
+                            "Warstwa $layerId (${pageIndex + 1}/$pages)",
+                        )
+                        val body = client.queryAllFeaturesPage(
+                            layerId = layerId,
+                            outFields = outFields,
+                            returnGeometry = true,
+                            maxAllowableOffset = params.maxAllowableOffset,
+                            resultOffset = offset,
+                            resultRecordCount = params.pageSize,
+                        )
+                        val pageFeatures = BdlMapper.parseFeatures(body)
+                        writer.appendPage(pageFeatures)
+                        offset += params.pageSize
+                        completed++
+                        onProgress(completed, totalSteps, "Warstwa $layerId (${pageIndex + 1}/$pages)")
+                    }
                 }
             }
-        }
 
-        store.writeManifest(
-            config = config,
-            layerIds = layerIds.filter { (pageCounts[it] ?: 0) > 0 },
-            downloadedAt = System.currentTimeMillis(),
-        )
-        onProgress(totalSteps, totalSteps, "Gotowe")
+            staging.writeManifest(
+                config = config,
+                layerIds = layerIds.filter { (pageCounts[it] ?: 0) > 0 },
+                downloadedAt = System.currentTimeMillis(),
+            )
+            onProgress(totalSteps, totalSteps, "Aktywacja nowej bazy…")
+            BdlOfflineStore.promoteStagingToLive(filesDir)
+            onProgress(totalSteps, totalSteps, "Gotowe")
+        } catch (e: Exception) {
+            BdlOfflineStore.clearStaging(filesDir)
+            throw e
+        }
     }
 
     internal fun downloadParamsFor(layerId: Int, config: OfflineBdlConfig): LayerDownloadParams {

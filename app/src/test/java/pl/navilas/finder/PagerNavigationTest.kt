@@ -89,7 +89,7 @@ class PagerNavigationTest {
 
     @Test
     fun radius_presets_unchanged_by_pager() {
-        assertEquals(listOf(5.0, 10.0, 25.0, 50.0, 100.0), SearchConfig.SEARCH_RADIUS_PRESETS_KM)
+        assertEquals(listOf(5.0, 10.0, 25.0, 50.0), SearchConfig.SEARCH_RADIUS_PRESETS_KM)
         assertEquals(25.0, SearchConfig.DEFAULT_SEARCH_RADIUS_KM, 0.0)
     }
 

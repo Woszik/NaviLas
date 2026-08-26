@@ -21,6 +21,12 @@ import org.json.JSONObject
 object BdlMapper {
     const val SOURCE = "BDL Czas w Las"
 
+    /** Inclusive WGS84 window used to drop corrupt / swapped BDL point rows. */
+    private const val MIN_LAT = 48.0
+    private const val MAX_LAT = 56.0
+    private const val MIN_LON = 13.0
+    private const val MAX_LON = 25.0
+
     fun mapParkingFeature(feature: JSONObject): Poi? {
         val attrs = feature.optJSONObject("attributes") ?: return null
         val point = pointFromGeometry(feature.optJSONObject("geometry")) ?: return null
@@ -129,10 +135,14 @@ object BdlMapper {
 
     fun pointFromGeometry(geometry: JSONObject?): Pair<Double, Double>? {
         if (geometry == null) return null
-        if (geometry.has("x") && geometry.has("y")) {
-            return geometry.getDouble("x") to geometry.getDouble("y")
-        }
-        return null
+        if (!geometry.has("x") || !geometry.has("y")) return null
+        if (geometry.isNull("x") || geometry.isNull("y")) return null
+        val lon = geometry.optDouble("x", Double.NaN)
+        val lat = geometry.optDouble("y", Double.NaN)
+        if (!lon.isFinite() || !lat.isFinite()) return null
+        // Keep Poland-ish envelope with margin — rejects swapped/corrupt ArcGIS rows.
+        if (lat !in MIN_LAT..MAX_LAT || lon !in MIN_LON..MAX_LON) return null
+        return lon to lat
     }
 
     fun ringsFromPolygon(geometry: JSONObject?): List<List<LatLon>>? {

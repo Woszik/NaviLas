@@ -14,7 +14,8 @@ import java.nio.charset.StandardCharsets
 
 /**
  * File-backed cache of BDL feature JSON per layer.
- * Directory: `{filesDir}/bdl_offline/`.
+ * Live directory: `{filesDir}/bdl_offline/`.
+ * Downloads write to `{filesDir}/bdl_offline_staging/` and replace live only after success.
  */
 class BdlOfflineStore(
     private val rootDir: File,
@@ -73,9 +74,8 @@ class BdlOfflineStore(
 
     fun deleteAll() {
         if (rootDir.exists()) {
-            rootDir.listFiles()?.forEach { it.deleteRecursively() }
+            rootDir.deleteRecursively()
         }
-        manifestFile.delete()
     }
 
     fun filterPointFeatures(
@@ -95,6 +95,16 @@ class BdlOfflineStore(
         }
     }
 
+    fun filterPointFeaturesInEnvelope(
+        layerId: Int,
+        envelope: GeoUtils.Envelope,
+    ): List<JSONObject> = loadLayerFeatures(layerId).filter { feature ->
+        val point = BdlMapper.pointFromGeometry(feature.optJSONObject("geometry")) ?: return@filter false
+        val lon = point.first
+        val lat = point.second
+        lon in envelope.xmin..envelope.xmax && lat in envelope.ymin..envelope.ymax
+    }
+
     fun filterZanocujPolygons(
         userLat: Double,
         userLon: Double,
@@ -102,10 +112,14 @@ class BdlOfflineStore(
         nearZoneMarginKm: Double,
     ): List<ZanocujPolygon> {
         val expanded = GeoUtils.envelopeAround(userLat, userLon, radiusKm + nearZoneMarginKm)
+        return filterZanocujPolygonsInEnvelope(expanded)
+    }
+
+    fun filterZanocujPolygonsInEnvelope(envelope: GeoUtils.Envelope): List<ZanocujPolygon> {
         return loadLayerFeatures(RestSiteRepository.LAYER_ZANOCUJ).mapNotNull { feature ->
             val attrs = feature.optJSONObject("attributes") ?: return@mapNotNull null
             val rings = BdlMapper.ringsFromPolygon(feature.optJSONObject("geometry")) ?: return@mapNotNull null
-            if (!ringsIntersectsEnvelope(rings, expanded)) return@mapNotNull null
+            if (!ringsIntersectsEnvelope(rings, envelope)) return@mapNotNull null
             ZanocujPolygon(
                 id = BdlIdentity.resolve(RestSiteRepository.LAYER_ZANOCUJ, attrs),
                 name = attrs.optString("nzw_ob").takeIf { it.isNotBlank() },
@@ -169,6 +183,8 @@ class BdlOfflineStore(
 
     companion object {
         const val DIR_NAME = "bdl_offline"
+        const val STAGING_DIR_NAME = "bdl_offline_staging"
+        private const val PREVIOUS_DIR_NAME = "bdl_offline_previous"
         private const val MANIFEST_FILE = "manifest.json"
 
         val FULL_BDL_LAYER_IDS: List<Int> = listOf(
@@ -191,5 +207,50 @@ class BdlOfflineStore(
 
         fun fromAppFilesDir(filesDir: File): BdlOfflineStore =
             BdlOfflineStore(File(filesDir, DIR_NAME))
+
+        fun stagingFromAppFilesDir(filesDir: File): BdlOfflineStore =
+            BdlOfflineStore(File(filesDir, STAGING_DIR_NAME))
+
+        fun clearStaging(filesDir: File) {
+            val staging = File(filesDir, STAGING_DIR_NAME)
+            if (staging.exists()) staging.deleteRecursively()
+            val previous = File(filesDir, PREVIOUS_DIR_NAME)
+            if (previous.exists()) previous.deleteRecursively()
+        }
+
+        /**
+         * After a complete staging download (with manifest), replace live store.
+         * On failure the previous live directory is restored when possible.
+         */
+        fun promoteStagingToLive(filesDir: File) {
+            val live = File(filesDir, DIR_NAME)
+            val staging = File(filesDir, STAGING_DIR_NAME)
+            val previous = File(filesDir, PREVIOUS_DIR_NAME)
+            val stagingManifest = File(staging, MANIFEST_FILE)
+            require(staging.exists() && stagingManifest.exists()) {
+                "Brak kompletnej bazy staging (manifest)"
+            }
+            if (previous.exists()) previous.deleteRecursively()
+            if (live.exists()) {
+                if (!live.renameTo(previous)) {
+                    live.copyRecursively(previous, overwrite = true)
+                    if (!live.deleteRecursively()) {
+                        error("Nie można zwolnić katalogu bieżącej bazy BDL")
+                    }
+                }
+            }
+            if (!staging.renameTo(live)) {
+                staging.copyRecursively(live, overwrite = true)
+                staging.deleteRecursively()
+                if (!File(live, MANIFEST_FILE).exists()) {
+                    if (previous.exists()) {
+                        live.deleteRecursively()
+                        previous.renameTo(live)
+                    }
+                    error("Nie udało się aktywować nowej bazy BDL")
+                }
+            }
+            if (previous.exists()) previous.deleteRecursively()
+        }
     }
 }

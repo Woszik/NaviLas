@@ -3,7 +3,6 @@ package pl.navilas.finder.nav
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
-import pl.navilas.finder.domain.RelatedBdlObject
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RoadAccessClass
 import pl.navilas.finder.domain.RoadAssessment
@@ -12,19 +11,17 @@ import pl.navilas.finder.domain.TravelProfile
 import java.util.Locale
 
 object NavigationTargets {
+    /**
+     * CAR navigation always targets the result coordinates (rest site or standalone parking primary).
+     * Nearby related parking is not used as a separate destination.
+     */
     fun forCar(site: RestSite): Pair<LatLon, NavigationTargetKind> {
-        if (site.sourceLayerId == RestSiteRepository.LAYER_PARKING) {
-            return LatLon(site.latitude, site.longitude) to NavigationTargetKind.PARKING
-        }
-        val parking = site.relatedObjects
-            .filter { it.layerId == RestSiteRepository.LAYER_PARKING }
-            .minByOrNull { it.distanceMeters }
-        return if (parking != null) {
-            LatLon(parking.latitude, parking.longitude) to NavigationTargetKind.PARKING
+        val kind = if (site.sourceLayerId == RestSiteRepository.LAYER_PARKING) {
+            NavigationTargetKind.PARKING
         } else {
-            // Layer 15 rest site or layer 19 amenity stop — navigate to the place itself.
-            LatLon(site.latitude, site.longitude) to NavigationTargetKind.REST_SITE
+            NavigationTargetKind.REST_SITE
         }
+        return LatLon(site.latitude, site.longitude) to kind
     }
 
     fun forMotorcycle(assessment: RoadAssessment?): Pair<LatLon, NavigationTargetKind>? {
@@ -108,8 +105,3 @@ object NavigationLinks {
     private fun xmlEscape(value: String): String =
         value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 }
-
-fun relatedParking(site: RestSite): RelatedBdlObject? =
-    site.relatedObjects
-        .filter { it.layerId == RestSiteRepository.LAYER_PARKING }
-        .minByOrNull { it.distanceMeters }

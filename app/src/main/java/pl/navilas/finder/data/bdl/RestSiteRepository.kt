@@ -7,10 +7,12 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import pl.navilas.finder.data.cache.BdlSearchCacheKey
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
+import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.RelatedBdlObject
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SiteFeature
+import pl.navilas.finder.util.CorridorGeometry
 import pl.navilas.finder.util.GeoUtils
 import java.io.IOException
 
@@ -51,6 +53,31 @@ class RestSiteRepository(
         RestSearchOutcome(bundle = bundle, fromSessionCache = false)
     }
 
+    suspend fun findRestSitesAlongCorridor(
+        line: List<LatLon>,
+        leftKm: Double,
+        rightKm: Double,
+    ): RestSearchOutcome = withContext(Dispatchers.IO) {
+        require(line.size >= 2) { "corridor line needs at least 2 points" }
+        require(leftKm >= 0.0 && rightKm >= 0.0) { "corridor widths must be >= 0" }
+        require(leftKm + rightKm > 0.0) { "corridor width must be positive" }
+        val envelope = CorridorGeometry.envelope(line, leftKm, rightKm)
+        val origin = line.first()
+        val accept: (Double, Double) -> Boolean = { lat, lon ->
+            CorridorGeometry.isInside(lat, lon, line, leftKm, rightKm)
+        }
+        pipelineLog(
+            "corridor points=${line.size} left=$leftKm right=$rightKm " +
+                "envelope=${envelope.xmin},${envelope.ymin}..${envelope.xmax},${envelope.ymax}",
+        )
+        val bundle = if (offlineStore?.isReady() == true) {
+            findRestSitesFromOfflineEnvelope(origin.latitude, origin.longitude, envelope, accept)
+        } else {
+            findRestSitesFromNetworkEnvelope(origin.latitude, origin.longitude, envelope, accept)
+        }
+        RestSearchOutcome(bundle = bundle, fromSessionCache = false)
+    }
+
     private suspend fun fetchRestSites(
         latitude: Double,
         longitude: Double,
@@ -71,6 +98,59 @@ class RestSiteRepository(
             return findRestSitesFromOffline(latitude, longitude, radiusKm)
         }
         return findRestSitesFromNetwork(latitude, longitude, radiusKm, envelope)
+    }
+
+    private suspend fun findRestSitesFromOfflineEnvelope(
+        latitude: Double,
+        longitude: Double,
+        envelope: GeoUtils.Envelope,
+        accept: (Double, Double) -> Boolean,
+    ): RestSearchBundle {
+        val store = offlineStore ?: error("offlineStore required")
+        val restFeatures = store.filterPointFeaturesInEnvelope(LAYER_REST, envelope)
+        val parkingFeatures = store.filterPointFeaturesInEnvelope(LAYER_PARKING, envelope)
+        val stopFeatures = store.filterPointFeaturesInEnvelope(LAYER_STOP, envelope)
+        val viewpointFeatures = store.filterPointFeaturesInEnvelope(LAYER_VIEWPOINT, envelope)
+        val otherFeatures = store.filterPointFeaturesInEnvelope(LAYER_OTHER, envelope)
+        val polygons = store.filterZanocujPolygonsInEnvelope(envelope)
+        return buildRestSearchBundle(
+            latitude = latitude,
+            longitude = longitude,
+            radiusKm = Double.POSITIVE_INFINITY,
+            restFeatures = restFeatures,
+            parkingFeatures = parkingFeatures,
+            stopFeatures = stopFeatures,
+            viewpointFeatures = viewpointFeatures,
+            otherFeatures = otherFeatures,
+            polygons = polygons,
+            pointAccept = accept,
+        )
+    }
+
+    private suspend fun findRestSitesFromNetworkEnvelope(
+        latitude: Double,
+        longitude: Double,
+        envelope: GeoUtils.Envelope,
+        accept: (Double, Double) -> Boolean,
+    ): RestSearchBundle = coroutineScope {
+        val rests = async { queryPoints(LAYER_REST, envelope, OUT_FIELDS_REST, logLayer15 = true) }
+        val parkings = async { queryPoints(LAYER_PARKING, envelope, OUT_FIELDS_VEHICLE) }
+        val stops = async { queryPoints(LAYER_STOP, envelope, OUT_FIELDS_VEHICLE) }
+        val viewpoints = async { queryPoints(LAYER_VIEWPOINT, envelope, OUT_FIELDS_SATELLITE) }
+        val other = async { queryPoints(LAYER_OTHER, envelope, OUT_FIELDS_SATELLITE) }
+        val zones = async { queryZanocujPolygons(envelope) }
+        buildRestSearchBundle(
+            latitude = latitude,
+            longitude = longitude,
+            radiusKm = Double.POSITIVE_INFINITY,
+            restFeatures = rests.await(),
+            parkingFeatures = parkings.await(),
+            stopFeatures = stops.await(),
+            viewpointFeatures = viewpoints.await(),
+            otherFeatures = other.await(),
+            polygons = zones.await(),
+            pointAccept = accept,
+        )
     }
 
     private fun sessionCacheKey(
@@ -162,6 +242,7 @@ class RestSiteRepository(
         viewpointFeatures: List<JSONObject>,
         otherFeatures: List<JSONObject>,
         polygons: List<ZanocujPolygon>,
+        pointAccept: ((Double, Double) -> Boolean)? = null,
     ): RestSearchBundle {
         val satellites = buildList {
             addAll(toSatellites(parkingFeatures, LAYER_PARKING, LAYER_NAME_PARKING))
@@ -180,6 +261,7 @@ class RestSiteRepository(
                 userLat = latitude,
                 userLon = longitude,
                 radiusKm = radiusKm,
+                pointAccept = pointAccept,
             )
         }
         val amenityExtras = buildList {
@@ -195,6 +277,7 @@ class RestSiteRepository(
                     userLat = latitude,
                     userLon = longitude,
                     radiusKm = radiusKm,
+                    pointAccept = pointAccept,
                 ),
             )
             addAll(
@@ -209,6 +292,7 @@ class RestSiteRepository(
                     userLat = latitude,
                     userLon = longitude,
                     radiusKm = radiusKm,
+                    pointAccept = pointAccept,
                 ),
             )
         }
@@ -235,13 +319,14 @@ class RestSiteRepository(
         userLat: Double,
         userLon: Double,
         radiusKm: Double,
+        pointAccept: ((Double, Double) -> Boolean)? = null,
     ): List<RestSite> = features.mapNotNull { feature ->
         val attrs = feature.optJSONObject("attributes") ?: return@mapNotNull null
         if (!BdlAmenityStopRules.qualifiesAsStandalone(attrs)) return@mapNotNull null
         val point = BdlMapper.pointFromGeometry(feature.optJSONObject("geometry")) ?: return@mapNotNull null
         val lon = point.first
         val lat = point.second
-        if (GeoUtils.distanceKm(userLat, userLon, lat, lon) > radiusKm) return@mapNotNull null
+        if (!acceptsPoint(lat, lon, userLat, userLon, radiusKm, pointAccept)) return@mapNotNull null
         val coveredByRest = existingPrimaries.any { primary ->
             GeoUtils.distanceMeters(lat, lon, primary.latitude, primary.longitude) <=
                 config.restLinkRadiusMeters
@@ -257,6 +342,7 @@ class RestSiteRepository(
             userLat = userLat,
             userLon = userLon,
             radiusKm = radiusKm,
+            pointAccept = pointAccept,
         )
     }
 
@@ -270,12 +356,13 @@ class RestSiteRepository(
         userLat: Double,
         userLon: Double,
         radiusKm: Double,
+        pointAccept: ((Double, Double) -> Boolean)? = null,
     ): RestSite? {
         val attrs = feature.optJSONObject("attributes") ?: return null
         val point = BdlMapper.pointFromGeometry(feature.optJSONObject("geometry")) ?: return null
         val lon = point.first
         val lat = point.second
-        if (GeoUtils.distanceKm(userLat, userLon, lat, lon) > radiusKm) return null
+        if (!acceptsPoint(lat, lon, userLat, userLon, radiusKm, pointAccept)) return null
 
         val id = BdlIdentity.resolve(layerId, attrs)
         val related = SpatialLinker.linkNearby(lat, lon, satellites, config)
@@ -299,6 +386,18 @@ class RestSiteRepository(
             zanocujStatus = zone.status,
             distanceToZanocujBoundaryMeters = zone.distanceToBoundaryMeters,
         )
+    }
+
+    private fun acceptsPoint(
+        lat: Double,
+        lon: Double,
+        userLat: Double,
+        userLon: Double,
+        radiusKm: Double,
+        pointAccept: ((Double, Double) -> Boolean)?,
+    ): Boolean {
+        if (pointAccept != null) return pointAccept(lat, lon)
+        return GeoUtils.distanceKm(userLat, userLon, lat, lon) <= radiusKm
     }
 
     private fun buildDescription(attrs: JSONObject, related: List<RelatedBdlObject>): String? {

@@ -3,6 +3,7 @@ package pl.navilas.finder.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,9 +16,10 @@ import pl.navilas.finder.data.bdl.BdlOfflineDownloader
 import pl.navilas.finder.data.bdl.BdlOfflineStore
 import pl.navilas.finder.data.bdl.BdlSearchContext
 import pl.navilas.finder.data.bdl.BdlSearchSubsetFilter
+import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
-import pl.navilas.finder.data.cache.OsmRoadTileCache
+import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
 import pl.navilas.finder.data.cache.RoadAssessmentCache
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
 import pl.navilas.finder.data.osm.NominatimGeocoder
@@ -30,15 +32,20 @@ import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
 import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
+import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.BdlDataScope
+import pl.navilas.finder.domain.CorridorVertexAction
 import pl.navilas.finder.domain.OfflineBdlConfig
 import pl.navilas.finder.domain.estimatedSizeLabel
 import pl.navilas.finder.domain.OfflineBdlState
 import pl.navilas.finder.domain.OfflineBdlStatus
 import pl.navilas.finder.domain.ZanocujPolygonQuality
 import pl.navilas.finder.domain.LatLon
+import pl.navilas.finder.domain.LocalityPickPurpose
 import pl.navilas.finder.domain.NavigationTargetKind
+import pl.navilas.finder.data.osm.GeocodedPlace
+import pl.navilas.finder.location.LastGpsPreferences
 import pl.navilas.finder.domain.Poi
 import pl.navilas.finder.domain.PoiCategory
 import pl.navilas.finder.domain.PoiGeometryKind
@@ -50,12 +57,14 @@ import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.ListViewMode
 import pl.navilas.finder.domain.SavedPoint
 import pl.navilas.finder.domain.SavedPointCategory
+import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujFilterMode
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.location.AppLocationProvider
 import pl.navilas.finder.location.LocationOutcome
 import pl.navilas.finder.nav.NavigationTargets
+import pl.navilas.finder.util.CorridorGeometry
 import pl.navilas.finder.util.GeoUtils
 import pl.navilas.finder.BuildConfig
 import pl.navilas.finder.R
@@ -78,6 +87,7 @@ data class UserPosition(
 
 data class UiState(
     val profile: TravelProfile = TravelProfile.CAR,
+    val exploreMode: AppExploreMode = AppExploreMode.MAP_BROWSE,
     val zanocujFilter: ZanocujFilterMode = ZanocujFilterMode.ALL,
     /** GPS / last known device location (blue marker). */
     val userPosition: UserPosition? = null,
@@ -89,6 +99,17 @@ data class UiState(
     val searchOriginMode: SearchOriginMode = SearchOriginMode.GPS,
     val localityQuery: String = "",
     val localityDisplayName: String? = null,
+    /** Polyline vertices for LINE corridor search (2+ required to search). */
+    val corridorLine: List<LatLon> = emptyList(),
+    val corridorLeftKm: Double = DEFAULT_CORRIDOR_LEFT_KM,
+    val corridorRightKm: Double = DEFAULT_CORRIDOR_RIGHT_KM,
+    val corridorVertexAction: CorridorVertexAction? = null,
+    /** Waiting for second map tap to finish GPS→map line shortcut. */
+    val corridorAwaitMapEnd: Boolean = false,
+    /** Nominatim candidates for locality picker (null = no picker). */
+    val localityCandidates: List<pl.navilas.finder.data.osm.GeocodedPlace>? = null,
+    /** When set, locality pick seeds corridor instead of radial search. */
+    val localityPickPurpose: LocalityPickPurpose = LocalityPickPurpose.SEARCH_ORIGIN,
     val allSites: List<RestSite> = emptyList(),
     val zanocujPolygons: List<pl.navilas.finder.data.bdl.ZanocujPolygon> = emptyList(),
     val roadBySiteId: Map<String, RoadAssessment> = emptyMap(),
@@ -114,6 +135,10 @@ data class UiState(
     val appUpdateDownloadPercent: Int? = null,
     val appUpdateInstallFile: File? = null,
     val appUpdateError: String? = null,
+    /** MapBrowse: permanent offline layer loaded (revision bumps when GeoJSON must reload). */
+    val mapBrowseRevision: Long = 0L,
+    val isMapBrowseLoading: Boolean = false,
+    val browseParkingOnly: Boolean = false,
 ) {
     fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
         ListViewMode.SEARCH -> results
@@ -127,6 +152,10 @@ data class UiState(
     fun searchOrigin(): UserPosition? = when (searchOriginMode) {
         SearchOriginMode.MAP, SearchOriginMode.LOCALITY ->
             mapSearchPin?.let { UserPosition(it.latitude, it.longitude, approximate = false) }
+        SearchOriginMode.LINE ->
+            corridorLine.firstOrNull()?.let {
+                UserPosition(it.latitude, it.longitude, approximate = false)
+            }
         SearchOriginMode.GPS -> userPosition
     }
 
@@ -135,23 +164,39 @@ data class UiState(
 
     fun usesLocalityForSearch(): Boolean =
         searchOriginMode == SearchOriginMode.LOCALITY && mapSearchPin != null
+
+    fun usesCorridorForSearch(): Boolean =
+        searchOriginMode == SearchOriginMode.LINE && corridorLine.size >= 2
+
+    fun isMapBrowse(): Boolean = exploreMode == AppExploreMode.MAP_BROWSE
+
+    companion object {
+        const val DEFAULT_CORRIDOR_LEFT_KM = 5.0
+        const val DEFAULT_CORRIDOR_RIGHT_KM = 10.0
+        const val MOTORCYCLE_ROAD_ANALYZE_LIMIT = 50
+        const val MAX_CORRIDOR_SIDE_KM = 50.0
+    }
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val bdlSessionCache = BdlSearchSessionCache()
     private val roadAssessmentCache = RoadAssessmentCache()
-    private val osmTileCache = OsmRoadTileCache()
+    private val osmTileStore = PersistentOsmRoadTileStore.fromAppFilesDir(application.filesDir)
     private val localityStore = PersistentLocalityGeocodeStore.fromAppFilesDir(application.filesDir)
-    private val locationProvider = AppLocationProvider(application)
+    private val lastGpsPreferences = LastGpsPreferences(application)
+    private val locationProvider = AppLocationProvider(
+        context = application,
+        lastGpsPreferences = lastGpsPreferences,
+    )
     private val offlineStore = BdlOfflineStore.fromAppFilesDir(application.filesDir)
-    private val offlineDownloader = BdlOfflineDownloader(store = offlineStore)
+    private val offlineDownloader = BdlOfflineDownloader(filesDir = application.filesDir)
     private val restRepository = RestSiteRepository(
         offlineStore = offlineStore,
         sessionCache = bdlSessionCache,
         config = SearchConfig.DEFAULT,
     )
     private val roadAnalyzer = RoadProximityAnalyzer(
-        overpass = CachingOverpassRoadClient(tileCache = osmTileCache),
+        overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
         assessmentCache = roadAssessmentCache,
     )
     private val localityGeocoder = NominatimGeocoder(localityStore = localityStore)
@@ -162,6 +207,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val cameraToken = AtomicLong(1L)
     private val searchGeneration = AtomicLong(0L)
     private var lastBdlSearchContext: BdlSearchContext? = null
+    private var pendingCorridorLocalityStart: LatLon? = null
+    private var liveGpsCentered = false
+    /** Browse-only: full Zanocuj geometries for viewport clips (not drawn nationwide). */
+    @Volatile
+    private var browseZanocujIndex: List<pl.navilas.finder.data.bdl.ZanocujBoundsPolygon> = emptyList()
+    private var lastBrowseViewportKey: String? = null
+    private var browseViewportJob: Job? = null
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -169,16 +221,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadInitialState(): UiState {
         val saved = savedPointsStore.allPoints().associateBy { it.site.id }
         val categories = savedPointsStore.allCategories()
+        val lastGps = lastGpsPreferences.load()
+        val user = lastGps?.let {
+            UserPosition(it.latitude, it.longitude, it.approximate)
+        }
+        val camera = if (lastGps != null) {
+            PagerNavigation.cameraForUserLocation(
+                latitude = lastGps.latitude,
+                longitude = lastGps.longitude,
+                token = cameraToken.getAndIncrement(),
+                zoom = 11.5,
+            )
+        } else {
+            null
+        }
         val base = UiState(
             offlineBdl = loadOfflineState(),
             savedPoints = saved,
             savedCategories = categories,
+            userPosition = user,
+            mapCameraRequest = camera,
         )
         return base.copy(savedListResults = buildSavedListResults(base))
     }
 
     init {
         refreshOfflineStateFromDisk()
+        if (_state.value.isMapBrowse()) {
+            viewModelScope.launch { loadMapBrowseLayer(force = false) }
+        }
         if (BuildConfig.APP_UPDATE_ENABLED) {
             viewModelScope.launch {
                 delay(2_000)
@@ -228,29 +299,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { current ->
             val newPending = transform(current.offlineBdl.pendingConfig)
             val stored = current.offlineBdl.storedConfig
-            val shouldDelete = stored != null && !newPending.matches(stored)
-            if (shouldDelete) {
-                offlineStore.deleteAll()
-                invalidateBdlSessionCache()
-            }
-            val offline = if (shouldDelete) {
-                current.offlineBdl.copy(
-                    pendingConfig = newPending,
-                    storedConfig = null,
-                    status = OfflineBdlStatus.NOT_DOWNLOADED,
-                    storageBytes = 0L,
-                    downloadedAt = null,
-                    progress = 0f,
-                    progressLabel = null,
-                    errorMessage = null,
-                )
-            } else {
-                current.offlineBdl.copy(pendingConfig = newPending)
-            }
+            val configChanged = stored != null && !newPending.matches(stored)
+            // Keep the live offline DB until a successful re-download of the new config.
             current.copy(
-                offlineBdl = offline,
-                message = if (shouldDelete) {
-                    AppMessage.Info("Zmieniono wybór danych — poprzedni pakiet offline został usunięty.")
+                offlineBdl = current.offlineBdl.copy(pendingConfig = newPending),
+                message = if (configChanged) {
+                    AppMessage.Info(
+                        "Zmieniono ustawienia offline — pobierz ponownie, aby je zastosować. " +
+                            "Dotychczasowa baza działa do skutku aktualizacji.",
+                    )
                 } else {
                     current.message
                 },
@@ -288,31 +345,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         offlineBdl = loadOfflineState().copy(pendingConfig = config),
                         message = AppMessage.Info(
-                            "Dane BDL pobrane (${config.estimatedSizeLabel()}). Wyszukiwanie działa offline.",
+                            if (_state.value.isMapBrowse()) {
+                                "Dane BDL pobrane (${config.estimatedSizeLabel()}). Ładuję punkty na mapę…"
+                            } else {
+                                "Dane BDL pobrane (${config.estimatedSizeLabel()}). Wyszukiwanie działa offline."
+                            },
                         ),
                     )
                 }
                 invalidateBdlSessionCache()
+                if (_state.value.isMapBrowse()) {
+                    loadMapBrowseLayer(force = true)
+                }
             } catch (e: UnknownHostException) {
                 _state.update {
                     it.copy(
-                        offlineBdl = it.offlineBdl.copy(
-                            status = OfflineBdlStatus.ERROR,
+                        offlineBdl = loadOfflineState().copy(
+                            pendingConfig = config,
+                            status = if (offlineStore.isReady()) {
+                                OfflineBdlStatus.READY
+                            } else {
+                                OfflineBdlStatus.ERROR
+                            },
                             errorMessage = "Brak internetu.",
                         ),
-                        message = AppMessage.Error("Pobieranie BDL: brak internetu."),
+                        message = AppMessage.Error(
+                            if (offlineStore.isReady()) {
+                                "Pobieranie BDL: brak internetu. Dotychczasowa baza bez zmian."
+                            } else {
+                                "Pobieranie BDL: brak internetu."
+                            },
+                        ),
                     )
                 }
             } catch (e: Exception) {
-                offlineStore.deleteAll()
                 _state.update {
                     it.copy(
-                        offlineBdl = OfflineBdlState(
+                        offlineBdl = loadOfflineState().copy(
                             pendingConfig = config,
-                            status = OfflineBdlStatus.ERROR,
+                            status = if (offlineStore.isReady()) {
+                                OfflineBdlStatus.READY
+                            } else {
+                                OfflineBdlStatus.ERROR
+                            },
                             errorMessage = e.message ?: "błąd pobierania",
                         ),
-                        message = AppMessage.Error("Pobieranie BDL: ${e.message ?: "błąd"}"),
+                        message = AppMessage.Error(
+                            if (offlineStore.isReady()) {
+                                "Pobieranie BDL nieudane (${e.message ?: "błąd"}). Dotychczasowa baza bez zmian."
+                            } else {
+                                "Pobieranie BDL: ${e.message ?: "błąd"}"
+                            },
+                        ),
                     )
                 }
             }
@@ -327,6 +411,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update {
             it.copy(
                 offlineBdl = OfflineBdlState(pendingConfig = pending),
+                allSites = if (it.isMapBrowse()) emptyList() else it.allSites,
+                results = if (it.isMapBrowse()) emptyList() else it.results,
+                zanocujPolygons = if (it.isMapBrowse()) emptyList() else it.zanocujPolygons,
+                mapBrowseRevision = if (it.isMapBrowse()) it.mapBrowseRevision + 1 else it.mapBrowseRevision,
                 message = AppMessage.Info("Dane BDL offline usunięte z telefonu."),
             )
         }
@@ -341,15 +429,287 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setSearchRadiusKm(radiusKm: Double) {
-        val clamped = radiusKm.coerceIn(5.0, SearchConfig.MAX_SEARCH_RADIUS_KM)
-        require(clamped in SearchConfig.SEARCH_RADIUS_PRESETS_KM) {
-            "Unsupported radius $radiusKm"
-        }
+        val clamped = radiusKm.coerceIn(SearchConfig.MIN_SEARCH_RADIUS_KM, SearchConfig.MAX_SEARCH_RADIUS_KM)
         _state.update { current ->
-            // Radius is a search parameter only — does not mutate results until ZNAJDŹ.
             current.copy(
                 searchConfig = current.searchConfig.copy(searchRadiusKm = clamped),
             )
+        }
+    }
+
+    fun setCorridorLeftKm(km: Double) {
+        val clamped = km.coerceIn(0.0, UiState.MAX_CORRIDOR_SIDE_KM)
+        _state.update { it.copy(corridorLeftKm = clamped) }
+    }
+
+    fun setCorridorRightKm(km: Double) {
+        val clamped = km.coerceIn(0.0, UiState.MAX_CORRIDOR_SIDE_KM)
+        _state.update { it.copy(corridorRightKm = clamped) }
+    }
+
+    fun appendCorridorPoint(latitude: Double, longitude: Double) {
+        val point = LatLon(latitude, longitude)
+        _state.update { current ->
+            val action = current.corridorVertexAction
+            when (action) {
+                is CorridorVertexAction.Move -> {
+                    if (action.index !in current.corridorLine.indices) {
+                        return@update current.copy(
+                            corridorVertexAction = null,
+                            message = AppMessage.Error("Nieprawidłowy punkt linii."),
+                        )
+                    }
+                    val next = current.corridorLine.toMutableList().also { it[action.index] = point }
+                    current.copy(
+                        corridorLine = next,
+                        corridorVertexAction = null,
+                        message = AppMessage.Info("Przesunięto punkt ${action.index + 1}."),
+                    )
+                }
+                is CorridorVertexAction.InsertAfter -> {
+                    val insertAt = (action.index + 1).coerceIn(0, current.corridorLine.size)
+                    val next = current.corridorLine.toMutableList().also { it.add(insertAt, point) }
+                    current.copy(
+                        corridorLine = next,
+                        corridorVertexAction = null,
+                        message = AppMessage.Info("Dodano punkt między wierzchołkami (${next.size} pkt)."),
+                    )
+                }
+                null -> {
+                    if (current.corridorAwaitMapEnd) {
+                        val start = current.userPosition?.let { LatLon(it.latitude, it.longitude) }
+                            ?: current.corridorLine.firstOrNull()
+                        if (start == null) {
+                            return@update current.copy(
+                                corridorAwaitMapEnd = false,
+                                message = AppMessage.Error("Brak punktu GPS — włącz lokalizację."),
+                            )
+                        }
+                        current.copy(
+                            searchOriginMode = SearchOriginMode.LINE,
+                            corridorLine = listOf(start, point),
+                            corridorAwaitMapEnd = false,
+                            mapSearchPin = null,
+                            message = AppMessage.Info("Linia GPS → mapa gotowa (2 pkt)."),
+                            currentPage = AppPages.MAP,
+                        )
+                    } else {
+                        current.copy(
+                            searchOriginMode = SearchOriginMode.LINE,
+                            corridorLine = current.corridorLine + point,
+                            mapSearchPin = null,
+                            localityDisplayName = null,
+                            message = AppMessage.Info(
+                                "Linia: ${current.corridorLine.size + 1} pkt. " +
+                                    if (current.corridorLine.size + 1 >= 2) {
+                                        "Możesz wyszukać lub edytować punkty na mapie."
+                                    } else {
+                                        "Dodaj kolejny punkt."
+                                    },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun beginMoveCorridorPoint(index: Int) {
+        _state.update {
+            it.copy(
+                corridorVertexAction = CorridorVertexAction.Move(index),
+                message = AppMessage.Info("Dotknij mapy, aby przesunąć punkt ${index + 1}."),
+                currentPage = AppPages.MAP,
+            )
+        }
+    }
+
+    fun beginInsertCorridorPoint(index: Int) {
+        _state.update {
+            it.copy(
+                corridorVertexAction = CorridorVertexAction.InsertAfter(index),
+                message = AppMessage.Info("Dotknij mapy, aby wstawić punkt za nr ${index + 1}."),
+                currentPage = AppPages.MAP,
+            )
+        }
+    }
+
+    fun deleteCorridorPoint(index: Int) {
+        _state.update { current ->
+            if (index !in current.corridorLine.indices) current
+            else current.copy(
+                corridorLine = current.corridorLine.filterIndexed { i, _ -> i != index },
+                corridorVertexAction = null,
+                message = AppMessage.Info("Usunięto punkt ${index + 1}."),
+            )
+        }
+    }
+
+    fun cancelCorridorVertexAction() {
+        _state.update { it.copy(corridorVertexAction = null, corridorAwaitMapEnd = false) }
+    }
+
+    fun clearCorridorLine() {
+        _state.update {
+            it.copy(
+                corridorLine = emptyList(),
+                corridorVertexAction = null,
+                corridorAwaitMapEnd = false,
+                message = AppMessage.Info("Wyczyszczono linię wyszukiwania."),
+            )
+        }
+    }
+
+    fun startCorridorGpsToMap() {
+        viewModelScope.launch {
+            var gps = _state.value.userPosition
+            if (gps == null) {
+                when (val outcome = locationProvider.currentLocation(preferFastPath = true)) {
+                    is LocationOutcome.Exact ->
+                        gps = UserPosition(outcome.location.latitude, outcome.location.longitude, false)
+                    is LocationOutcome.Approximate ->
+                        gps = UserPosition(outcome.location.latitude, outcome.location.longitude, true)
+                    is LocationOutcome.Failure -> {
+                        _state.update { it.copy(message = AppMessage.Error(outcome.reason)) }
+                        return@launch
+                    }
+                }
+            }
+            val start = LatLon(gps!!.latitude, gps.longitude)
+            _state.update {
+                it.copy(
+                    userPosition = gps,
+                    searchOriginMode = SearchOriginMode.LINE,
+                    corridorLine = listOf(start),
+                    corridorAwaitMapEnd = true,
+                    corridorVertexAction = null,
+                    currentPage = AppPages.MAP,
+                    message = AppMessage.Info("Dotknij mapy, aby ustawić koniec linii (GPS → mapa)."),
+                )
+            }
+        }
+    }
+
+    fun startCorridorGpsToLocality() {
+        _state.update {
+            it.copy(
+                searchOriginMode = SearchOriginMode.LINE,
+                localityPickPurpose = LocalityPickPurpose.CORRIDOR_END_FROM_GPS,
+                localityCandidates = null,
+                message = AppMessage.Info("Wpisz miejscowość końca linii i naciśnij Znajdź."),
+                currentPage = AppPages.SEARCH,
+            )
+        }
+    }
+
+    fun startCorridorLocalityToLocality() {
+        pendingCorridorLocalityStart = null
+        _state.update {
+            it.copy(
+                searchOriginMode = SearchOriginMode.LINE,
+                localityPickPurpose = LocalityPickPurpose.CORRIDOR_START,
+                localityCandidates = null,
+                localityQuery = "",
+                message = AppMessage.Info("Wpisz miejscowość START i naciśnij Znajdź."),
+                currentPage = AppPages.SEARCH,
+            )
+        }
+    }
+
+    fun dismissLocalityCandidates() {
+        _state.update { it.copy(localityCandidates = null) }
+    }
+
+    fun applyLocalityChoice(place: GeocodedPlace) {
+        val query = _state.value.localityQuery.trim()
+        localityGeocoder.rememberChoice(query, place)
+        when (_state.value.localityPickPurpose) {
+            LocalityPickPurpose.SEARCH_ORIGIN -> {
+                val origin = UserPosition(place.latitude, place.longitude, approximate = false)
+                _state.update {
+                    it.copy(
+                        mapSearchPin = place.toLatLon(),
+                        localityDisplayName = place.displayName,
+                        localityCandidates = null,
+                        searchOriginMode = SearchOriginMode.LOCALITY,
+                    )
+                }
+                viewModelScope.launch { performSearch(origin) }
+            }
+            LocalityPickPurpose.CORRIDOR_END_FROM_GPS -> {
+                viewModelScope.launch {
+                    var gps = _state.value.userPosition
+                    if (gps == null) {
+                        when (val outcome = locationProvider.currentLocation(preferFastPath = true)) {
+                            is LocationOutcome.Exact ->
+                                gps = UserPosition(outcome.location.latitude, outcome.location.longitude, false)
+                            is LocationOutcome.Approximate ->
+                                gps = UserPosition(outcome.location.latitude, outcome.location.longitude, true)
+                            is LocationOutcome.Failure -> {
+                                _state.update {
+                                    it.copy(
+                                        localityCandidates = null,
+                                        message = AppMessage.Error(outcome.reason),
+                                    )
+                                }
+                                return@launch
+                            }
+                        }
+                    }
+                    val start = LatLon(gps!!.latitude, gps.longitude)
+                    val end = place.toLatLon()
+                    _state.update {
+                        it.copy(
+                            userPosition = gps,
+                            searchOriginMode = SearchOriginMode.LINE,
+                            corridorLine = listOf(start, end),
+                            localityCandidates = null,
+                            localityPickPurpose = LocalityPickPurpose.SEARCH_ORIGIN,
+                            localityDisplayName = place.displayName,
+                            currentPage = AppPages.MAP,
+                            message = AppMessage.Info("Linia GPS → ${place.displayName.substringBefore(',')}."),
+                        )
+                    }
+                }
+            }
+            LocalityPickPurpose.CORRIDOR_START -> {
+                pendingCorridorLocalityStart = place.toLatLon()
+                _state.update {
+                    it.copy(
+                        localityCandidates = null,
+                        localityPickPurpose = LocalityPickPurpose.CORRIDOR_END_AFTER_START,
+                        localityQuery = "",
+                        message = AppMessage.Info(
+                            "Start: ${place.displayName.substringBefore(',')}. Wpisz miejscowość KONIEC i Znajdź.",
+                        ),
+                    )
+                }
+            }
+            LocalityPickPurpose.CORRIDOR_END_AFTER_START -> {
+                val start = pendingCorridorLocalityStart
+                pendingCorridorLocalityStart = null
+                if (start == null) {
+                    _state.update {
+                        it.copy(
+                            localityCandidates = null,
+                            localityPickPurpose = LocalityPickPurpose.SEARCH_ORIGIN,
+                            message = AppMessage.Error("Brak punktu start — spróbuj ponownie."),
+                        )
+                    }
+                    return
+                }
+                _state.update {
+                    it.copy(
+                        searchOriginMode = SearchOriginMode.LINE,
+                        corridorLine = listOf(start, place.toLatLon()),
+                        localityCandidates = null,
+                        localityPickPurpose = LocalityPickPurpose.SEARCH_ORIGIN,
+                        localityDisplayName = place.displayName,
+                        currentPage = AppPages.MAP,
+                        message = AppMessage.Info("Linia między miejscowościami gotowa."),
+                    )
+                }
+            }
         }
     }
 
@@ -357,6 +717,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { current ->
             current.copy(
                 searchOriginMode = mode,
+                localityCandidates = null,
+                localityPickPurpose = if (mode == SearchOriginMode.LINE) {
+                    current.localityPickPurpose
+                } else {
+                    LocalityPickPurpose.SEARCH_ORIGIN
+                },
                 results = buildResults(
                     current.allSites,
                     when (mode) {
@@ -364,30 +730,60 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         SearchOriginMode.MAP, SearchOriginMode.LOCALITY -> current.mapSearchPin?.let {
                             UserPosition(it.latitude, it.longitude, approximate = false)
                         }
+                        SearchOriginMode.LINE -> current.corridorLine.firstOrNull()?.let {
+                            UserPosition(it.latitude, it.longitude, approximate = false)
+                        }
                     },
                     current.profile,
                     current.zanocujFilter,
                     current.roadBySiteId,
+                    corridorLine = if (mode == SearchOriginMode.LINE) current.corridorLine else emptyList(),
                 ),
             )
         }
     }
 
     fun setLocalityQuery(query: String) {
-        _state.update { it.copy(localityQuery = query) }
+        _state.update { current ->
+            if (current.localityQuery == query) {
+                current
+            } else {
+                current.copy(localityQuery = query, localityCandidates = null)
+            }
+        }
     }
 
     fun setProfile(profile: TravelProfile) {
         _state.update { current ->
+            val motoBrowseTip = current.isMapBrowse() &&
+                profile == TravelProfile.MOTORCYCLE &&
+                current.profile != TravelProfile.MOTORCYCLE
             val next = current.copy(
                 profile = profile,
-                results = buildResults(
-                    current.allSites,
-                    current.searchOrigin(),
-                    profile,
-                    current.zanocujFilter,
-                    current.roadBySiteId,
-                ),
+                message = if (motoBrowseTip) {
+                    AppMessage.Info(
+                        getApplication<Application>().getString(R.string.map_browse_moto_hint),
+                    )
+                } else {
+                    current.message
+                },
+                results = if (current.isMapBrowse()) {
+                    browseSelectionResults(current.copy(profile = profile), current.selectedSiteId)
+                } else {
+                    buildResults(
+                        current.allSites,
+                        current.searchOrigin(),
+                        profile,
+                        current.zanocujFilter,
+                        current.roadBySiteId,
+                        corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
+                            current.corridorLine
+                        } else {
+                            emptyList()
+                        },
+                        parkingOnly = current.browseParkingOnly,
+                    )
+                },
             )
             next.copy(savedListResults = buildSavedListResults(next))
         }
@@ -395,17 +791,231 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setZanocujFilter(mode: ZanocujFilterMode) {
         _state.update { current ->
+            val withFilter = current.copy(zanocujFilter = mode)
             current.copy(
                 zanocujFilter = mode,
-                results = buildResults(
-                    current.allSites,
-                    current.searchOrigin(),
-                    current.profile,
-                    mode,
-                    current.roadBySiteId,
-                ),
+                results = if (current.isMapBrowse()) {
+                    browseSelectionResults(withFilter, current.selectedSiteId)
+                } else {
+                    buildResults(
+                        current.allSites,
+                        current.searchOrigin(),
+                        current.profile,
+                        mode,
+                        current.roadBySiteId,
+                        corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
+                            current.corridorLine
+                        } else {
+                            emptyList()
+                        },
+                        parkingOnly = current.browseParkingOnly,
+                    )
+                },
             )
         }
+    }
+
+    fun setBrowseParkingOnly(enabled: Boolean) {
+        if (!_state.value.isMapBrowse()) return
+        _state.update { current ->
+            val withFlag = current.copy(browseParkingOnly = enabled)
+            current.copy(
+                browseParkingOnly = enabled,
+                results = browseSelectionResults(withFlag, current.selectedSiteId),
+            )
+        }
+    }
+
+    fun setExploreMode(mode: AppExploreMode) {
+        if (_state.value.exploreMode == mode) return
+        when (mode) {
+            AppExploreMode.SEARCH -> {
+                browseZanocujIndex = emptyList()
+                lastBrowseViewportKey = null
+                browseViewportJob?.cancel()
+                _state.update { current ->
+                    current.copy(
+                        exploreMode = AppExploreMode.SEARCH,
+                        browseParkingOnly = false,
+                        mapBrowseRevision = 0L,
+                        isMapBrowseLoading = false,
+                        allSites = emptyList(),
+                        results = emptyList(),
+                        zanocujPolygons = emptyList(),
+                        selectedSiteId = null,
+                        message = AppMessage.Info("Tryb wyszukiwania — ustaw źródło i naciśnij Znajdź."),
+                        currentPage = AppPages.SEARCH,
+                    )
+                }
+            }
+            AppExploreMode.MAP_BROWSE -> {
+                _state.update {
+                    it.copy(
+                        exploreMode = AppExploreMode.MAP_BROWSE,
+                        message = AppMessage.Info(
+                            getApplication<Application>().getString(R.string.map_browse_switched),
+                        ),
+                        currentPage = AppPages.SEARCH,
+                    )
+                }
+                loadMapBrowseLayer(force = true)
+            }
+        }
+    }
+
+    fun loadMapBrowseLayer(force: Boolean = false) {
+        if (!_state.value.isMapBrowse()) return
+        if (_state.value.isMapBrowseLoading) return
+        if (!force && _state.value.mapBrowseRevision > 0 && _state.value.allSites.isNotEmpty()) return
+        viewModelScope.launch {
+            if (!offlineStore.isReady()) {
+                _state.update {
+                    it.copy(
+                        message = AppMessage.Info(
+                            getApplication<Application>().getString(R.string.map_browse_need_offline),
+                        ),
+                        currentPage = AppPages.SEARCH,
+                    )
+                }
+                return@launch
+            }
+            _state.update {
+                it.copy(
+                    isMapBrowseLoading = true,
+                    isSearching = true,
+                    message = AppMessage.Info(
+                        getApplication<Application>().getString(R.string.map_browse_loading),
+                    ),
+                )
+            }
+            try {
+                val bundle = OfflineMapBrowseLoader(offlineStore).loadAll()
+                browseZanocujIndex = bundle.zanocujIndex
+                lastBrowseViewportKey = null
+                // Nationwide MapLibre overlays OOMs — keep index private; draw viewport subset only.
+                _state.update { current ->
+                    current.copy(
+                        allSites = bundle.sites,
+                        zanocujPolygons = emptyList(),
+                        roadBySiteId = emptyMap(),
+                        results = emptyList(),
+                        selectedSiteId = null,
+                        isMapBrowseLoading = false,
+                        isSearching = false,
+                        mapBrowseRevision = current.mapBrowseRevision + 1,
+                        currentPage = AppPages.MAP,
+                        mapCameraRequest = MapCameraRequest.CenterOn(
+                            latitude = current.userPosition?.latitude ?: 52.1,
+                            longitude = current.userPosition?.longitude ?: 19.4,
+                            zoom = if (current.userPosition != null) 11.0 else 5.5,
+                            token = cameraToken.getAndIncrement(),
+                        ),
+                        message = AppMessage.Info(
+                            if (bundle.skippedInvalidGeometry > 0) {
+                                getApplication<Application>().getString(
+                                    R.string.map_browse_loaded_skipped,
+                                    bundle.sites.size,
+                                    bundle.skippedInvalidGeometry,
+                                ) + " · ${bundle.loadMs} ms"
+                            } else {
+                                getApplication<Application>().getString(
+                                    R.string.map_browse_loaded,
+                                    bundle.sites.size,
+                                ) + " · ${bundle.loadMs} ms"
+                            },
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                browseZanocujIndex = emptyList()
+                _state.update {
+                    it.copy(
+                        isMapBrowseLoading = false,
+                        isSearching = false,
+                        message = AppMessage.Error(
+                            "Przeglądanie mapy: ${e.message ?: "błąd ładowania"}",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Browse: draw Zanocuj fills only for the visible map bbox (capped).
+     * Called on camera idle — keeps MapLibre native heap bounded.
+     */
+    fun onBrowseMapViewport(
+        west: Double,
+        south: Double,
+        east: Double,
+        north: Double,
+        zoom: Double,
+    ) {
+        if (!_state.value.isMapBrowse()) return
+        if (browseZanocujIndex.isEmpty()) return
+        if (zoom < BROWSE_ZANOCUJ_MIN_ZOOM) {
+            lastBrowseViewportKey = "zoomed-out"
+            if (_state.value.zanocujPolygons.isNotEmpty()) {
+                _state.update { it.copy(zanocujPolygons = emptyList()) }
+            }
+            return
+        }
+        val padLon = (east - west).coerceAtLeast(0.01) * 0.15
+        val padLat = (north - south).coerceAtLeast(0.01) * 0.15
+        val key = listOf(
+            (west * 100).toInt(),
+            (south * 100).toInt(),
+            (east * 100).toInt(),
+            (north * 100).toInt(),
+            zoom.toInt(),
+        ).joinToString(",")
+        if (key == lastBrowseViewportKey) return
+        lastBrowseViewportKey = key
+        val envelope = GeoUtils.Envelope(
+            xmin = west - padLon,
+            ymin = south - padLat,
+            xmax = east + padLon,
+            ymax = north + padLat,
+        )
+        val centerLat = (south + north) / 2.0
+        val centerLon = (west + east) / 2.0
+        browseViewportJob?.cancel()
+        browseViewportJob = viewModelScope.launch {
+            val subset = withContext(Dispatchers.Default) {
+                browseZanocujIndex
+                    .asSequence()
+                    .filter { it.intersects(envelope) }
+                    .sortedBy {
+                        val dLat = it.centerLat() - centerLat
+                        val dLon = it.centerLon() - centerLon
+                        dLat * dLat + dLon * dLon
+                    }
+                    .take(BROWSE_ZANOCUJ_MAX_POLYGONS)
+                    .map { it.polygon }
+                    .toList()
+            }
+            if (!_state.value.isMapBrowse()) return@launch
+            _state.update { it.copy(zanocujPolygons = subset) }
+        }
+    }
+
+    private fun browseListOrigin(state: UiState): UserPosition? =
+        state.userPosition ?: state.searchOrigin()
+
+    /** Browse keeps all points on the map; list/card only hold the current selection. */
+    private fun browseSelectionResults(state: UiState, siteId: String?): List<RestSiteResult> {
+        if (siteId == null) return emptyList()
+        val site = state.allSites.firstOrNull { it.id == siteId } ?: return emptyList()
+        // Explicit map tap: always show the card; map filters only hide markers, not the sheet.
+        return buildResults(
+            listOf(site),
+            browseListOrigin(state),
+            state.profile,
+            ZanocujFilterMode.ALL,
+            state.roadBySiteId,
+            parkingOnly = false,
+        )
     }
 
     fun setListViewMode(mode: ListViewMode) {
@@ -600,8 +1210,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    /** Empty-map tap: set search centre (does not run search until ZNAJDŹ). */
+    /** Empty-map tap: set search centre, or append corridor vertex in LINE mode. */
     fun setMapSearchPin(latitude: Double, longitude: Double) {
+        if (_state.value.isMapBrowse()) return
+        if (_state.value.searchOriginMode == SearchOriginMode.LINE) {
+            appendCorridorPoint(latitude, longitude)
+            return
+        }
         val pin = LatLon(latitude, longitude)
         _state.update { current ->
             current.copy(
@@ -645,15 +1260,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectSite(siteId: String?) {
-        _state.update { it.copy(selectedSiteId = siteId) }
+        _state.update { current ->
+            if (current.isMapBrowse()) {
+                current.copy(
+                    selectedSiteId = siteId,
+                    results = browseSelectionResults(current, siteId),
+                )
+            } else {
+                current.copy(selectedSiteId = siteId)
+            }
+        }
     }
 
     /** Marker tap on map: select + show POI camera (no page change, no fitBounds). */
     fun onMarkerSelected(siteId: String) {
         val token = cameraToken.getAndIncrement()
-        _state.update {
-            it.copy(
+        _state.update { current ->
+            current.copy(
                 selectedSiteId = siteId,
+                results = if (current.isMapBrowse()) {
+                    browseSelectionResults(current, siteId)
+                } else {
+                    current.results
+                },
                 mapCameraRequest = PagerNavigation.cameraForMarkerClick(siteId, token),
             )
         }
@@ -662,9 +1291,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** List row tap: select + go to map + show POI camera (no fitBounds). */
     fun onListItemSelected(siteId: String) {
         val token = cameraToken.getAndIncrement()
-        _state.update {
-            it.copy(
+        _state.update { current ->
+            current.copy(
                 selectedSiteId = siteId,
+                results = if (current.isMapBrowse()) {
+                    browseSelectionResults(current, siteId)
+                } else {
+                    current.results
+                },
                 currentPage = AppPages.MAP,
                 mapCameraRequest = PagerNavigation.cameraForListSelect(siteId, token),
             )
@@ -787,21 +1421,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    fun refreshLocation(showApproximateHint: Boolean = true) {
+    fun refreshLocation(showApproximateHint: Boolean = true, forceCenter: Boolean = false) {
         viewModelScope.launch {
-            _state.update { it.copy(isLocating = true, message = null, searchOriginMode = SearchOriginMode.GPS, mapSearchPin = null, localityDisplayName = null) }
+            val browse = _state.value.isMapBrowse()
+            _state.update {
+                it.copy(
+                    isLocating = true,
+                    message = null,
+                    searchOriginMode = if (browse) it.searchOriginMode else SearchOriginMode.GPS,
+                    mapSearchPin = if (browse) it.mapSearchPin else null,
+                    localityDisplayName = if (browse) it.localityDisplayName else null,
+                )
+            }
             when (val outcome = locationProvider.currentLocation()) {
                 is LocationOutcome.Exact -> applyLocation(
                     UserPosition(outcome.location.latitude, outcome.location.longitude, false),
-                    AppMessage.Info("Lokalizacja GPS zaktualizowana. Wyszukiwanie od GPS."),
+                    AppMessage.Info(
+                        getApplication<Application>().getString(
+                            if (browse) R.string.location_updated else R.string.location_updated_search,
+                        ),
+                    ),
+                    forceCenter = forceCenter,
                 )
                 is LocationOutcome.Approximate -> applyLocation(
                     UserPosition(outcome.location.latitude, outcome.location.longitude, true),
                     if (showApproximateHint) {
-                        AppMessage.Info("Dostępna tylko lokalizacja przybliżona. Wyszukiwanie od GPS.")
+                        AppMessage.Info(
+                            getApplication<Application>().getString(
+                                if (browse) R.string.location_approx else R.string.location_approx_search,
+                            ),
+                        )
                     } else {
                         null
                     },
+                    forceCenter = forceCenter,
                 )
                 is LocationOutcome.Failure -> {
                     _state.update {
@@ -812,31 +1465,88 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun applyLocation(pos: UserPosition, message: AppMessage?) {
+    private fun applyLocation(pos: UserPosition, message: AppMessage?, forceCenter: Boolean = false) {
+        val shouldCenter = forceCenter ||
+            !liveGpsCentered ||
+            _state.value.userPosition == null ||
+            (_state.value.mapCameraRequest == null && _state.value.results.isEmpty())
+        val camera = if (shouldCenter) {
+            liveGpsCentered = true
+            PagerNavigation.cameraForUserLocation(
+                latitude = pos.latitude,
+                longitude = pos.longitude,
+                token = cameraToken.getAndIncrement(),
+                zoom = 13.0,
+            )
+        } else {
+            _state.value.mapCameraRequest
+        }
         _state.update {
             it.copy(
                 isLocating = false,
                 userPosition = pos,
-                searchOriginMode = SearchOriginMode.GPS,
-                mapSearchPin = null,
-                localityDisplayName = null,
-                results = buildResults(
-                    it.allSites,
-                    pos,
-                    it.profile,
-                    it.zanocujFilter,
-                    it.roadBySiteId,
-                ),
+                searchOriginMode = if (
+                    it.isMapBrowse() ||
+                    it.searchOriginMode == SearchOriginMode.LINE ||
+                    it.corridorAwaitMapEnd
+                ) {
+                    it.searchOriginMode
+                } else {
+                    SearchOriginMode.GPS
+                },
+                mapSearchPin = if (
+                    it.isMapBrowse() || it.searchOriginMode == SearchOriginMode.LINE
+                ) {
+                    it.mapSearchPin
+                } else {
+                    null
+                },
+                localityDisplayName = if (
+                    it.isMapBrowse() || it.searchOriginMode == SearchOriginMode.LINE
+                ) {
+                    it.localityDisplayName
+                } else {
+                    null
+                },
+                mapCameraRequest = camera,
+                results = if (it.isMapBrowse()) {
+                    browseSelectionResults(it.copy(userPosition = pos), it.selectedSiteId)
+                } else {
+                    buildResults(
+                        it.allSites,
+                        when (it.searchOriginMode) {
+                            SearchOriginMode.LINE -> it.searchOrigin() ?: pos
+                            else -> pos
+                        },
+                        it.profile,
+                        it.zanocujFilter,
+                        it.roadBySiteId,
+                        corridorLine = if (it.searchOriginMode == SearchOriginMode.LINE) {
+                            it.corridorLine
+                        } else {
+                            emptyList()
+                        },
+                    )
+                },
                 message = message,
             )
         }
     }
 
     fun searchNearby() {
+        if (_state.value.isMapBrowse()) {
+            loadMapBrowseLayer(force = true)
+            return
+        }
         viewModelScope.launch {
-            when (_state.value.searchOriginMode) {
-                SearchOriginMode.LOCALITY -> searchFromLocality()
-                SearchOriginMode.MAP, SearchOriginMode.GPS -> {
+            val purpose = _state.value.localityPickPurpose
+            val lineNeedsLocality = _state.value.searchOriginMode == SearchOriginMode.LINE &&
+                purpose != LocalityPickPurpose.SEARCH_ORIGIN
+            when {
+                lineNeedsLocality || _state.value.searchOriginMode == SearchOriginMode.LOCALITY ->
+                    searchFromLocality()
+                _state.value.searchOriginMode == SearchOriginMode.LINE -> performCorridorSearch()
+                else -> {
                     val origin = _state.value.searchOrigin()
                     if (origin == null) {
                         _state.update {
@@ -870,26 +1580,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return
         }
-        _state.update { it.copy(isSearching = true, message = null) }
+        _state.update { it.copy(isSearching = true, message = null, localityCandidates = null) }
         try {
-            val place = localityGeocoder.geocodeLocality(query)
-            if (place == null) {
+            val places = localityGeocoder.searchLocalities(query)
+            if (places.isEmpty()) {
                 _state.update {
                     it.copy(
                         isSearching = false,
+                        localityCandidates = null,
                         message = AppMessage.Error("Nie znaleziono miejscowości „$query”. Spróbuj innej nazwy."),
                     )
                 }
                 return
             }
-            val origin = UserPosition(place.latitude, place.longitude, approximate = false)
+            // Always show the picker (even for one hit) so the user confirms the place.
             _state.update {
                 it.copy(
-                    mapSearchPin = place.toLatLon(),
-                    localityDisplayName = place.displayName,
+                    isSearching = false,
+                    localityCandidates = places,
+                    message = AppMessage.Info(
+                        if (places.size == 1) {
+                            "Potwierdź miejscowość z listy."
+                        } else {
+                            "Wybierz miejscowość z listy (${places.size} wyników)."
+                        },
+                    ),
+                    currentPage = AppPages.SEARCH,
                 )
             }
-            performSearch(origin)
         } catch (e: UnknownHostException) {
             _state.update {
                 it.copy(
@@ -909,6 +1627,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     isSearching = false,
                     message = AppMessage.Error("Miejscowość: ${e.message ?: "błąd"}"),
+                )
+            }
+        }
+    }
+
+    private suspend fun performCorridorSearch() {
+        val state = _state.value
+        val line = state.corridorLine
+        if (line.size < 2) {
+            _state.update {
+                it.copy(
+                    message = AppMessage.Error(
+                        "Linia wymaga min. 2 punktów. Wybierz tryb „Wzdłuż linii” i klikaj mapę.",
+                    ),
+                )
+            }
+            return
+        }
+        if (state.corridorLeftKm + state.corridorRightKm <= 0.0) {
+            _state.update {
+                it.copy(message = AppMessage.Error("Ustaw lewą lub prawą szerokość korytarza (> 0 km)."))
+            }
+            return
+        }
+        val generation = searchGeneration.incrementAndGet()
+        val origin = UserPosition(line.first().latitude, line.first().longitude, approximate = false)
+        _state.update { it.copy(isSearching = true, isAnalyzingRoads = false, message = null) }
+        try {
+            val leftKm = state.corridorLeftKm
+            val rightKm = state.corridorRightKm
+            val profile = state.profile
+            val startedAt = System.currentTimeMillis()
+            val outcome = restRepository.findRestSitesAlongCorridor(line, leftKm, rightKm)
+            val sorted = outcome.bundle.sites.sortedBy { site ->
+                CorridorGeometry.project(site.latitude, site.longitude, line)?.distanceAlongKm
+                    ?: Double.MAX_VALUE
+            }
+            lastBdlSearchContext = null
+            val elapsedMs = System.currentTimeMillis() - startedAt
+            val token = cameraToken.getAndIncrement()
+            publishBdlSearchResults(
+                generation = generation,
+                position = origin,
+                sites = sorted,
+                zanocujPolygons = outcome.bundle.zanocujPolygons,
+                radiusKm = maxOf(leftKm, rightKm),
+                cameraToken = token,
+                startRoadAnalysis = profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty(),
+                corridorSummary = "korytarz L${leftKm.toInt()}/P${rightKm.toInt()} km · ${line.size} pkt · ${elapsedMs} ms",
+                corridorLine = line,
+            )
+            if (profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty()) {
+                analyzeRoadsInBackground(generation, sorted, origin)
+            }
+        } catch (e: UnknownHostException) {
+            val offlineReady = _state.value.offlineBdl.isReady
+            _state.update {
+                it.copy(
+                    isSearching = false,
+                    isAnalyzingRoads = false,
+                    message = AppMessage.Error(
+                        if (offlineReady) {
+                            "Brak internetu. Analiza dróg OSM wymaga sieci — miejsca BDL z pamięci urządzenia."
+                        } else {
+                            "Brak internetu. Pobierz dane BDL offline albo połącz się z siecią."
+                        },
+                    ),
+                )
+            }
+        } catch (e: IOException) {
+            _state.update {
+                it.copy(
+                    isSearching = false,
+                    isAnalyzingRoads = false,
+                    message = AppMessage.Error("Błąd BDL: ${e.message ?: "sieć"}"),
+                )
+            }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(
+                    isSearching = false,
+                    isAnalyzingRoads = false,
+                    message = AppMessage.Error("Wyszukiwanie wzdłuż linii: ${e.message ?: "błąd"}"),
                 )
             }
         }
@@ -1051,6 +1852,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         fromSessionCache: Boolean = false,
         fromRadiusSubset: Boolean = false,
         retainedRoadAssessments: Map<String, RoadAssessment> = emptyMap(),
+        corridorSummary: String? = null,
+        corridorLine: List<LatLon> = emptyList(),
     ) {
         if (searchGeneration.get() != generation) return
         _state.update { current ->
@@ -1060,24 +1863,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 emptyMap()
             }
+            val lineForSort = corridorLine.ifEmpty {
+                if (current.searchOriginMode == SearchOriginMode.LINE) current.corridorLine else emptyList()
+            }
             val results = buildResults(
                 sites,
                 position,
                 current.profile,
                 current.zanocujFilter,
                 roadBySiteId = roadBySiteId,
+                corridorLine = lineForSort,
             )
             val originLabel = when {
+                corridorSummary != null -> corridorSummary
                 current.searchOriginMode == SearchOriginMode.LOCALITY ->
                     "miejscowości ${current.localityQuery.trim().ifBlank { "?" }}"
                 current.searchOriginMode == SearchOriginMode.MAP -> "punktu na mapie"
+                current.searchOriginMode == SearchOriginMode.LINE -> "linii"
                 else -> "GPS"
             }
             val offlineSuffix = if (current.offlineBdl.isReady) " · offline BDL" else ""
             val cacheSuffix = if (fromSessionCache) " · cache" else ""
             val subsetSuffix = if (fromRadiusSubset) " · filtr promienia" else ""
             val roadsPending = startRoadAnalysis && roadBySiteId.size < sites.size
-            val motoSuffix = if (roadsPending) " · drogi OSM w tle" else ""
+            val motoSuffix = if (roadsPending) {
+                " · drogi OSM w tle (top ${UiState.MOTORCYCLE_ROAD_ANALYZE_LIMIT})"
+            } else {
+                ""
+            }
+            val messageText = if (corridorSummary != null) {
+                "Znaleziono ${sites.size} miejsc wzdłuż $originLabel$offlineSuffix$motoSuffix."
+            } else {
+                "Znaleziono ${sites.size} miejsc w promieniu ${radiusKm.toInt()} km od $originLabel$offlineSuffix$cacheSuffix$subsetSuffix$motoSuffix."
+            }
             current.copy(
                 isSearching = false,
                 isAnalyzingRoads = roadsPending,
@@ -1088,9 +1906,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 selectedSiteId = null,
                 currentPage = AppPages.MAP,
                 mapCameraRequest = PagerNavigation.cameraForNewSearch(cameraToken),
-                message = AppMessage.Info(
-                    "Znaleziono ${sites.size} miejsc w promieniu ${radiusKm.toInt()} km od $originLabel$offlineSuffix$cacheSuffix$subsetSuffix$motoSuffix.",
-                ),
+                message = AppMessage.Info(messageText),
             )
         }
     }
@@ -1102,8 +1918,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             try {
+                val toAssess = sites.take(UiState.MOTORCYCLE_ROAD_ANALYZE_LIMIT)
                 val roadBySiteId = withContext(Dispatchers.IO) {
-                    roadAnalyzer.assessAll(sites.map { it.toPointPoi() })
+                    roadAnalyzer.assessAll(toAssess.map { it.toPointPoi() })
                 }
                 if (searchGeneration.get() != generation) return@launch
                 _state.update { current ->
@@ -1117,7 +1934,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             current.profile,
                             current.zanocujFilter,
                             roadBySiteId,
+                            corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
+                                current.corridorLine
+                            } else {
+                                emptyList()
+                            },
                         ),
+                        message = if (sites.size > toAssess.size) {
+                            AppMessage.Info(
+                                "Analiza dróg OSM: ${toAssess.size}/${sites.size} punktów (limit szybkości).",
+                            )
+                        } else {
+                            current.message
+                        },
                     )
                     next.copy(savedListResults = buildSavedListResults(next))
                 }
@@ -1141,8 +1970,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         profile: TravelProfile,
         zanocujFilter: ZanocujFilterMode,
         roadBySiteId: Map<String, RoadAssessment>,
+        corridorLine: List<LatLon> = emptyList(),
+        parkingOnly: Boolean = false,
     ): List<RestSiteResult> {
-        if (position == null) return emptyList()
+        if (position == null && !_state.value.isMapBrowse()) return emptyList()
         return sites
             .asSequence()
             .filter { site ->
@@ -1150,6 +1981,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     ZanocujFilterMode.ALL -> true
                     ZanocujFilterMode.ONLY_IN_ZONE -> site.zanocujStatus == ZanocujStatus.IN_ZONE
                 }
+            }
+            .filter { site ->
+                !parkingOnly || SiteFeature.PARKING in site.features
             }
             .map { site ->
                 val assessment = if (profile == TravelProfile.MOTORCYCLE) {
@@ -1164,14 +1998,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             ?: (LatLon(site.latitude, site.longitude) to NavigationTargetKind.REST_SITE)
                     }
                 }
-                RestSiteResult(
-                    site = site,
-                    distanceKm = GeoUtils.distanceKm(
+                val distanceKm = when {
+                    position == null -> 0.0
+                    corridorLine.size >= 2 -> {
+                        CorridorGeometry.project(site.latitude, site.longitude, corridorLine)?.distanceAlongKm
+                            ?: GeoUtils.distanceKm(
+                                position.latitude,
+                                position.longitude,
+                                site.latitude,
+                                site.longitude,
+                            )
+                    }
+                    else -> GeoUtils.distanceKm(
                         position.latitude,
                         position.longitude,
                         site.latitude,
                         site.longitude,
-                    ),
+                    )
+                }
+                RestSiteResult(
+                    site = site,
+                    distanceKm = distanceKm,
                     roadAssessment = assessment,
                     navigationTarget = target,
                     navigationTargetKind = kind,
@@ -1179,6 +2026,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             .sortedBy { it.distanceKm }
             .toList()
+    }
+
+    companion object {
+        /** Below this zoom, browse skips Zanocuj fills (too many polygons). */
+        private const val BROWSE_ZANOCUJ_MIN_ZOOM = 7.5
+        private const val BROWSE_ZANOCUJ_MAX_POLYGONS = 50
     }
 }
 

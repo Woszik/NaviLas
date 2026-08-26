@@ -2,11 +2,13 @@ package pl.navilas.finder.ui
 
 import android.graphics.Color
 import android.graphics.PointF
+import android.graphics.RectF
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
@@ -29,8 +31,11 @@ import org.maplibre.geojson.Polygon
 import pl.navilas.finder.data.bdl.ZanocujPolygon
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
+import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
+import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.TravelProfile
+import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.map.MapConfig
 
 /**
@@ -42,7 +47,14 @@ class MapController {
     private var style: Style? = null
     private var onSiteClick: ((String) -> Unit)? = null
     private var onEmptyMapClick: ((Double, Double) -> Unit)? = null
+    private var onCorridorVertexClick: ((Int) -> Unit)? = null
+    private var onCameraIdle: ((Double, Double, Double, Double, Double) -> Unit)? = null
     private var clickListenerRegistered = false
+    private var cameraIdleRegistered = false
+    private var browseModeActive = false
+    private var lastBrowseRevision: Long = -1L
+    private var lastBrowseZanocujCount: Int = -1
+    private var lastBrowseZanocujIdsHash: Int = 0
 
     /** Diagnostics: last camera command applied (not fitBounds from selection). */
     var lastCameraCommand: String? = null
@@ -59,6 +71,7 @@ class MapController {
             style = loaded
             ensureSourcesAndLayers(loaded)
             ensureClickListener(mapLibreMap)
+            ensureCameraIdleListener(mapLibreMap)
             onReady()
         }
     }
@@ -71,7 +84,26 @@ class MapController {
         onEmptyMapClick = listener
     }
 
+    fun setOnCorridorVertexClickListener(listener: ((index: Int) -> Unit)?) {
+        onCorridorVertexClick = listener
+    }
+
+    fun centerOn(latitude: Double, longitude: Double, zoom: Double = 12.0) {
+        if (!latitude.isFinite() || !longitude.isFinite()) {
+            lastCameraCommand = "centerOn:invalid"
+            return
+        }
+        map?.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(
+                LatLng(latitude, longitude),
+                zoom.coerceIn(MIN_ZOOM, MAX_ZOOM),
+            ),
+        )
+        lastCameraCommand = "centerOn"
+    }
+
     fun updateUserLocation(latitude: Double, longitude: Double, @Suppress("UNUSED_PARAMETER") approximate: Boolean) {
+        if (!latitude.isFinite() || !longitude.isFinite()) return
         val s = style ?: return
         s.getSourceAs<GeoJsonSource>(SOURCE_USER)
             ?.setGeoJson(Feature.fromGeometry(Point.fromLngLat(longitude, latitude)))
@@ -96,6 +128,10 @@ class MapController {
         profile: TravelProfile,
         zanocujPolygons: List<ZanocujPolygon> = emptyList(),
     ) {
+        if (browseModeActive) {
+            renderBrowseSelection(selected, profile)
+            return
+        }
         val s = style ?: return
         val siteFeatures = results.map { result ->
             Feature.fromGeometry(
@@ -121,8 +157,105 @@ class MapController {
         s.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
             ?.setGeoJson(FeatureCollection.fromFeatures(areaFeatures))
 
+        renderBrowseSelection(selected, profile)
+    }
+
+    /**
+     * MapBrowse: load all sites once; site visibility later via [applyBrowseFilters].
+     * Zanocuj fills come from [setBrowseZanocujPolygons] (viewport subset only).
+     */
+    fun setBrowseLayer(
+        sites: List<RestSite>,
+        revision: Long,
+    ) {
+        val s = style ?: return
+        if (revision == lastBrowseRevision && browseModeActive) return
+        lastBrowseRevision = revision
+        browseModeActive = true
+        val features = sites.mapNotNull { site ->
+            if (!site.latitude.isFinite() || !site.longitude.isFinite()) return@mapNotNull null
+            Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
+                addStringProperty("id", site.id)
+                addStringProperty("name", site.name)
+                addStringProperty(
+                    PROP_ZANOCUJ,
+                    when (site.zanocujStatus) {
+                        ZanocujStatus.IN_ZONE -> "IN"
+                        ZanocujStatus.NEAR_ZONE -> "NEAR"
+                        ZanocujStatus.OUTSIDE_ZONE -> "OUT"
+                    },
+                )
+                addNumberProperty(
+                    PROP_PARKING,
+                    if (SiteFeature.PARKING in site.features) 1 else 0,
+                )
+            }
+        }
+        s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    fun setBrowseZanocujPolygons(polygons: List<ZanocujPolygon>) {
+        if (!browseModeActive) return
+        val s = style ?: return
+        val idsHash = polygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
+        if (polygons.size == lastBrowseZanocujCount && idsHash == lastBrowseZanocujIdsHash) return
+        lastBrowseZanocujCount = polygons.size
+        lastBrowseZanocujIdsHash = idsHash
+        val areaFeatures = polygons.mapNotNull { poly ->
+            val rings = poly.rings.map { ring ->
+                ring.map { Point.fromLngLat(it.longitude, it.latitude) }
+            }
+            runCatching { Polygon.fromLngLats(rings) }.getOrNull()?.let { geometry ->
+                Feature.fromGeometry(geometry).apply {
+                    addStringProperty("id", poly.id)
+                }
+            }
+        }
+        s.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
+            ?.setGeoJson(FeatureCollection.fromFeatures(areaFeatures))
+    }
+
+    fun setOnCameraIdleListener(listener: ((west: Double, south: Double, east: Double, north: Double, zoom: Double) -> Unit)?) {
+        onCameraIdle = listener
+    }
+
+    fun exitBrowseMode() {
+        if (!browseModeActive) return
+        browseModeActive = false
+        lastBrowseRevision = -1L
+        lastBrowseZanocujCount = -1
+        lastBrowseZanocujIdsHash = 0
+        style?.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
+        style?.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
+            ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+    }
+
+    fun applyBrowseFilters(zanocujOnly: Boolean, parkingOnly: Boolean) {
+        val s = style ?: return
+        val layer = s.getLayerAs<CircleLayer>(LAYER_SITES) ?: return
+        if (!browseModeActive) return
+        val parts = mutableListOf<Expression>()
+        if (zanocujOnly) {
+            parts += Expression.eq(Expression.get(PROP_ZANOCUJ), Expression.literal("IN"))
+        }
+        if (parkingOnly) {
+            parts += Expression.eq(Expression.get(PROP_PARKING), Expression.literal(1))
+        }
+        val filter = when (parts.size) {
+            0 -> Expression.literal(true)
+            1 -> parts[0]
+            else -> Expression.all(*parts.toTypedArray())
+        }
+        layer.setFilter(filter)
+    }
+
+    private fun renderBrowseSelection(selected: RestSiteResult?, profile: TravelProfile) {
+        val s = style ?: return
         val selectedFeature = selected?.let {
-            Feature.fromGeometry(Point.fromLngLat(it.site.longitude, it.site.latitude))
+            Feature.fromGeometry(Point.fromLngLat(it.site.longitude, it.site.latitude)).apply {
+                addStringProperty("id", it.site.id)
+            }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SELECTED)
             ?.setGeoJson(
@@ -183,9 +316,15 @@ class MapController {
 
     /** Focus one POI — never fitBounds of the whole set. */
     fun showPoiOnMap(result: RestSiteResult, zoom: Double = POI_ZOOM) {
+        val lat = result.site.latitude
+        val lon = result.site.longitude
+        if (!lat.isFinite() || !lon.isFinite()) {
+            lastCameraCommand = "showPoi:invalid:${result.site.id}"
+            return
+        }
         map?.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
-                LatLng(result.site.latitude, result.site.longitude),
+                LatLng(lat, lon),
                 zoom.coerceIn(MIN_ZOOM, MAX_ZOOM),
             ),
         )
@@ -197,22 +336,58 @@ class MapController {
         clickListenerRegistered = true
         mapLibreMap.addOnMapClickListener { latLng ->
             val screen = mapLibreMap.projection.toScreenLocation(latLng)
-            val hit = querySiteId(PointF(screen.x, screen.y))
-            if (hit != null) {
-                onSiteClick?.invoke(hit)
+            val vertexIndex = queryCorridorVertexIndex(PointF(screen.x, screen.y))
+            if (vertexIndex != null) {
+                onCorridorVertexClick?.invoke(vertexIndex)
                 true
             } else {
-                onEmptyMapClick?.invoke(latLng.latitude, latLng.longitude)
-                true
+                val hit = querySiteId(PointF(screen.x, screen.y))
+                if (hit != null) {
+                    onSiteClick?.invoke(hit)
+                    true
+                } else {
+                    onEmptyMapClick?.invoke(latLng.latitude, latLng.longitude)
+                    true
+                }
             }
         }
     }
 
+    private fun ensureCameraIdleListener(mapLibreMap: MapLibreMap) {
+        if (cameraIdleRegistered) return
+        cameraIdleRegistered = true
+        mapLibreMap.addOnCameraIdleListener {
+            val bounds = mapLibreMap.projection.visibleRegion.latLngBounds
+            onCameraIdle?.invoke(
+                bounds.longitudeWest,
+                bounds.latitudeSouth,
+                bounds.longitudeEast,
+                bounds.latitudeNorth,
+                mapLibreMap.cameraPosition.zoom,
+            )
+        }
+    }
+
+    private fun queryCorridorVertexIndex(screen: PointF): Int? {
+        val mapLibreMap = map ?: return null
+        val features = mapLibreMap.queryRenderedFeatures(screen, LAYER_CORRIDOR_VERTICES)
+        val raw = features.firstOrNull()?.getNumberProperty("index") ?: return null
+        return raw.toInt()
+    }
+
     private fun querySiteId(screen: PointF): String? {
         val mapLibreMap = map ?: return null
-        val layers = arrayOf(LAYER_SELECTED, LAYER_SITES)
-        val features = mapLibreMap.queryRenderedFeatures(screen, *layers)
-        return features.firstOrNull()?.getStringProperty("id")
+        // Prefer sites with a real id — LAYER_SELECTED used to omit "id", and
+        // firstOrNull()?.getStringProperty("id") then returned null → empty-map path.
+        // Pad hit box: single-pixel taps often miss 7px circles.
+        val pad = HIT_PAD_PX
+        val box = RectF(screen.x - pad, screen.y - pad, screen.x + pad, screen.y + pad)
+        val features = mapLibreMap.queryRenderedFeatures(box, LAYER_SELECTED, LAYER_SITES)
+        return features.asSequence()
+            .mapNotNull { feature ->
+                feature.getStringProperty("id")?.takeIf { it.isNotBlank() }
+            }
+            .firstOrNull()
     }
 
     private fun ensureSourcesAndLayers(style: Style) {
@@ -298,6 +473,55 @@ class MapController {
                 ),
             )
         }
+        if (style.getSource(SOURCE_CORRIDOR) == null) {
+            style.addSource(GeoJsonSource(SOURCE_CORRIDOR, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                LineLayer(LAYER_CORRIDOR, SOURCE_CORRIDOR).withProperties(
+                    lineColor(Color.parseColor("#E65100")),
+                    lineWidth(3.5f),
+                ),
+            )
+        }
+        if (style.getSource(SOURCE_CORRIDOR_VERTICES) == null) {
+            style.addSource(GeoJsonSource(SOURCE_CORRIDOR_VERTICES, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                CircleLayer(LAYER_CORRIDOR_VERTICES, SOURCE_CORRIDOR_VERTICES).withProperties(
+                    circleRadius(10f),
+                    circleColor(Color.parseColor("#BF360C")),
+                    circleStrokeColor(Color.WHITE),
+                    circleStrokeWidth(2f),
+                ),
+            )
+        }
+    }
+
+    fun updateCorridorLine(points: List<LatLon>) {
+        val s = style ?: return
+        val lineSource = s.getSourceAs<GeoJsonSource>(SOURCE_CORRIDOR) ?: return
+        val vertexSource = s.getSourceAs<GeoJsonSource>(SOURCE_CORRIDOR_VERTICES) ?: return
+        if (points.isEmpty()) {
+            lineSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+            vertexSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+            return
+        }
+        vertexSource.setGeoJson(
+            FeatureCollection.fromFeatures(
+                points.mapIndexed { index, p ->
+                    Feature.fromGeometry(Point.fromLngLat(p.longitude, p.latitude)).apply {
+                        addNumberProperty("index", index)
+                    }
+                },
+            ),
+        )
+        if (points.size >= 2) {
+            lineSource.setGeoJson(
+                Feature.fromGeometry(
+                    LineString.fromLngLats(points.map { Point.fromLngLat(it.longitude, it.latitude) }),
+                ),
+            )
+        } else {
+            lineSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        }
     }
 
     companion object {
@@ -305,6 +529,7 @@ class MapController {
         const val MAX_ZOOM = 18.0
         const val POI_ZOOM = 15.0
         const val POI_ZOOM_SINGLE = 14.5
+        private const val HIT_PAD_PX = 28f
 
         const val SOURCE_USER = "navilas-user"
         const val SOURCE_SEARCH_PIN = "navilas-search-pin"
@@ -313,6 +538,8 @@ class MapController {
         const val SOURCE_ZANOCUJ = "navilas-zanocuj"
         const val SOURCE_ROAD_TARGET = "navilas-road-target"
         const val SOURCE_HELPER_LINE = "navilas-helper-line"
+        const val SOURCE_CORRIDOR = "navilas-corridor"
+        const val SOURCE_CORRIDOR_VERTICES = "navilas-corridor-vertices"
         const val LAYER_USER = "navilas-user-layer"
         const val LAYER_SEARCH_PIN = "navilas-search-pin-layer"
         const val LAYER_SITES = "navilas-sites-layer"
@@ -321,5 +548,9 @@ class MapController {
         const val LAYER_ZANOCUJ_LINE = "navilas-zanocuj-line"
         const val LAYER_ROAD_TARGET = "navilas-road-target-layer"
         const val LAYER_HELPER_LINE = "navilas-helper-line-layer"
+        const val LAYER_CORRIDOR = "navilas-corridor-layer"
+        const val LAYER_CORRIDOR_VERTICES = "navilas-corridor-vertices-layer"
+        const val PROP_ZANOCUJ = "zanocuj"
+        const val PROP_PARKING = "parking"
     }
 }

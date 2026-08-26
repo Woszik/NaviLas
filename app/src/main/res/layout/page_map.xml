@@ -32,6 +32,32 @@
             android:id="@+id/mapView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/mapZoomScale"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="12dp"
+            android:background="#CC212121"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="#FFFFFF"
+            android:text="z —"
+            tools:text="z 11.2" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMapMyLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="12dp"
+            android:contentDescription="@string/map_my_location_cd"
+            app:fabSize="mini"
+            app:srcCompat="@android:drawable/ic_menu_mylocation"
+            app:tint="?attr/colorOnSecondaryContainer"
+            app:backgroundTint="?attr/colorSecondaryContainer" />
     </pl.navilas.finder.ui.MapPagerTouchBridge>
 
     <pl.navilas.finder.ui.NestedScrollableHost

@@ -3,6 +3,7 @@ package pl.navilas.finder
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.navilas.finder.data.bdl.BdlIdentity
@@ -164,6 +165,36 @@ class DomainAndMapperTest {
             "bdl:15:objectid:42",
             BdlIdentity.resolve(BdlRepository.LAYER_REST, attrs),
         )
+    }
+
+    @Test
+    fun point_from_geometry_rejects_nan_strings() {
+        val geometry = JSONObject("""{"x":"NaN","y":"NaN"}""")
+        assertNull(BdlMapper.pointFromGeometry(geometry))
+    }
+
+    @Test
+    fun point_from_geometry_rejects_out_of_range() {
+        assertNull(BdlMapper.pointFromGeometry(JSONObject("""{"x":21.0,"y":90.0}""")))
+        assertNull(BdlMapper.pointFromGeometry(JSONObject("""{"x":0.0,"y":52.0}""")))
+    }
+
+    @Test
+    fun map_rest_feature_skips_nan_geometry() {
+        val feature = JSONObject(
+            """
+            {
+              "attributes": {
+                "objectid": 35442,
+                "foreign_key": "797da613-7c8d-4e90-8628-f00a73ea2e90",
+                "nzw_ob": "Altana leśna z wyposażeniem",
+                "wiata": "T"
+              },
+              "geometry": { "x": "NaN", "y": "NaN" }
+            }
+            """.trimIndent(),
+        )
+        assertNull(BdlMapper.mapRestFeature(feature))
     }
 
     private fun parkingFeature(

@@ -67,7 +67,7 @@ class OfflineBdlStoreTest {
 
     @Test
     fun heavy_polyline_layers_use_smaller_pages_and_simplified_geometry() {
-        val downloader = BdlOfflineDownloader(store = BdlOfflineStore(File(createTempDir(), "x")))
+        val downloader = BdlOfflineDownloader(filesDir = createTempDir())
         val config = OfflineBdlConfig(BdlDataScope.FULL_BDL, ZanocujPolygonQuality.SIMPLIFIED)
         val trailParams = downloader.downloadParamsFor(35, config)
         assertEquals(BdlArcGisClient.HEAVY_LAYER_PAGE_SIZE, trailParams.pageSize)
@@ -75,6 +75,49 @@ class OfflineBdlStoreTest {
         val restParams = downloader.downloadParamsFor(RestSiteRepository.LAYER_REST, config)
         assertEquals(BdlArcGisClient.DOWNLOAD_PAGE_SIZE, restParams.pageSize)
         assertEquals("0", restParams.maxAllowableOffset)
+    }
+
+    @Test
+    fun promote_staging_replaces_live_and_keeps_old_until_success() {
+        val filesDir = createTempDir(prefix = "navilas-offline-promote")
+        val live = BdlOfflineStore.fromAppFilesDir(filesDir)
+        val configOld = OfflineBdlConfig(BdlDataScope.NAVILAS_CORE, ZanocujPolygonQuality.SIMPLIFIED)
+        live.openLayerWriter(15).use { it.appendPage(listOf(samplePointFeature(52.0, 21.0))) }
+        live.writeManifest(configOld, listOf(15), downloadedAt = 1L)
+        assertTrue(live.isReady())
+
+        val staging = BdlOfflineStore.stagingFromAppFilesDir(filesDir)
+        staging.openLayerWriter(15).use { it.appendPage(listOf(samplePointFeature(53.0, 22.0))) }
+        staging.writeManifest(
+            OfflineBdlConfig(BdlDataScope.NAVILAS_CORE, ZanocujPolygonQuality.PRECISE),
+            listOf(15),
+            downloadedAt = 2L,
+        )
+
+        BdlOfflineStore.promoteStagingToLive(filesDir)
+        val after = BdlOfflineStore.fromAppFilesDir(filesDir)
+        assertTrue(after.isReady())
+        assertEquals(2L, after.downloadedAt())
+        assertEquals(ZanocujPolygonQuality.PRECISE, after.storedConfig()?.zanocujQuality)
+        assertEquals(1, after.loadLayerFeatures(15).size)
+        assertFalse(File(filesDir, BdlOfflineStore.STAGING_DIR_NAME).exists())
+    }
+
+    @Test
+    fun clear_staging_does_not_touch_live() {
+        val filesDir = createTempDir(prefix = "navilas-offline-clear-staging")
+        val live = BdlOfflineStore.fromAppFilesDir(filesDir)
+        live.openLayerWriter(15).use { it.appendPage(listOf(samplePointFeature(52.0, 21.0))) }
+        live.writeManifest(
+            OfflineBdlConfig(BdlDataScope.NAVILAS_CORE, ZanocujPolygonQuality.SIMPLIFIED),
+            listOf(15),
+            downloadedAt = 1L,
+        )
+        val staging = BdlOfflineStore.stagingFromAppFilesDir(filesDir)
+        staging.openLayerWriter(15).use { it.appendPage(listOf(samplePointFeature(50.0, 20.0))) }
+        BdlOfflineStore.clearStaging(filesDir)
+        assertTrue(BdlOfflineStore.fromAppFilesDir(filesDir).isReady())
+        assertFalse(File(filesDir, BdlOfflineStore.STAGING_DIR_NAME).exists())
     }
 
     @Test

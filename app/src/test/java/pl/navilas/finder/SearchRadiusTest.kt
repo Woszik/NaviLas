@@ -12,7 +12,7 @@ import org.json.JSONObject
 class SearchRadiusTest {
     @Test
     fun presets_include_required_values_and_default_25() {
-        assertEquals(listOf(5.0, 10.0, 25.0, 50.0, 100.0), SearchConfig.SEARCH_RADIUS_PRESETS_KM)
+        assertEquals(listOf(5.0, 10.0, 25.0, 50.0), SearchConfig.SEARCH_RADIUS_PRESETS_KM)
         assertEquals(25.0, SearchConfig.DEFAULT_SEARCH_RADIUS_KM, 0.0)
         assertEquals(25.0, SearchConfig.DEFAULT.searchRadiusKm, 0.0)
         assertEquals(100.0, SearchConfig.MAX_SEARCH_RADIUS_KM, 0.0)
@@ -52,6 +52,13 @@ class SearchRadiusTest {
             assertTrue(inside.longitude in envelope.xmin..envelope.xmax)
             assertTrue(inside.latitude in envelope.ymin..envelope.ymax)
         }
+    }
+
+    @Test
+    fun search_config_accepts_custom_radius_between_min_and_max() {
+        val custom = SearchConfig(searchRadiusKm = 17.0)
+        assertEquals(17.0, custom.searchRadiusKm, 0.0)
+        assertEquals(1.0, SearchConfig.MIN_SEARCH_RADIUS_KM, 0.0)
     }
 
     @Test

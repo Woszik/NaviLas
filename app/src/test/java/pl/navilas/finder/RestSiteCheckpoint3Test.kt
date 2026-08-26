@@ -323,7 +323,7 @@ class RestSiteCheckpoint3Test {
     }
 
     @Test
-    fun car_prefers_related_parking_as_nav_target() {
+    fun car_navigates_to_site_not_related_parking() {
         val site = site("s", ZanocujStatus.OUTSIDE_ZONE).copy(
             relatedObjects = listOf(
                 pl.navilas.finder.domain.RelatedBdlObject(
@@ -339,8 +339,9 @@ class RestSiteCheckpoint3Test {
             ),
         )
         val (target, kind) = NavigationTargets.forCar(site)
-        assertEquals(NavigationTargetKind.PARKING, kind)
-        assertEquals(52.01, target.latitude, 1e-6)
+        assertEquals(NavigationTargetKind.REST_SITE, kind)
+        assertEquals(52.0, target.latitude, 1e-6)
+        assertEquals(21.0, target.longitude, 1e-6)
     }
 
     @Test

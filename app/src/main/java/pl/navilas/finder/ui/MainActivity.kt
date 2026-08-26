@@ -50,6 +50,7 @@ import pl.navilas.finder.databinding.ActivityMainBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
+import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSiteResult
@@ -87,6 +88,9 @@ class MainActivity : AppCompatActivity() {
     private var syncingPager = false
     private var syncingOfflineUi = false
     private var syncingSearchOriginUi = false
+    private var syncingBrowseParkingUi = false
+    private var syncingExploreModeUi = false
+    private var syncingCorridorUi = false
     private var syncingListUi = false
     private var offlineSectionExpanded = false
     private var lastRenderedResultsToken: Int = -1
@@ -97,6 +101,8 @@ class MainActivity : AppCompatActivity() {
     private var updateProgressText: TextView? = null
     private var shownUpdateVersionCode: Int? = null
     private var pendingInstallApk: File? = null
+    /** Map "my location" FAB should always re-center; search locate may not. */
+    private var pendingForceCenterOnLocate = false
     /** After returning from unknown-sources settings: start download or install once. */
     private var pendingAfterInstallPermission: PendingAfterInstallPermission? = null
     private var installSessionStarted = false
@@ -168,13 +174,14 @@ class MainActivity : AppCompatActivity() {
         val fine = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val coarse = grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         when {
-            fine || coarse -> viewModel.refreshLocation()
+            fine || coarse -> viewModel.refreshLocation(forceCenter = pendingForceCenterOnLocate)
             else -> Snackbar.make(
                 binding.root,
                 "Odmówiono lokalizacji. Mapa działa, ale wyszukiwanie wymaga pozycji.",
                 Snackbar.LENGTH_LONG,
             ).show()
         }
+        pendingForceCenterOnLocate = false
     }
 
     private val unknownSourcesLauncher = registerForActivityResult(
@@ -214,6 +221,9 @@ class MainActivity : AppCompatActivity() {
             profileProvider = { currentProfile },
             isSavedProvider = { siteId -> viewModel.state.value.isSaved(siteId) },
             savedMetaProvider = { siteId -> savedMetaFor(siteId) },
+            distanceLabelProvider = { item ->
+                formatPoiDistance(viewModel.state.value, item.distanceKm)
+            },
         )
         listBinding.resultsList.layoutManager = LinearLayoutManager(this)
         listBinding.resultsList.adapter = resultsAdapter
@@ -228,9 +238,21 @@ class MainActivity : AppCompatActivity() {
                     viewModel.onMarkerSelected(siteId)
                 }
                 mapController.setOnEmptyMapClickListener { lat, lon ->
-                    viewModel.setMapSearchPin(lat, lon)
+                    if (viewModel.state.value.isMapBrowse()) {
+                        viewModel.selectSite(null)
+                    } else {
+                        viewModel.setMapSearchPin(lat, lon)
+                    }
+                }
+                mapController.setOnCorridorVertexClickListener { index ->
+                    showCorridorVertexMenu(index)
+                }
+                mapController.setOnCameraIdleListener { west, south, east, north, zoom ->
+                    mapBinding.mapZoomScale.text = getString(R.string.map_zoom_scale, zoom)
+                    viewModel.onBrowseMapViewport(west, south, east, north, zoom)
                 }
                 applyUi(viewModel.state.value, forceMarkers = true)
+                viewModel.refreshLocation(showApproximateHint = false)
             }
         }
 
@@ -306,12 +328,24 @@ class MainActivity : AppCompatActivity() {
             }
             viewModel.setProfile(profile)
         }
+        searchBinding.exploreModeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || syncingExploreModeUi) return@addOnButtonCheckedListener
+            val mode = when (checkedId) {
+                R.id.btnExploreBrowse -> AppExploreMode.MAP_BROWSE
+                else -> AppExploreMode.SEARCH
+            }
+            viewModel.setExploreMode(mode)
+        }
         searchBinding.zanocujFilter.setOnCheckedChangeListener { _, checkedId ->
             val mode = when (checkedId) {
                 R.id.radioZanocujOnly -> ZanocujFilterMode.ONLY_IN_ZONE
                 else -> ZanocujFilterMode.ALL
             }
             viewModel.setZanocujFilter(mode)
+        }
+        searchBinding.browseParkingOnly.setOnCheckedChangeListener { _, isChecked ->
+            if (syncingBrowseParkingUi) return@setOnCheckedChangeListener
+            viewModel.setBrowseParkingOnly(isChecked)
         }
         searchBinding.btnSearch.setOnClickListener { viewModel.searchNearby() }
         searchBinding.btnLocate.setOnClickListener { requestLocationPermissions() }
@@ -325,15 +359,48 @@ class MainActivity : AppCompatActivity() {
         setupOfflineSection()
     }
 
+    private fun applyMapBrowseSearchChrome() {
+        searchBinding.mapBrowseHint.isVisible = true
+        searchBinding.browseParkingOnly.isVisible = true
+        searchBinding.searchOriginLabel.isVisible = false
+        searchBinding.searchOriginGroup.isVisible = false
+        searchBinding.corridorPanel.isVisible = false
+        searchBinding.localityInputLayout.isVisible = false
+        searchBinding.localityCandidatesPanel.isVisible = false
+        searchBinding.radiusLabel.isVisible = false
+        searchBinding.radiusSpinner.isVisible = false
+        setCustomRadiusUiVisible(false)
+        searchBinding.btnClearMapPin.isVisible = false
+        searchBinding.btnSearch.text = getString(R.string.map_browse_reload)
+        searchBinding.searchHint.setText(R.string.search_page_hint_browse)
+    }
+
+    private fun applySearchModeChrome(state: UiState) {
+        searchBinding.mapBrowseHint.isVisible = false
+        searchBinding.browseParkingOnly.isVisible = false
+        searchBinding.searchOriginLabel.isVisible = true
+        searchBinding.searchOriginGroup.isVisible = true
+        bindSearchOriginUi(state)
+        updateSearchButtonLabel(
+            state.searchConfig.searchRadiusKm,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+        )
+        searchBinding.searchHint.setText(R.string.search_page_hint)
+    }
+
     private fun setupSearchOriginSection() {
         searchBinding.searchOriginGroup.setOnCheckedChangeListener { _, checkedId ->
             if (syncingSearchOriginUi) return@setOnCheckedChangeListener
             val mode = when (checkedId) {
                 R.id.radioSearchMap -> SearchOriginMode.MAP
                 R.id.radioSearchLocality -> SearchOriginMode.LOCALITY
+                R.id.radioSearchLine -> SearchOriginMode.LINE
                 else -> SearchOriginMode.GPS
             }
             viewModel.setSearchOriginMode(mode)
+            if (mode == SearchOriginMode.LINE) {
+                viewModel.setCurrentPage(AppPages.MAP)
+            }
         }
         searchBinding.localityInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
@@ -348,7 +415,35 @@ class MainActivity : AppCompatActivity() {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: android.text.Editable?) {
+                    if (syncingSearchOriginUi) return
                     viewModel.setLocalityQuery(s?.toString().orEmpty())
+                }
+            },
+        )
+        searchBinding.btnClearCorridor.setOnClickListener { viewModel.clearCorridorLine() }
+        searchBinding.btnLineGpsMap.setOnClickListener { viewModel.startCorridorGpsToMap() }
+        searchBinding.btnLineGpsLocality.setOnClickListener { viewModel.startCorridorGpsToLocality() }
+        searchBinding.btnLineLocalityLocality.setOnClickListener { viewModel.startCorridorLocalityToLocality() }
+        searchBinding.btnDismissLocalityCandidates.setOnClickListener {
+            viewModel.dismissLocalityCandidates()
+        }
+        searchBinding.corridorLeftInput.addTextChangedListener(
+            object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    if (syncingCorridorUi) return
+                    s?.toString()?.replace(',', '.')?.toDoubleOrNull()?.let { viewModel.setCorridorLeftKm(it) }
+                }
+            },
+        )
+        searchBinding.corridorRightInput.addTextChangedListener(
+            object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    if (syncingCorridorUi) return
+                    s?.toString()?.replace(',', '.')?.toDoubleOrNull()?.let { viewModel.setCorridorRightKm(it) }
                 }
             },
         )
@@ -576,6 +671,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupMapCard() {
+        mapBinding.btnMapMyLocation.setOnClickListener { requestLocationPermissions(forceCenter = true) }
         mapBinding.btnCloseCard.setOnClickListener { viewModel.closeSelectedSite() }
         mapBinding.btnSaveCard.setOnClickListener {
             selectedResult()?.let { onSaveClicked(it) }
@@ -608,28 +704,63 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRadiusSpinner() {
         val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
-        val labels = presets.map { "${it.toInt()} km" }
+        val labels = presets.map { "${it.toInt()} km" } + getString(R.string.search_radius_custom_option)
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         searchBinding.radiusSpinner.adapter = adapter
         val defaultIndex = presets.indexOf(SearchConfig.DEFAULT_SEARCH_RADIUS_KM).coerceAtLeast(0)
         searchBinding.radiusSpinner.setSelection(defaultIndex, false)
-        updateSearchButtonLabel(presets[defaultIndex])
+        setCustomRadiusUiVisible(false)
+        updateSearchButtonLabel(presets[defaultIndex], lineMode = false)
         searchBinding.radiusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val km = presets[position]
-                viewModel.setSearchRadiusKm(km)
-                updateSearchButtonLabel(km)
+                if (position < presets.size) {
+                    setCustomRadiusUiVisible(false)
+                    val km = presets[position]
+                    viewModel.setSearchRadiusKm(km)
+                    updateSearchButtonLabel(km, lineMode = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE)
+                } else {
+                    setCustomRadiusUiVisible(true)
+                    searchBinding.customRadiusInput.setText(
+                        viewModel.state.value.searchConfig.searchRadiusKm.toInt().toString(),
+                    )
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
+        searchBinding.btnApplyCustomRadius.setOnClickListener {
+            val raw = searchBinding.customRadiusInput.text?.toString()?.trim().orEmpty()
+            val km = raw.replace(',', '.').toDoubleOrNull()
+            if (km == null) {
+                Snackbar.make(binding.root, "Podaj liczbę km (1–100).", Snackbar.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            viewModel.setSearchRadiusKm(km)
+            val applied = viewModel.state.value.searchConfig.searchRadiusKm
+            val presetIndex = presets.indexOf(applied)
+            if (presetIndex >= 0) {
+                searchBinding.radiusSpinner.setSelection(presetIndex, false)
+                setCustomRadiusUiVisible(false)
+            }
+            updateSearchButtonLabel(applied, lineMode = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE)
+        }
     }
 
-    private fun updateSearchButtonLabel(radiusKm: Double) {
-        searchBinding.btnSearch.text = getString(R.string.search_with_radius, radiusKm.toInt())
+    private fun setCustomRadiusUiVisible(visible: Boolean) {
+        searchBinding.customRadiusLayout.isVisible = visible
+        searchBinding.btnApplyCustomRadius.isVisible = visible
     }
 
-    private fun requestLocationPermissions() {
+    private fun updateSearchButtonLabel(radiusKm: Double, lineMode: Boolean) {
+        searchBinding.btnSearch.text = if (lineMode) {
+            getString(R.string.search_along_line)
+        } else {
+            getString(R.string.search_with_radius, radiusKm.toInt())
+        }
+    }
+
+    private fun requestLocationPermissions(forceCenter: Boolean = false) {
+        pendingForceCenterOnLocate = forceCenter
         permissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -652,21 +783,45 @@ class MainActivity : AppCompatActivity() {
         currentProfile = state.profile
         binding.progress.isVisible = state.isLocating || state.isSearching ||
             state.isAnalyzingRoads ||
+            state.isMapBrowseLoading ||
             state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING
         searchBinding.btnSearch.isEnabled = !state.isSearching && !state.isLocating &&
-            !state.isAnalyzingRoads
-        searchBinding.btnClearMapPin.isVisible = state.searchOriginMode == SearchOriginMode.MAP &&
+            !state.isAnalyzingRoads && !state.isMapBrowseLoading
+        searchBinding.btnClearMapPin.isVisible = !state.isMapBrowse() &&
+            state.searchOriginMode == SearchOriginMode.MAP &&
             state.usesMapPinForSearch()
         searchBinding.statusText.text = buildStatus(state)
-        bindSearchOriginUi(state)
+        syncingExploreModeUi = true
+        searchBinding.exploreModeToggle.check(
+            if (state.isMapBrowse()) R.id.btnExploreBrowse else R.id.btnExploreSearch,
+        )
+        syncingExploreModeUi = false
+        if (state.isMapBrowse()) {
+            syncingBrowseParkingUi = true
+            searchBinding.browseParkingOnly.isChecked = state.browseParkingOnly
+            syncingBrowseParkingUi = false
+            applyMapBrowseSearchChrome()
+        } else {
+            applySearchModeChrome(state)
+        }
         bindOfflineUi(state)
-        mapBinding.mapSearchHint.isVisible = true
+        val mapHintRes = when {
+            state.isMapBrowse() -> R.string.map_browse_tap_hint
+            state.searchOriginMode == SearchOriginMode.LINE -> R.string.map_corridor_hint
+            state.searchOriginMode == SearchOriginMode.MAP -> R.string.map_search_pin_hint
+            else -> null
+        }
+        mapBinding.mapSearchHint.isVisible = mapHintRes != null
+        if (mapHintRes != null) {
+            mapBinding.mapSearchHint.setText(mapHintRes)
+        }
         bindListPageUi(state)
         val listItems = state.activeListResults()
         resultsAdapter.submit(listItems)
-        val emptyMessage = when (state.listViewMode) {
-            ListViewMode.SEARCH -> getString(R.string.results_empty)
-            ListViewMode.SAVED -> getString(R.string.saved_empty)
+        val emptyMessage = when {
+            state.listViewMode == ListViewMode.SAVED -> getString(R.string.saved_empty)
+            state.isMapBrowse() -> getString(R.string.results_empty_browse)
+            else -> getString(R.string.results_empty)
         }
         listBinding.emptyResults.text = emptyMessage
         listBinding.emptyResults.isVisible = listItems.isEmpty() &&
@@ -680,26 +835,63 @@ class MainActivity : AppCompatActivity() {
         }
         updatePageIndicator(state.currentPage)
 
-        val selected = listItems.firstOrNull { it.site.id == state.selectedSiteId }
+        // Browse keeps selection in state.results; list tab mode must not hide the map card.
+        val selected = if (state.isMapBrowse()) {
+            state.results.firstOrNull { it.site.id == state.selectedSiteId }
+        } else {
+            listItems.firstOrNull { it.site.id == state.selectedSiteId }
+        }
         bindPoiCard(selected, state)
 
         if (mapReady) {
             state.userPosition?.let {
                 mapController.updateUserLocation(it.latitude, it.longitude, it.approximate)
             }
-            mapController.updateSearchPin(state.mapSearchPin)
-            val resultsHash = listItems.hashCode() xor (state.selectedSiteId?.hashCode() ?: 0) xor
-                state.profile.hashCode() xor state.zanocujPolygons.size xor
-                (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode()
-            if (forceMarkers || resultsHash != lastRenderedResultsToken) {
-                lastRenderedResultsToken = resultsHash
-                val polygons = if (state.listViewMode == ListViewMode.SAVED) emptyList() else state.zanocujPolygons
-                mapController.renderResults(
-                    listItems,
-                    selected,
-                    state.profile,
-                    polygons,
+            if (state.isMapBrowse()) {
+                if (state.mapBrowseRevision > 0) {
+                    mapController.setBrowseLayer(
+                        state.allSites,
+                        state.mapBrowseRevision,
+                    )
+                    mapController.setBrowseZanocujPolygons(state.zanocujPolygons)
+                }
+                mapController.applyBrowseFilters(
+                    zanocujOnly = state.zanocujFilter == ZanocujFilterMode.ONLY_IN_ZONE,
+                    parkingOnly = state.browseParkingOnly,
                 )
+                val browseHash = (state.selectedSiteId?.hashCode() ?: 0) xor
+                    state.profile.hashCode() xor
+                    state.mapBrowseRevision.hashCode() xor
+                    state.zanocujFilter.hashCode() xor
+                    state.browseParkingOnly.hashCode() xor
+                    state.zanocujPolygons.size xor
+                    state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
+                if (forceMarkers || browseHash != lastRenderedResultsToken) {
+                    lastRenderedResultsToken = browseHash
+                    mapController.renderResults(listItems, selected, state.profile, state.zanocujPolygons)
+                }
+            } else {
+                mapController.exitBrowseMode()
+                mapController.updateSearchPin(
+                    if (state.searchOriginMode == SearchOriginMode.LINE) null else state.mapSearchPin,
+                )
+                mapController.updateCorridorLine(
+                    if (state.searchOriginMode == SearchOriginMode.LINE) state.corridorLine else emptyList(),
+                )
+                val resultsHash = listItems.hashCode() xor (state.selectedSiteId?.hashCode() ?: 0) xor
+                    state.profile.hashCode() xor state.zanocujPolygons.size xor
+                    (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
+                    state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
+                if (forceMarkers || resultsHash != lastRenderedResultsToken) {
+                    lastRenderedResultsToken = resultsHash
+                    val polygons = if (state.listViewMode == ListViewMode.SAVED) emptyList() else state.zanocujPolygons
+                    mapController.renderResults(
+                        listItems,
+                        selected,
+                        state.profile,
+                        polygons,
+                    )
+                }
             }
             applyCameraRequest(state, selected, listItems)
         }
@@ -966,6 +1158,7 @@ class MainActivity : AppCompatActivity() {
         val token = when (request) {
             is MapCameraRequest.ShowAllResults -> request.token
             is MapCameraRequest.ShowPoi -> request.token
+            is MapCameraRequest.CenterOn -> request.token
         }
         if (token == lastAppliedCameraToken) return
         lastAppliedCameraToken = token
@@ -980,6 +1173,9 @@ class MainActivity : AppCompatActivity() {
                     mapController.showPoiOnMap(poi)
                 }
             }
+            is MapCameraRequest.CenterOn -> {
+                mapController.centerOn(request.latitude, request.longitude, request.zoom)
+            }
         }
         viewModel.consumeMapCameraRequest()
     }
@@ -990,6 +1186,9 @@ class MainActivity : AppCompatActivity() {
             ListViewMode.SEARCH -> listBinding.listModeGroup.check(R.id.btnListSearch)
             ListViewMode.SAVED -> listBinding.listModeGroup.check(R.id.btnListSaved)
         }
+        listBinding.btnListSearch.setText(
+            if (state.isMapBrowse()) R.string.list_mode_browse_selection else R.string.list_mode_search,
+        )
         listBinding.savedFiltersRow.isVisible = state.listViewMode == ListViewMode.SAVED
         if (state.listViewMode == ListViewMode.SAVED) {
             bindSavedCategoryFilter(state)
@@ -1031,8 +1230,7 @@ class MainActivity : AppCompatActivity() {
         }
         mapBinding.poiCard.isVisible = true
         mapBinding.cardTitle.text = "Miejsce odpoczynku „${selected.site.name}”"
-        mapBinding.cardDistance.text =
-            String.format(Locale.forLanguageTag("pl-PL"), "%.1f km", selected.distanceKm)
+        mapBinding.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
         mapBinding.cardFeatures.text = selected.site.features.joinToString(" · ") { it.labelPl }
             .ifBlank { "Cechy BDL: brak flag" }
         mapBinding.cardZanocuj.text = when (selected.site.zanocujStatus) {
@@ -1218,7 +1416,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectedResult(): RestSiteResult? {
         val state = viewModel.state.value
-        return state.activeListResults().firstOrNull { it.site.id == state.selectedSiteId }
+        return if (state.isMapBrowse()) {
+            state.results.firstOrNull { it.site.id == state.selectedSiteId }
+        } else {
+            state.activeListResults().firstOrNull { it.site.id == state.selectedSiteId }
+        }
     }
 
     private fun updatePageIndicator(page: Int) {
@@ -1247,12 +1449,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildStatus(state: UiState): String {
         val profile = when (state.profile) {
-            TravelProfile.CAR -> "SAMOCHÓD"
-            TravelProfile.MOTORCYCLE -> "MOTOCYKL"
+            TravelProfile.CAR -> getString(R.string.profile_car)
+            TravelProfile.MOTORCYCLE -> getString(R.string.profile_moto)
         }
         val filter = when (state.zanocujFilter) {
             ZanocujFilterMode.ALL -> "wszystkie"
             ZanocujFilterMode.ONLY_IN_ZONE -> "tylko Zanocuj"
+        }
+        val offline = if (state.offlineBdl.isReady) " · offline" else ""
+        if (state.isMapBrowse()) {
+            val parking = if (state.browseParkingOnly) {
+                getString(R.string.status_browse_parking)
+            } else {
+                ""
+            }
+            return getString(
+                R.string.status_browse,
+                profile,
+                filter,
+                parking,
+                state.allSites.size,
+                offline,
+            )
         }
         val radius = "${state.searchConfig.searchRadiusKm.toInt()} km"
         val origin = when (state.searchOriginMode) {
@@ -1262,9 +1480,28 @@ class MainActivity : AppCompatActivity() {
                 val name = state.localityQuery.trim().ifBlank { "?" }
                 "od: $name"
             }
+            SearchOriginMode.LINE -> {
+                "linia: ${state.corridorLine.size} pkt L${state.corridorLeftKm.toInt()}/P${state.corridorRightKm.toInt()}"
+            }
         }
-        val offline = if (state.offlineBdl.isReady) " · offline" else ""
-        return "$profile · $radius · $filter · wyników: ${state.results.size} · $origin$offline"
+        return if (state.searchOriginMode == SearchOriginMode.LINE) {
+            "$profile · $origin · $filter · wyników: ${state.results.size}$offline"
+        } else {
+            "$profile · $radius · $filter · wyników: ${state.results.size} · $origin$offline"
+        }
+    }
+
+    private fun formatPoiDistance(state: UiState, distanceKm: Double): String {
+        val hasOrigin = if (state.isMapBrowse()) {
+            state.userPosition != null
+        } else {
+            state.searchOrigin() != null
+        }
+        return if (!hasOrigin) {
+            getString(R.string.poi_distance_no_gps)
+        } else {
+            String.format(Locale.forLanguageTag("pl-PL"), "%.1f km", distanceKm)
+        }
     }
 
     private fun bindSearchOriginUi(state: UiState) {
@@ -1273,15 +1510,116 @@ class MainActivity : AppCompatActivity() {
             SearchOriginMode.GPS -> searchBinding.searchOriginGroup.check(R.id.radioSearchGps)
             SearchOriginMode.MAP -> searchBinding.searchOriginGroup.check(R.id.radioSearchMap)
             SearchOriginMode.LOCALITY -> searchBinding.searchOriginGroup.check(R.id.radioSearchLocality)
+            SearchOriginMode.LINE -> searchBinding.searchOriginGroup.check(R.id.radioSearchLine)
         }
-        syncingSearchOriginUi = false
 
         val localityVisible = state.searchOriginMode == SearchOriginMode.LOCALITY
-        searchBinding.localityInputLayout.isVisible = localityVisible
-        if (localityVisible && searchBinding.localityInput.text?.toString() != state.localityQuery) {
+        val lineVisible = state.searchOriginMode == SearchOriginMode.LINE
+        searchBinding.corridorPanel.isVisible = lineVisible
+        // Radius: hide entirely in LINE mode; custom fields only when "Własny…" selected.
+        searchBinding.radiusSpinner.isVisible = !lineVisible
+        searchBinding.radiusLabel.isVisible = !lineVisible
+        if (lineVisible) {
+            setCustomRadiusUiVisible(false)
+        } else {
+            val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
+            val isCustom = state.searchConfig.searchRadiusKm !in presets
+            if (isCustom && searchBinding.radiusSpinner.selectedItemPosition != presets.size) {
+                searchBinding.radiusSpinner.setSelection(presets.size, false)
+            }
+            setCustomRadiusUiVisible(
+                searchBinding.radiusSpinner.selectedItemPosition >= presets.size,
+            )
+        }
+        // Locality input also for LINE shortcuts that need a name.
+        val localityForLine = lineVisible &&
+            state.localityPickPurpose != pl.navilas.finder.domain.LocalityPickPurpose.SEARCH_ORIGIN
+        searchBinding.localityInputLayout.isVisible = localityVisible || localityForLine
+        if ((localityVisible || localityForLine) &&
+            searchBinding.localityInput.text?.toString() != state.localityQuery
+        ) {
             searchBinding.localityInput.setText(state.localityQuery)
             searchBinding.localityInput.setSelection(state.localityQuery.length)
         }
+        bindLocalityCandidates(state.localityCandidates)
+        if (lineVisible) {
+            searchBinding.corridorStatus.text = getString(
+                R.string.corridor_status,
+                state.corridorLine.size,
+                formatKm(state.corridorLeftKm),
+                formatKm(state.corridorRightKm),
+            )
+            syncingCorridorUi = true
+            val leftText = formatKm(state.corridorLeftKm)
+            val rightText = formatKm(state.corridorRightKm)
+            if (searchBinding.corridorLeftInput.text?.toString() != leftText) {
+                searchBinding.corridorLeftInput.setText(leftText)
+            }
+            if (searchBinding.corridorRightInput.text?.toString() != rightText) {
+                searchBinding.corridorRightInput.setText(rightText)
+            }
+            syncingCorridorUi = false
+        }
+        syncingSearchOriginUi = false
+    }
+
+    private fun bindLocalityCandidates(candidates: List<pl.navilas.finder.data.osm.GeocodedPlace>?) {
+        val list = searchBinding.localityCandidatesList
+        val show = !candidates.isNullOrEmpty()
+        searchBinding.localityCandidatesPanel.isVisible = show
+        if (!show) {
+            list.removeAllViews()
+            return
+        }
+        // Rebuild only when content identity changes (size + first/last labels).
+        val signature = candidates!!.joinToString("|") { "${it.latitude},${it.longitude}" }
+        if (list.tag == signature && list.childCount == candidates.size) return
+        list.tag = signature
+        list.removeAllViews()
+        val padH = (12 * resources.displayMetrics.density).toInt()
+        val padV = (10 * resources.displayMetrics.density).toInt()
+        candidates.forEach { place ->
+            val row = com.google.android.material.button.MaterialButton(
+                this,
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            ).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { lp ->
+                    lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                }
+                text = place.shortLabel()
+                isAllCaps = false
+                textAlignment = android.view.View.TEXT_ALIGNMENT_VIEW_START
+                setPadding(padH, padV, padH, padV)
+                setOnClickListener { viewModel.applyLocalityChoice(place) }
+            }
+            list.addView(row)
+        }
+    }
+
+    private fun formatKm(value: Double): String =
+        if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+    private fun showCorridorVertexMenu(index: Int) {
+        val options = arrayOf(
+            getString(R.string.corridor_vertex_move),
+            getString(R.string.corridor_vertex_insert),
+            getString(R.string.corridor_vertex_delete),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.corridor_vertex_title, index + 1))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> viewModel.beginMoveCorridorPoint(index)
+                    1 -> viewModel.beginInsertCorridorPoint(index)
+                    2 -> viewModel.deleteCorridorPoint(index)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun updateOfflinePanelVisibility() {
@@ -1331,11 +1669,14 @@ class MainActivity : AppCompatActivity() {
                     ZanocujPolygonQuality.PRECISE -> "strefy dokładne"
                     ZanocujPolygonQuality.SIMPLIFIED, null -> "strefy uproszczone"
                 }
+                val updatedAt = offline.downloadedAt?.let { formatOfflineUpdatedAt(it) }
+                    ?: getString(R.string.offline_updated_unknown)
                 getString(
                     R.string.offline_status_ready,
                     scopeLabel,
                     qualityLabel,
                     formatStorageBytes(offline.storageBytes),
+                    updatedAt,
                 )
             }
             OfflineBdlStatus.ERROR -> getString(
@@ -1343,6 +1684,16 @@ class MainActivity : AppCompatActivity() {
                 offline.errorMessage ?: "błąd",
             )
         }
+
+        val pendingMismatch = offline.isReady &&
+            offline.storedConfig != null &&
+            !offline.pendingConfig.matches(offline.storedConfig)
+        searchBinding.offlineHint.setText(
+            if (pendingMismatch) R.string.offline_pending_mismatch else R.string.offline_hint,
+        )
+        searchBinding.btnDownloadOffline.setText(
+            if (pendingMismatch) R.string.offline_download_again else R.string.offline_download,
+        )
 
         val downloading = offline.status == OfflineBdlStatus.DOWNLOADING
         searchBinding.offlineProgress.isVisible = downloading
@@ -1354,6 +1705,15 @@ class MainActivity : AppCompatActivity() {
         searchBinding.btnDeleteOffline.isEnabled = !downloading
         searchBinding.offlineScopeGroup.isEnabled = !downloading
         searchBinding.offlineZanocujGroup.isEnabled = !downloading
+    }
+
+    private fun formatOfflineUpdatedAt(epochMs: Long): String {
+        val formatter = java.text.DateFormat.getDateTimeInstance(
+            java.text.DateFormat.MEDIUM,
+            java.text.DateFormat.SHORT,
+            Locale.forLanguageTag("pl-PL"),
+        )
+        return formatter.format(java.util.Date(epochMs))
     }
 
     private fun formatStorageBytes(bytes: Long): String = when {
@@ -1420,6 +1780,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showNavigateChooser(item: RestSiteResult) {
         viewModel.selectSite(item.site.id)
+        showNavAppChooser(item)
+    }
+
+    private fun showNavAppChooser(item: RestSiteResult) {
         val target = item.navigationTarget
         val options = arrayOf(
             getString(R.string.nav_google),
@@ -1578,6 +1942,7 @@ private class ResultsAdapter(
     private val profileProvider: () -> TravelProfile,
     private val isSavedProvider: (String) -> Boolean,
     private val savedMetaProvider: (String) -> Pair<String?, String?>?,
+    private val distanceLabelProvider: (RestSiteResult) -> String,
 ) : RecyclerView.Adapter<ResultsAdapter.Holder>() {
     private var items: List<RestSiteResult> = emptyList()
 
@@ -1617,7 +1982,7 @@ private class ResultsAdapter(
                 .ifBlank { "Cechy BDL: brak flag" }
             zanocuj.text = zanocujLabel(item.site.zanocujStatus, item.site.distanceToZanocujBoundaryMeters)
             zanocuj.isVisible = item.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
-            distance.text = String.format(Locale.forLanguageTag("pl-PL"), "%.1f km", item.distanceKm)
+            distance.text = distanceLabelProvider(item)
 
             val savedMeta = savedMetaProvider(item.site.id)
             if (savedMeta != null) {
