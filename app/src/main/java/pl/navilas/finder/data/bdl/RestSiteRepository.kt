@@ -7,11 +7,14 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import pl.navilas.finder.data.cache.BdlSearchCacheKey
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
+import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.LatLon
+import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RelatedBdlObject
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SiteFeature
+import pl.navilas.finder.domain.mergeWith
 import pl.navilas.finder.util.CorridorGeometry
 import pl.navilas.finder.util.GeoUtils
 import java.io.IOException
@@ -137,7 +140,7 @@ class RestSiteRepository(
         val parkings = async { queryPoints(LAYER_PARKING, envelope, OUT_FIELDS_VEHICLE) }
         val stops = async { queryPoints(LAYER_STOP, envelope, OUT_FIELDS_VEHICLE) }
         val viewpoints = async { queryPoints(LAYER_VIEWPOINT, envelope, OUT_FIELDS_SATELLITE) }
-        val other = async { queryPoints(LAYER_OTHER, envelope, OUT_FIELDS_SATELLITE) }
+        val other = async { queryPoints(LAYER_OTHER, envelope, OUT_FIELDS_OTHER) }
         val zones = async { queryZanocujPolygons(envelope) }
         buildRestSearchBundle(
             latitude = latitude,
@@ -210,7 +213,7 @@ class RestSiteRepository(
         val parkings = async { queryPoints(LAYER_PARKING, envelope, OUT_FIELDS_VEHICLE) }
         val stops = async { queryPoints(LAYER_STOP, envelope, OUT_FIELDS_VEHICLE) }
         val viewpoints = async { queryPoints(LAYER_VIEWPOINT, envelope, OUT_FIELDS_SATELLITE) }
-        val other = async { queryPoints(LAYER_OTHER, envelope, OUT_FIELDS_SATELLITE) }
+        val other = async { queryPoints(LAYER_OTHER, envelope, OUT_FIELDS_OTHER) }
         val zones = async { queryZanocujPolygons(envelope) }
         val restFeatures = rests.await()
         val parkingFeatures = parkings.await()
@@ -373,6 +376,25 @@ class RestSiteRepository(
         }
         val zone = ZanocujClassifier.evaluate(lat, lon, polygons, config)
         val name = attrs.optString("nzw_ob").ifBlank { defaultName }
+        val uwagi = attrs.optString("uwagi").takeIf { it.isNotBlank() && it != "NIE" }
+        val inneAtr = attrs.optString("inne_atr").takeIf { it.isNotBlank() }
+        val springFromText = NaturalSpringClassifier.evaluate(name, uwagi, inneAtr)
+        val springFromRelated = if (
+            satellites.any {
+                it.layerId == LAYER_OTHER &&
+                    it.zrodlo &&
+                    GeoUtils.distanceMeters(lat, lon, it.latitude, it.longitude) <=
+                    BrowseCarFilter.AMENITY_LINK_METERS
+            }
+        ) {
+            NaturalSpringCertainty.CERTAIN
+        } else {
+            null
+        }
+        val spring = when {
+            springFromRelated != null -> springFromRelated.mergeWith(springFromText)
+            else -> springFromText
+        }
         return RestSite(
             id = id,
             name = name,
@@ -385,6 +407,7 @@ class RestSiteRepository(
             relatedObjects = related,
             zanocujStatus = zone.status,
             distanceToZanocujBoundaryMeters = zone.distanceToBoundaryMeters,
+            naturalSpring = spring,
         )
     }
 
@@ -425,6 +448,7 @@ class RestSiteRepository(
             latitude = point.second,
             longitude = point.first,
             typeCode = attrs.optString("tur_rec_pnt_cd").takeIf { it.isNotBlank() },
+            zrodlo = layerId == LAYER_OTHER && BdlFeatureExtractor.yes(attrs, "zrodlo"),
         )
     }
 
@@ -508,12 +532,15 @@ class RestSiteRepository(
         private const val PIPELINE_TAG = "NaviLasPipeline"
         private const val PAGE_SIZE = 500
         private const val HARD_FETCH_CAP = 1000
-        private const val OUT_FIELDS_REST =
-            "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,uwagi,link,wiata,palenisko,parking,woda_pitna,lawostoly,kuchenka,toalety_tm,toalety_st,os_toalety,n_toalety,lad_rower,serw_rower,kapielisko,marina"
+        const val OUT_FIELDS_REST =
+            "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,uwagi,inne_atr,link,wiata,palenisko,parking,woda_pitna,lawostoly,kuchenka,toalety_tm,toalety_st,os_toalety,n_toalety,lad_rower,serw_rower,kapielisko,marina"
         const val OUT_FIELDS_VEHICLE =
             "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,tur_rec_pnt_cd,uwagi,link,wiata,palenisko,parking,lawostoly"
         const val OUT_FIELDS_SATELLITE =
             "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,tur_rec_pnt_cd,wiata,palenisko"
+        /** Layer 27 — includes natural-spring flag for amenity linking. */
+        const val OUT_FIELDS_OTHER =
+            "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,tur_rec_pnt_cd,uwagi,inne_atr,zrodlo,wiata,palenisko"
         private const val OUT_FIELDS_ZANOCUJ =
             "objectid,foreign_key,tur_sleep_poly_id,inv_nr,nzw_ob"
     }

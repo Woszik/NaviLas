@@ -12,6 +12,8 @@ data class SatellitePoint(
     val latitude: Double,
     val longitude: Double,
     val typeCode: String?,
+    /** Layer 27 `zrodlo=T` — natural spring amenity. */
+    val zrodlo: Boolean = false,
 )
 
 object SpatialLinker {

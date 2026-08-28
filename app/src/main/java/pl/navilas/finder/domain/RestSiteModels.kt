@@ -51,6 +51,11 @@ data class RestSite(
     val zanocujStatus: ZanocujStatus,
     /** Distance to nearest Zanocuj polygon boundary (m); set for NEAR_ZONE. */
     val distanceToZanocujBoundaryMeters: Double? = null,
+    /**
+     * Natural spring evidence for this site (own text and/or layer-27 `zrodlo` within link radius).
+     * Null = no spring signal.
+     */
+    val naturalSpring: NaturalSpringCertainty? = null,
 )
 
 data class RelatedBdlObject(

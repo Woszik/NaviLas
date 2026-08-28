@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <CheckBox
+        android:id="@+id/browseFilterLawostoly"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_lawostoly" />
+
+    <CheckBox
+        android:id="@+id/browseFilterWiata"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_wiata" />
+
+    <CheckBox
+        android:id="@+id/browseFilterPalenisko"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_palenisko" />
+
+    <CheckBox
+        android:id="@+id/browseFilterWodaPitna"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_woda_pitna" />
+
+    <CheckBox
+        android:id="@+id/browseFilterZrodlo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_zrodlo" />
+
+    <CheckBox
+        android:id="@+id/browseFilterParking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_parking" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/browseParkingProximityToggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        app:checkedButton="@+id/btnParkingNearPoint"
+        app:selectionRequired="true"
+        app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnParkingNearPoint"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/browse_parking_near_point" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnParkingMaxDistance"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/browse_parking_max_distance" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/browseParkingMaxMetersLayout"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="4dp"
+        android:hint="@string/browse_parking_meters_hint">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/browseParkingMaxMeters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:imeOptions="actionDone"
+            android:inputType="number"
+            android:maxLength="4"
+            android:text="500" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <CheckBox
+        android:id="@+id/browseFilterZanocuj"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/browse_filter_zanocuj" />
+</LinearLayout>

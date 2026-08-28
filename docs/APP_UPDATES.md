@@ -64,19 +64,41 @@ sha256sum app/build/outputs/apk/release/app-release.apk
 
 1. Zaktualizuj w `app/build.gradle.kts`:
    - `versionCode` — zawsze +1
-   - `versionName` — np. `0.5.1`
-2. Commit + tag:
+   - `versionName` — np. `0.5.33` (krótka nazwa, bez sufiksu roboczego)
+2. Uzupełnij [`CHANGELOG.md`](../CHANGELOG.md) — wpis dla nowej wersji + link do APK.
+3. Commit — **pierwszy akapit** commita trafia do `releaseNotes` w `latest.json` (dialog aktualizacji w aplikacji). Bez pustej linii w środku — CI bierze tylko do pierwszej pustej linii.
+4. Tag + push:
 
 ```bash
-git tag v0.5.1
+git tag v0.5.33
 git push origin main --tags
 ```
 
-3. Workflow `.github/workflows/release.yml`:
+5. Workflow `.github/workflows/release.yml`:
    - buduje release APK,
    - liczy SHA-256,
    - publikuje release w `NaviLas-releases`,
    - aktualizuje `latest.json` na `main`.
+6. Ręcznie: README w repo `NaviLas-releases` — tabela historii wersji (patrz [`CHANGELOG.md`](../CHANGELOG.md)).
+
+### Release notes — dwa miejsca
+
+| Gdzie | Źródło | Długość |
+|-------|--------|---------|
+| Dialog aktualizacji w aplikacji | Pierwszy akapit commita release → `latest.json` | 1–3 zdania |
+| Pełny opis po wdrożeniu | [`CHANGELOG.md`](../CHANGELOG.md) | Kilka punktów + link APK |
+
+## Powrót do starszej wersji (downgrade)
+
+Auto-update **nie** instaluje starszej wersji. Downgrade in-app **nie jest wspierany** (ograniczenie Androida — niższy `versionCode` nie nadpisze nowszego APK).
+
+**Ręczny powrót** (ten sam kanał GitHub, ten sam podpis):
+
+1. **Lista → Zapisane → Kopia → Eksportuj** (zabezpieczenie danych).
+2. [NaviLas-releases → Releases](https://github.com/Woszik/NaviLas-releases/releases) — pobierz starszy `navilas-*.apk`.
+3. Zainstaluj ręcznie (jak przy pierwszej instalacji).
+
+Historia opublikowanych wersji i linki do APK: [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Zachowanie aplikacji
 

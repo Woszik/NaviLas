@@ -9,12 +9,16 @@ import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.inputmethod.InputMethodManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
+import android.widget.CompoundButton
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -35,6 +39,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -47,17 +53,22 @@ import pl.navilas.finder.update.AppUpdateInstaller
 import pl.navilas.finder.update.AppUpdateOffer
 import pl.navilas.finder.data.osm.RoadClassifier
 import pl.navilas.finder.databinding.ActivityMainBinding
+import pl.navilas.finder.databinding.BottomSheetMapFiltersBinding
+import pl.navilas.finder.databinding.BrowseCarFilterControlsBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
+import pl.navilas.finder.domain.BrowseCarFilter
+import pl.navilas.finder.domain.BrowseParkingProximityMode
 import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
+import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.NavigationTargetKind
+import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.TravelProfile
-import pl.navilas.finder.domain.ZanocujFilterMode
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.domain.BdlDataScope
 import pl.navilas.finder.domain.ListViewMode
@@ -65,6 +76,8 @@ import pl.navilas.finder.domain.OfflineBdlStatus
 import pl.navilas.finder.domain.SavedPointCategory
 import pl.navilas.finder.domain.ZanocujPolygonQuality
 import pl.navilas.finder.domain.estimatedSizeLabel
+import pl.navilas.finder.domain.featureSummaryPl
+import pl.navilas.finder.domain.labelPl
 import pl.navilas.finder.domain.toStars
 import pl.navilas.finder.data.saved.SavedPointsBackupCodec
 import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
@@ -88,13 +101,17 @@ class MainActivity : AppCompatActivity() {
     private var syncingPager = false
     private var syncingOfflineUi = false
     private var syncingSearchOriginUi = false
-    private var syncingBrowseParkingUi = false
+    private var syncingBrowseCarFilterUi = false
+    private var browseCarFilterExpanded = false
     private var syncingExploreModeUi = false
+    private var mapFilterBottomSheet: BottomSheetDialog? = null
+    private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
     private var syncingListUi = false
     private var offlineSectionExpanded = false
     private var lastRenderedResultsToken: Int = -1
     private var lastAppliedCameraToken: Long = -1L
+    private var lastAppliedFollowRevision: Long = -1L
     private var updateOfferDialog: AlertDialog? = null
     private var updateProgressDialog: AlertDialog? = null
     private var updateProgressBar: ProgressBar? = null
@@ -103,6 +120,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingInstallApk: File? = null
     /** Map "my location" FAB should always re-center; search locate may not. */
     private var pendingForceCenterOnLocate = false
+    /** After permission grant: toggle map tracking instead of one-shot locate. */
+    private var pendingTrackingToggle = false
     /** After returning from unknown-sources settings: start download or install once. */
     private var pendingAfterInstallPermission: PendingAfterInstallPermission? = null
     private var installSessionStarted = false
@@ -173,8 +192,16 @@ class MainActivity : AppCompatActivity() {
     ) { grants ->
         val fine = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val coarse = grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val forTracking = pendingTrackingToggle
+        pendingTrackingToggle = false
         when {
-            fine || coarse -> viewModel.refreshLocation(forceCenter = pendingForceCenterOnLocate)
+            fine || coarse -> {
+                if (forTracking) {
+                    toggleMapTrackingFromUi()
+                } else {
+                    viewModel.refreshLocation(forceCenter = pendingForceCenterOnLocate)
+                }
+            }
             else -> Snackbar.make(
                 binding.root,
                 "Odmówiono lokalizacji. Mapa działa, ale wyszukiwanie wymaga pozycji.",
@@ -247,9 +274,22 @@ class MainActivity : AppCompatActivity() {
                 mapController.setOnCorridorVertexClickListener { index ->
                     showCorridorVertexMenu(index)
                 }
-                mapController.setOnCameraIdleListener { west, south, east, north, zoom ->
+                mapController.setOnCameraIdleListener { west, south, east, north, zoom, bearing ->
                     mapBinding.mapZoomScale.text = getString(R.string.map_zoom_scale, zoom)
                     viewModel.onBrowseMapViewport(west, south, east, north, zoom)
+                    val pos = viewModel.state.value.userPosition
+                    val screen = pos?.let {
+                        mapController.screenLocationOf(it.latitude, it.longitude)
+                    }
+                    viewModel.onMapGestureEnded(
+                        bearing = bearing,
+                        zoom = zoom,
+                        focalScreenX = screen?.x,
+                        focalScreenY = screen?.y,
+                    )
+                }
+                mapController.setOnGestureCameraMoveStartedListener {
+                    viewModel.onMapTrackingGestureStarted()
                 }
                 applyUi(viewModel.state.value, forceMarkers = true)
                 viewModel.refreshLocation(showApproximateHint = false)
@@ -336,17 +376,8 @@ class MainActivity : AppCompatActivity() {
             }
             viewModel.setExploreMode(mode)
         }
-        searchBinding.zanocujFilter.setOnCheckedChangeListener { _, checkedId ->
-            val mode = when (checkedId) {
-                R.id.radioZanocujOnly -> ZanocujFilterMode.ONLY_IN_ZONE
-                else -> ZanocujFilterMode.ALL
-            }
-            viewModel.setZanocujFilter(mode)
-        }
-        searchBinding.browseParkingOnly.setOnCheckedChangeListener { _, isChecked ->
-            if (syncingBrowseParkingUi) return@setOnCheckedChangeListener
-            viewModel.setBrowseParkingOnly(isChecked)
-        }
+        searchBinding.zanocujFilter.setOnCheckedChangeListener(null)
+        setupBrowseCarFilterSection()
         searchBinding.btnSearch.setOnClickListener { viewModel.searchNearby() }
         searchBinding.btnLocate.setOnClickListener { requestLocationPermissions() }
         searchBinding.btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
@@ -359,9 +390,13 @@ class MainActivity : AppCompatActivity() {
         setupOfflineSection()
     }
 
-    private fun applyMapBrowseSearchChrome() {
+    private fun applyMapBrowseSearchChrome(state: UiState) {
         searchBinding.mapBrowseHint.isVisible = true
-        searchBinding.browseParkingOnly.isVisible = true
+        searchBinding.zanocujLabel.isVisible = false
+        searchBinding.zanocujFilter.isVisible = false
+        searchBinding.browseParkingOnly.isVisible = false
+        searchBinding.browseCarFilterSection.isVisible = true
+        bindBrowseCarFilterUi(state)
         searchBinding.searchOriginLabel.isVisible = false
         searchBinding.searchOriginGroup.isVisible = false
         searchBinding.corridorPanel.isVisible = false
@@ -377,7 +412,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySearchModeChrome(state: UiState) {
         searchBinding.mapBrowseHint.isVisible = false
+        searchBinding.zanocujLabel.isVisible = false
+        searchBinding.zanocujFilter.isVisible = false
         searchBinding.browseParkingOnly.isVisible = false
+        searchBinding.browseCarFilterSection.isVisible = true
+        bindBrowseCarFilterUi(state)
         searchBinding.searchOriginLabel.isVisible = true
         searchBinding.searchOriginGroup.isVisible = true
         bindSearchOriginUi(state)
@@ -386,6 +425,247 @@ class MainActivity : AppCompatActivity() {
             lineMode = state.searchOriginMode == SearchOriginMode.LINE,
         )
         searchBinding.searchHint.setText(R.string.search_page_hint)
+    }
+
+    private fun setupBrowseCarFilterSection() {
+        setupFilterControlsListeners(searchBinding.browseCarFilterControls)
+        searchBinding.btnToggleBrowseCarFilter.setOnClickListener {
+            if (browseCarFilterExpanded) {
+                applyBrowseCarFilterFromUi()
+                browseCarFilterExpanded = false
+            } else {
+                syncBrowseCarFilterDraftTo(
+                    searchBinding.browseCarFilterControls,
+                    viewModel.state.value.browseCarFilter,
+                )
+                browseCarFilterExpanded = true
+            }
+            updateBrowseCarFilterChrome(viewModel.state.value)
+        }
+        searchBinding.btnApplyBrowseCarFilter.setOnClickListener {
+            applyBrowseCarFilterFromUi()
+            browseCarFilterExpanded = false
+            updateBrowseCarFilterChrome(viewModel.state.value)
+            bindMapFilterFab(viewModel.state.value)
+        }
+    }
+
+    private fun setupFilterControlsListeners(
+        controls: BrowseCarFilterControlsBinding,
+        onDraftChanged: (() -> Unit)? = null,
+    ) {
+        fun notifyDraftChanged() {
+            if (!syncingBrowseCarFilterUi) onDraftChanged?.invoke()
+        }
+
+        val checkboxListener = CompoundButton.OnCheckedChangeListener { _, _ ->
+            notifyDraftChanged()
+        }
+        controls.browseFilterLawostoly.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterWiata.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterPalenisko.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterWodaPitna.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterZrodlo.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterZanocuj.setOnCheckedChangeListener(checkboxListener)
+
+        controls.browseFilterParking.setOnCheckedChangeListener { _, checked ->
+            if (!syncingBrowseCarFilterUi) {
+                updateBrowseParkingSubControlsEnabled(controls, checked)
+                notifyDraftChanged()
+            }
+        }
+        controls.browseParkingProximityToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || syncingBrowseCarFilterUi) return@addOnButtonCheckedListener
+            updateBrowseParkingMetersEnabled(
+                controls,
+                controls.browseFilterParking.isChecked &&
+                    checkedId == R.id.btnParkingMaxDistance,
+            )
+            notifyDraftChanged()
+        }
+        controls.browseParkingMaxMeters.setOnFocusChangeListener { _, hasFocus ->
+            if (syncingBrowseCarFilterUi) return@setOnFocusChangeListener
+            if (hasFocus) {
+                controls.browseParkingMaxMeters.setText("")
+                controls.browseParkingMaxMeters.post {
+                    val imm = getSystemService(InputMethodManager::class.java)
+                    imm?.showSoftInput(controls.browseParkingMaxMeters, InputMethodManager.SHOW_IMPLICIT)
+                }
+            } else {
+                val text = controls.browseParkingMaxMeters.text?.toString()?.trim()
+                if (text.isNullOrEmpty()) {
+                    controls.browseParkingMaxMeters.setText(
+                        BrowseCarFilter.DEFAULT_PARKING_MAX_METERS.toString(),
+                    )
+                }
+                notifyDraftChanged()
+            }
+        }
+        if (onDraftChanged != null) {
+            controls.browseParkingMaxMeters.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    notifyDraftChanged()
+                }
+            })
+        }
+    }
+
+    private fun applyBrowseCarFilterFromUi() {
+        applyBrowseCarFilterFrom(searchBinding.browseCarFilterControls)
+    }
+
+    private fun applyBrowseCarFilterFrom(controls: BrowseCarFilterControlsBinding) {
+        viewModel.setBrowseCarFilter(readBrowseCarFilterFrom(controls))
+    }
+
+    private fun updateBrowseParkingSubControlsEnabled(
+        controls: BrowseCarFilterControlsBinding,
+        parkingChecked: Boolean,
+    ) {
+        controls.browseParkingProximityToggle.isEnabled = parkingChecked
+        val maxDistance = controls.btnParkingMaxDistance.isChecked
+        updateBrowseParkingMetersEnabled(controls, parkingChecked && maxDistance)
+    }
+
+    private fun updateBrowseParkingMetersEnabled(
+        controls: BrowseCarFilterControlsBinding,
+        enabled: Boolean,
+    ) {
+        controls.browseParkingMaxMetersLayout.isEnabled = enabled
+        controls.browseParkingMaxMeters.isEnabled = enabled
+    }
+
+    private fun readBrowseCarFilterFrom(controls: BrowseCarFilterControlsBinding): BrowseCarFilter {
+        val metersText = controls.browseParkingMaxMeters.text?.toString()?.trim().orEmpty()
+        val meters = metersText.toIntOrNull()?.coerceIn(1, BrowseCarFilter.MAX_PARKING_METERS)
+            ?: BrowseCarFilter.DEFAULT_PARKING_MAX_METERS
+        val parkingMode = if (controls.btnParkingMaxDistance.isChecked) {
+            BrowseParkingProximityMode.MAX_DISTANCE
+        } else {
+            BrowseParkingProximityMode.NEAR_POINT
+        }
+        return BrowseCarFilter(
+            requireLawostoly = controls.browseFilterLawostoly.isChecked,
+            requireWiata = controls.browseFilterWiata.isChecked,
+            requirePalenisko = controls.browseFilterPalenisko.isChecked,
+            requireWodaPitna = controls.browseFilterWodaPitna.isChecked,
+            requireZrodlo = controls.browseFilterZrodlo.isChecked,
+            requireParking = controls.browseFilterParking.isChecked,
+            parkingMode = parkingMode,
+            parkingMaxMeters = meters,
+            requireZanocujInZone = controls.browseFilterZanocuj.isChecked,
+        )
+    }
+
+    private fun syncBrowseCarFilterDraftTo(
+        controls: BrowseCarFilterControlsBinding,
+        filter: BrowseCarFilter,
+    ) {
+        syncingBrowseCarFilterUi = true
+        controls.browseFilterLawostoly.isChecked = filter.requireLawostoly
+        controls.browseFilterWiata.isChecked = filter.requireWiata
+        controls.browseFilterPalenisko.isChecked = filter.requirePalenisko
+        controls.browseFilterWodaPitna.isChecked = filter.requireWodaPitna
+        controls.browseFilterZrodlo.isChecked = filter.requireZrodlo
+        controls.browseFilterParking.isChecked = filter.requireParking
+        controls.browseFilterZanocuj.isChecked = filter.requireZanocujInZone
+        when (filter.parkingMode) {
+            BrowseParkingProximityMode.NEAR_POINT ->
+                controls.browseParkingProximityToggle.check(R.id.btnParkingNearPoint)
+            BrowseParkingProximityMode.MAX_DISTANCE ->
+                controls.browseParkingProximityToggle.check(R.id.btnParkingMaxDistance)
+        }
+        val metersText = filter.parkingMaxMeters.toString()
+        if (controls.browseParkingMaxMeters.text?.toString() != metersText) {
+            controls.browseParkingMaxMeters.setText(metersText)
+        }
+        updateBrowseParkingSubControlsEnabled(controls, filter.requireParking)
+        syncingBrowseCarFilterUi = false
+    }
+
+    private fun updateBrowseCarFilterChrome(state: UiState) {
+        searchBinding.browseCarFilterPanel.isVisible = browseCarFilterExpanded
+        searchBinding.browseCarFilterSummary.isVisible = !browseCarFilterExpanded
+        searchBinding.browseCarFilterSummary.text = state.browseCarFilter.summaryPl()
+        val chevron = if (browseCarFilterExpanded) " ▲" else " ▼"
+        searchBinding.btnToggleBrowseCarFilter.text =
+            getString(R.string.browse_car_filter_toggle) + chevron
+    }
+
+    private fun bindBrowseCarFilterUi(state: UiState) {
+        if (browseCarFilterExpanded) {
+            syncBrowseCarFilterDraftTo(searchBinding.browseCarFilterControls, state.browseCarFilter)
+        }
+        updateBrowseCarFilterChrome(state)
+        bindMapFilterFab(state)
+    }
+
+    private fun bindMapFilterFab(state: UiState) {
+        val summary = state.browseCarFilter.summaryPl()
+        mapBinding.btnMapPlaceFilters.contentDescription =
+            getString(R.string.map_filter_fab) + ": " + summary
+        val tintAttr = if (state.browseCarFilter.isActive) {
+            com.google.android.material.R.attr.colorPrimaryContainer
+        } else {
+            com.google.android.material.R.attr.colorSecondaryContainer
+        }
+        val onTintAttr = if (state.browseCarFilter.isActive) {
+            com.google.android.material.R.attr.colorOnPrimaryContainer
+        } else {
+            com.google.android.material.R.attr.colorOnSecondaryContainer
+        }
+        mapBinding.btnMapPlaceFilters.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(
+                MaterialColors.getColor(mapBinding.btnMapPlaceFilters, tintAttr),
+            )
+        mapBinding.btnMapPlaceFilters.iconTint =
+            android.content.res.ColorStateList.valueOf(
+                MaterialColors.getColor(mapBinding.btnMapPlaceFilters, onTintAttr),
+            )
+        mapBinding.btnMapPlaceFilters.setTextColor(
+            MaterialColors.getColor(mapBinding.btnMapPlaceFilters, onTintAttr),
+        )
+    }
+
+    private fun showMapFilterBottomSheet() {
+        mapFilterBottomSheet?.dismiss()
+        val sheetBinding = BottomSheetMapFiltersBinding.inflate(layoutInflater)
+        val filter = viewModel.state.value.browseCarFilter
+        fun refreshSheetSummary() {
+            sheetBinding.mapFilterSheetSummary.text =
+                readBrowseCarFilterFrom(sheetBinding.mapFilterControls).summaryPl()
+        }
+        syncBrowseCarFilterDraftTo(sheetBinding.mapFilterControls, filter)
+        refreshSheetSummary()
+        setupFilterControlsListeners(
+            sheetBinding.mapFilterControls,
+            onDraftChanged = { refreshSheetSummary() },
+        )
+        sheetBinding.btnApplyMapFilter.setOnClickListener {
+            applyBrowseCarFilterFrom(sheetBinding.mapFilterControls)
+            browseCarFilterExpanded = false
+            updateBrowseCarFilterChrome(viewModel.state.value)
+            bindMapFilterFab(viewModel.state.value)
+            mapFilterBottomSheet?.dismiss()
+        }
+        val dialog = BottomSheetDialog(this)
+        dialog.setContentView(sheetBinding.root)
+        mapFilterBottomSheet = dialog
+        dialog.show()
+    }
+
+    private fun applyBrowseMapFilters(state: UiState) {
+        if (!state.isMapBrowse() || state.mapBrowseRevision <= 0) return
+        val match = viewModel.browseCarMatchingIds(state)
+        val token = (state.browseCarFilter.hashCode()) xor
+            (match?.size ?: -1) xor
+            state.mapBrowseRevision.hashCode() xor
+            state.allSites.size
+        if (token == lastBrowseCarFilterToken) return
+        lastBrowseCarFilterToken = token
+        mapController.setBrowseLayerMatchFlags(state.allSites, match)
     }
 
     private fun setupSearchOriginSection() {
@@ -672,6 +952,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMapCard() {
         mapBinding.btnMapMyLocation.setOnClickListener { requestLocationPermissions(forceCenter = true) }
+        mapBinding.btnMapTrackLocation.setOnClickListener {
+            requestLocationPermissions(forceCenter = false, forTrackingToggle = true)
+        }
+        mapBinding.btnMapPlaceFilters.setOnClickListener { showMapFilterBottomSheet() }
         mapBinding.btnCloseCard.setOnClickListener { viewModel.closeSelectedSite() }
         mapBinding.btnSaveCard.setOnClickListener {
             selectedResult()?.let { onSaveClicked(it) }
@@ -759,13 +1043,92 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestLocationPermissions(forceCenter: Boolean = false) {
+    private fun requestLocationPermissions(
+        forceCenter: Boolean = false,
+        forTrackingToggle: Boolean = false,
+    ) {
         pendingForceCenterOnLocate = forceCenter
+        pendingTrackingToggle = forTrackingToggle
+        val fine = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (fine || coarse) {
+            if (forTrackingToggle) {
+                pendingTrackingToggle = false
+                toggleMapTrackingFromUi()
+            } else {
+                viewModel.refreshLocation(forceCenter = forceCenter)
+                pendingForceCenterOnLocate = false
+            }
+            return
+        }
         permissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
             ),
+        )
+    }
+
+    private fun toggleMapTrackingFromUi() {
+        if (!mapReady) return
+        val mode = viewModel.state.value.mapTrackingMode
+        if (mode == MapTrackingMode.TRACKING) {
+            viewModel.toggleMapTracking(0f, 0f, 0.0, 0.0)
+            return
+        }
+        val width = mapController.mapWidthPx().takeIf { it > 0 } ?: return
+        val height = mapController.mapHeightPx().takeIf { it > 0 } ?: return
+        val pos = viewModel.state.value.userPosition
+        val screen = pos?.let { mapController.screenLocationOf(it.latitude, it.longitude) }
+        val onScreen = screen != null &&
+            screen.x in 0f..width.toFloat() &&
+            screen.y in 0f..height.toFloat()
+        val focalX = if (onScreen) screen!!.x else width / 2f
+        val focalY = if (onScreen) {
+            screen!!.y
+        } else {
+            height * MapController.DEFAULT_FOLLOW_FOCAL_Y_FROM_TOP
+        }
+        viewModel.toggleMapTracking(
+            focalScreenX = focalX,
+            focalScreenY = focalY,
+            bearing = mapController.currentBearing(),
+            zoom = mapController.currentZoom().coerceAtLeast(13.0),
+        )
+    }
+
+    private fun bindMapTrackingFab(mode: MapTrackingMode) {
+        val tracking = mode == MapTrackingMode.TRACKING
+        mapBinding.btnMapTrackLocation.setImageResource(
+            if (tracking) {
+                android.R.drawable.ic_media_pause
+            } else {
+                android.R.drawable.ic_media_play
+            },
+        )
+        mapBinding.btnMapTrackLocation.contentDescription = getString(
+            if (tracking) R.string.map_tracking_paused else R.string.map_tracking_cd,
+        )
+    }
+
+    private fun applyFollowCameraIfNeeded(state: UiState) {
+        if (state.mapTrackingMode != MapTrackingMode.TRACKING) return
+        if (state.mapFollowRevision == lastAppliedFollowRevision) return
+        val pos = state.userPosition ?: return
+        lastAppliedFollowRevision = state.mapFollowRevision
+        mapController.followUserAtScreenPoint(
+            latitude = pos.latitude,
+            longitude = pos.longitude,
+            focalScreenX = viewModel.followFocalScreenX,
+            focalScreenY = viewModel.followFocalScreenY,
+            bearing = viewModel.followBearing,
+            zoom = viewModel.followZoom,
         )
     }
 
@@ -797,10 +1160,7 @@ class MainActivity : AppCompatActivity() {
         )
         syncingExploreModeUi = false
         if (state.isMapBrowse()) {
-            syncingBrowseParkingUi = true
-            searchBinding.browseParkingOnly.isChecked = state.browseParkingOnly
-            syncingBrowseParkingUi = false
-            applyMapBrowseSearchChrome()
+            applyMapBrowseSearchChrome(state)
         } else {
             applySearchModeChrome(state)
         }
@@ -855,15 +1215,11 @@ class MainActivity : AppCompatActivity() {
                     )
                     mapController.setBrowseZanocujPolygons(state.zanocujPolygons)
                 }
-                mapController.applyBrowseFilters(
-                    zanocujOnly = state.zanocujFilter == ZanocujFilterMode.ONLY_IN_ZONE,
-                    parkingOnly = state.browseParkingOnly,
-                )
+                applyBrowseMapFilters(state)
                 val browseHash = (state.selectedSiteId?.hashCode() ?: 0) xor
                     state.profile.hashCode() xor
                     state.mapBrowseRevision.hashCode() xor
-                    state.zanocujFilter.hashCode() xor
-                    state.browseParkingOnly.hashCode() xor
+                    state.browseCarFilter.hashCode() xor
                     state.zanocujPolygons.size xor
                     state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
                 if (forceMarkers || browseHash != lastRenderedResultsToken) {
@@ -880,6 +1236,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 val resultsHash = listItems.hashCode() xor (state.selectedSiteId?.hashCode() ?: 0) xor
                     state.profile.hashCode() xor state.zanocujPolygons.size xor
+                    state.browseCarFilter.hashCode() xor
                     (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
                     state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
                 if (forceMarkers || resultsHash != lastRenderedResultsToken) {
@@ -894,7 +1251,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             applyCameraRequest(state, selected, listItems)
+            applyFollowCameraIfNeeded(state)
         }
+
+        bindMapTrackingFab(state.mapTrackingMode)
+        bindMapFilterFab(state)
 
         state.message?.let { showMessage(it) }
         handleAppUpdateState(state)
@@ -1164,10 +1525,16 @@ class MainActivity : AppCompatActivity() {
         lastAppliedCameraToken = token
         when (request) {
             is MapCameraRequest.ShowAllResults -> {
+                if (state.mapTrackingMode == MapTrackingMode.TRACKING) {
+                    viewModel.pauseMapTrackingForPoiInteraction()
+                }
                 val origin = state.searchOrigin()
                 mapController.showAllResultsOnMap(listItems, origin)
             }
             is MapCameraRequest.ShowPoi -> {
+                if (state.mapTrackingMode == MapTrackingMode.TRACKING) {
+                    viewModel.pauseMapTrackingForPoiInteraction()
+                }
                 val poi = listItems.firstOrNull { it.site.id == request.siteId } ?: selected
                 if (poi != null) {
                     mapController.showPoiOnMap(poi)
@@ -1231,8 +1598,7 @@ class MainActivity : AppCompatActivity() {
         mapBinding.poiCard.isVisible = true
         mapBinding.cardTitle.text = "Miejsce odpoczynku „${selected.site.name}”"
         mapBinding.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
-        mapBinding.cardFeatures.text = selected.site.features.joinToString(" · ") { it.labelPl }
-            .ifBlank { "Cechy BDL: brak flag" }
+        mapBinding.cardFeatures.text = selected.site.featureSummaryPl()
         mapBinding.cardZanocuj.text = when (selected.site.zanocujStatus) {
             ZanocujStatus.IN_ZONE -> getString(R.string.zanocuj_in_zone_emoji)
             ZanocujStatus.NEAR_ZONE -> getString(R.string.zanocuj_near_zone_emoji)
@@ -1452,22 +1818,14 @@ class MainActivity : AppCompatActivity() {
             TravelProfile.CAR -> getString(R.string.profile_car)
             TravelProfile.MOTORCYCLE -> getString(R.string.profile_moto)
         }
-        val filter = when (state.zanocujFilter) {
-            ZanocujFilterMode.ALL -> "wszystkie"
-            ZanocujFilterMode.ONLY_IN_ZONE -> "tylko Zanocuj"
-        }
+        val filterLabel = state.browseCarFilter.summaryPl()
         val offline = if (state.offlineBdl.isReady) " · offline" else ""
         if (state.isMapBrowse()) {
-            val parking = if (state.browseParkingOnly) {
-                getString(R.string.status_browse_parking)
-            } else {
-                ""
-            }
             return getString(
                 R.string.status_browse,
                 profile,
-                filter,
-                parking,
+                filterLabel,
+                "",
                 state.allSites.size,
                 offline,
             )
@@ -1485,9 +1843,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return if (state.searchOriginMode == SearchOriginMode.LINE) {
-            "$profile · $origin · $filter · wyników: ${state.results.size}$offline"
+            "$profile · $origin · $filterLabel · wyników: ${state.results.size}$offline"
         } else {
-            "$profile · $radius · $filter · wyników: ${state.results.size} · $origin$offline"
+            "$profile · $radius · $filterLabel · wyników: ${state.results.size} · $origin$offline"
         }
     }
 
@@ -1735,7 +2093,10 @@ class MainActivity : AppCompatActivity() {
         val site = item.site
         val state = viewModel.state.value
         val saved = state.savedPoint(site.id)
-        val features = site.features.joinToString("\n") { "• ${it.labelPl}" }.ifBlank { "• (brak flag BDL)" }
+        val features = buildList {
+            site.features.forEach { add("• ${it.labelPl}") }
+            site.naturalSpring?.let { add("• ${it.labelPl()}") }
+        }.joinToString("\n").ifBlank { "• (brak flag BDL)" }
         val related = site.relatedObjects.joinToString("\n") {
             "• ${it.name} (${it.layerName}, ${it.distanceMeters.toInt()} m)"
         }.ifBlank { "• brak w ${stateConfigLinkRadius()} m" }
@@ -1978,8 +2339,7 @@ private class ResultsAdapter(
 
         fun bind(item: RestSiteResult) {
             title.text = "Miejsce odpoczynku „${item.site.name}”"
-            features.text = item.site.features.joinToString(" · ") { it.labelPl }
-                .ifBlank { "Cechy BDL: brak flag" }
+            features.text = item.site.featureSummaryPl()
             zanocuj.text = zanocujLabel(item.site.zanocujStatus, item.site.distanceToZanocujBoundaryMeters)
             zanocuj.isVisible = item.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
             distance.text = distanceLabelProvider(item)

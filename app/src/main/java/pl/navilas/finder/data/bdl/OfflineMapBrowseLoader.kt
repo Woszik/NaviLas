@@ -3,14 +3,21 @@ package pl.navilas.finder.data.bdl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import pl.navilas.finder.domain.BrowseCarFilter
+import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SiteFeature
+import pl.navilas.finder.domain.mergeWith
+import pl.navilas.finder.util.GeoUtils
+import kotlin.math.cos
+import kotlin.math.floor
 
 /**
  * Loads **all** offline rest-site points for MapBrowse mode.
  * Zanocuj status uses the same [ZanocujClassifier] rules as search (IN / NEAR / OUT).
  * Related-object linking is skipped for speed; amenity 17/19 use a coarse cell de-dupe.
+ * Natural springs: text on layer 15 + layer-27 `zrodlo=T` within [BrowseCarFilter.AMENITY_LINK_METERS].
  */
 class OfflineMapBrowseLoader(
     private val store: BdlOfflineStore,
@@ -28,6 +35,8 @@ class OfflineMapBrowseLoader(
         val skippedInvalidGeometry: Int = 0,
     )
 
+    private data class SpringPoint(val latitude: Double, val longitude: Double)
+
     suspend fun loadAll(): Bundle = withContext(Dispatchers.IO) {
         val started = System.currentTimeMillis()
         require(store.isReady()) { "BDL offline not ready" }
@@ -38,6 +47,7 @@ class OfflineMapBrowseLoader(
         val restFeatures = store.loadLayerFeatures(RestSiteRepository.LAYER_REST)
         val parkingFeatures = store.loadLayerFeatures(RestSiteRepository.LAYER_PARKING)
         val stopFeatures = store.loadLayerFeatures(RestSiteRepository.LAYER_STOP)
+        val springPoints = loadSpringPoints(onInvalid)
         val indexed = loadIndexedZanocuj()
 
         val from15 = restFeatures.mapNotNull { feature ->
@@ -48,6 +58,7 @@ class OfflineMapBrowseLoader(
                 defaultName = "Miejsce wypoczynku",
                 indexed = indexed,
                 forceParking = false,
+                springPoints = springPoints,
                 onInvalidGeometry = onInvalid,
             )
         }
@@ -65,6 +76,7 @@ class OfflineMapBrowseLoader(
                     indexed,
                     occupied,
                     forceParking = true,
+                    springPoints = springPoints,
                     onInvalidGeometry = onInvalid,
                 ),
             )
@@ -77,6 +89,7 @@ class OfflineMapBrowseLoader(
                     indexed,
                     occupied,
                     forceParking = false,
+                    springPoints = springPoints,
                     onInvalidGeometry = onInvalid,
                 ),
             )
@@ -90,6 +103,26 @@ class OfflineMapBrowseLoader(
         )
     }
 
+    private fun loadSpringPoints(onInvalidGeometry: () -> Unit): Map<Long, MutableList<SpringPoint>> {
+        val features = store.loadLayerFeatures(RestSiteRepository.LAYER_OTHER)
+        val byCell = HashMap<Long, MutableList<SpringPoint>>()
+        for (feature in features) {
+            val attrs = feature.optJSONObject("attributes") ?: continue
+            if (!BdlFeatureExtractor.yes(attrs, "zrodlo")) continue
+            val point = BdlMapper.pointFromGeometry(feature.optJSONObject("geometry"))
+            if (point == null) {
+                if (feature.optJSONObject("geometry") != null) onInvalidGeometry()
+                continue
+            }
+            val lon = point.first
+            val lat = point.second
+            if (!lat.isFinite() || !lon.isFinite()) continue
+            val key = springCellKey(lat, lon)
+            byCell.getOrPut(key) { ArrayList() }.add(SpringPoint(lat, lon))
+        }
+        return byCell
+    }
+
     private fun mapAmenityExtras(
         features: List<JSONObject>,
         layerId: Int,
@@ -98,6 +131,7 @@ class OfflineMapBrowseLoader(
         indexed: List<ZanocujBoundsPolygon>,
         occupied: MutableSet<Long>,
         forceParking: Boolean,
+        springPoints: Map<Long, List<SpringPoint>>,
         onInvalidGeometry: () -> Unit,
     ): List<RestSite> = features.mapNotNull { feature ->
         val attrs = feature.optJSONObject("attributes") ?: return@mapNotNull null
@@ -119,6 +153,7 @@ class OfflineMapBrowseLoader(
             defaultName = defaultName,
             indexed = indexed,
             forceParking = forceParking,
+            springPoints = springPoints,
             onInvalidGeometry = onInvalidGeometry,
         )
     }
@@ -130,6 +165,7 @@ class OfflineMapBrowseLoader(
         defaultName: String,
         indexed: List<ZanocujBoundsPolygon>,
         forceParking: Boolean,
+        springPoints: Map<Long, List<SpringPoint>>,
         onInvalidGeometry: () -> Unit = {},
     ): RestSite? {
         val attrs = feature.optJSONObject("attributes") ?: return null
@@ -144,20 +180,60 @@ class OfflineMapBrowseLoader(
         if (forceParking || layerId == RestSiteRepository.LAYER_PARKING) {
             features += SiteFeature.PARKING
         }
+        val name = attrs.optString("nzw_ob").ifBlank { defaultName }
+        val uwagi = attrs.optString("uwagi").takeIf { it.isNotBlank() && it != "NIE" }
+        val inneAtr = attrs.optString("inne_atr").takeIf { it.isNotBlank() }
+        var spring = NaturalSpringClassifier.evaluate(name, uwagi, inneAtr)
+        if (hasZrodloNearby(lat, lon, springPoints)) {
+            spring = NaturalSpringCertainty.CERTAIN.mergeWith(spring)
+        }
         val zone = evaluateZanocuj(lat, lon, indexed)
         return RestSite(
             id = BdlIdentity.resolve(layerId, attrs),
-            name = attrs.optString("nzw_ob").ifBlank { defaultName },
+            name = name,
             latitude = lat,
             longitude = lon,
-            description = attrs.optString("uwagi").takeIf { it.isNotBlank() && it != "NIE" },
+            description = uwagi,
             sourceLayerId = layerId,
             sourceLayerName = layerName,
             features = features,
             relatedObjects = emptyList(),
             zanocujStatus = zone.status,
             distanceToZanocujBoundaryMeters = zone.distanceToBoundaryMeters,
+            naturalSpring = spring,
         )
+    }
+
+    private fun hasZrodloNearby(
+        lat: Double,
+        lon: Double,
+        springPoints: Map<Long, List<SpringPoint>>,
+    ): Boolean {
+        if (springPoints.isEmpty()) return false
+        val radius = BrowseCarFilter.AMENITY_LINK_METERS
+        val marginDeg = (radius / 111_000.0) * 1.2
+        val minLat = lat - marginDeg
+        val maxLat = lat + marginDeg
+        val cosLat = cos(Math.toRadians(lat)).coerceAtLeast(0.2)
+        val lonMargin = marginDeg / cosLat
+        val minLon = lon - lonMargin
+        val maxLon = lon + lonMargin
+        val i0 = springTileIndex(minLat)
+        val i1 = springTileIndex(maxLat)
+        val j0 = springTileIndex(minLon)
+        val j1 = springTileIndex(maxLon)
+        for (i in i0..i1) {
+            for (j in j0..j1) {
+                val bucket = springPoints[packSpring(i, j)] ?: continue
+                for (sp in bucket) {
+                    if (sp.latitude < minLat || sp.latitude > maxLat) continue
+                    if (sp.longitude < minLon || sp.longitude > maxLon) continue
+                    val d = GeoUtils.distanceMeters(lat, lon, sp.latitude, sp.longitude)
+                    if (d <= radius) return true
+                }
+            }
+        }
+        return false
     }
 
     private fun evaluateZanocuj(
@@ -202,5 +278,18 @@ class OfflineMapBrowseLoader(
         val y = (lat * 1000.0).toInt()
         val x = (lon * 1000.0).toInt()
         return (y.toLong() shl 32) xor (x.toLong() and 0xffffffffL)
+    }
+
+    private fun springCellKey(lat: Double, lon: Double): Long =
+        packSpring(springTileIndex(lat), springTileIndex(lon))
+
+    private fun springTileIndex(value: Double): Int =
+        floor(value / SPRING_CELL_DEG).toInt()
+
+    private fun packSpring(i: Int, j: Int): Long =
+        (i.toLong() shl 32) xor (j.toLong() and 0xffffffffL)
+
+    companion object {
+        private const val SPRING_CELL_DEG = 0.01
     }
 }

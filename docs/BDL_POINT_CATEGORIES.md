@@ -92,7 +92,9 @@ To **atrybuty infrastruktury** na warstwach punktowych (głównie 15, czasem 17/
 
 Wartość **`T`** = tak, **`N`** / brak = nie. Ekstrakcja: `BdlFeatureExtractor`.
 
-**Świadomie nie mapujemy** na osobne kategorie UI: „Źródło”, „Pomnik przyrody” itp. — takich warstw/pól **nie ma** w tym MapServerze; obiekty tego typu mogą wystąpić na warstwie **27** z nazwą w polu `nzw_ob`.
+**Świadomie nie mapujemy** na osobne kategorie wyników BDL: „Pomnik przyrody” itp. — takich warstw/pól **nie ma** w tym MapServerze.
+
+**Filtr „Źródło naturalne” (od 0.5.33):** osobna logika poza kategoriami wyniku — warstwa **27** z `zrodlo=T` w promieniu 200 m + heurystyka `inne_atr` na miejscu odpoczynku. Klasyfikacja: pewne / niepewne / odrzut (`NaturalSpringClassifier`). W trybie offline wymaga ponownego pobrania BDL (pola `inne_atr`, `zrodlo` w eksporcie).
 
 ---
 

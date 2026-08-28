@@ -90,10 +90,10 @@ class BdlOfflineDownloader(
 
     private fun outFieldsForLayer(layerId: Int): String = when (layerId) {
         RestSiteRepository.LAYER_ZANOCUJ -> "objectid,foreign_key,tur_sleep_poly_id,inv_nr,nzw_ob"
-        RestSiteRepository.LAYER_REST ->
-            "objectid,foreign_key,tur_rec_pnt_id,inv_nr,nzw_ob,uwagi,link,wiata,palenisko,parking,woda_pitna,lawostoly,kuchenka,toalety_tm,toalety_st,os_toalety,n_toalety,lad_rower,serw_rower,kapielisko,marina"
+        RestSiteRepository.LAYER_REST -> RestSiteRepository.OUT_FIELDS_REST
         RestSiteRepository.LAYER_PARKING, RestSiteRepository.LAYER_STOP -> RestSiteRepository.OUT_FIELDS_VEHICLE
-        RestSiteRepository.LAYER_VIEWPOINT, RestSiteRepository.LAYER_OTHER -> RestSiteRepository.OUT_FIELDS_SATELLITE
+        RestSiteRepository.LAYER_VIEWPOINT -> RestSiteRepository.OUT_FIELDS_SATELLITE
+        RestSiteRepository.LAYER_OTHER -> RestSiteRepository.OUT_FIELDS_OTHER
         in BdlArcGisClient.HEAVY_POLYLINE_LAYERS ->
             "objectid,foreign_key,inv_nr,nzw_ob"
         else -> "*"

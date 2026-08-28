@@ -9,6 +9,9 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -120,6 +123,98 @@ class AppLocationProvider(
 
     fun lastPersistedFix(): LastGoodLocationStore.StoredLocation? = lastGpsPreferences?.load()
 
+    /**
+     * Continuous foreground updates. Emits [LocationOutcome.Exact]/[LocationOutcome.Approximate]
+     * when a fix arrives; [LocationOutcome.Failure] once if permissions/providers block start.
+     * Stops when the collector cancels.
+     */
+    @SuppressLint("MissingPermission")
+    fun locationUpdates(
+        minTimeMs: Long = TRACKING_MIN_TIME_MS,
+        minDistanceMeters: Float = TRACKING_MIN_DISTANCE_M,
+    ): Flow<LocationOutcome> = callbackFlow {
+        when (permissionState()) {
+            PermissionState.DENIED -> {
+                trySend(
+                    LocationOutcome.Failure(
+                        "Brak uprawnień do lokalizacji. Nadaj dostęp, aby śledzić pozycję na mapie.",
+                    ),
+                )
+                close()
+                return@callbackFlow
+            }
+            PermissionState.FINE, PermissionState.COARSE_ONLY -> Unit
+        }
+        if (!isLocationEnabled()) {
+            trySend(
+                LocationOutcome.Failure(
+                    "Lokalizacja systemu jest wyłączona. Włącz GPS / lokalizację w ustawieniach telefonu.",
+                ),
+            )
+            close()
+            return@callbackFlow
+        }
+
+        val provider = preferredProvider()
+        val listener = object : android.location.LocationListener {
+            override fun onLocationChanged(location: Location) {
+                rememberGood(location)
+                val outcome = if (permissionState() == PermissionState.COARSE_ONLY) {
+                    LocationOutcome.Approximate(location)
+                } else {
+                    LocationOutcome.Exact(location)
+                }
+                trySend(outcome)
+            }
+
+            override fun onProviderDisabled(provider: String) = Unit
+            override fun onProviderEnabled(provider: String) = Unit
+
+            @Deprecated("Deprecated in Java")
+            override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
+        }
+
+        try {
+            locationManager.requestLocationUpdates(
+                provider,
+                minTimeMs,
+                minDistanceMeters,
+                listener,
+                Looper.getMainLooper(),
+            )
+            lastKnown()?.let { cached ->
+                rememberGood(cached)
+                trySend(
+                    if (permissionState() == PermissionState.COARSE_ONLY) {
+                        LocationOutcome.Approximate(cached)
+                    } else {
+                        LocationOutcome.Exact(cached)
+                    },
+                )
+            }
+        } catch (e: SecurityException) {
+            trySend(LocationOutcome.Failure(e.message ?: "Brak uprawnień do lokalizacji."))
+            close()
+            return@callbackFlow
+        } catch (e: IllegalArgumentException) {
+            trySend(LocationOutcome.Failure("Brak dostawcy lokalizacji: ${e.message}"))
+            close()
+            return@callbackFlow
+        }
+
+        awaitClose {
+            locationManager.removeUpdates(listener)
+        }
+    }
+
+    private fun preferredProvider(): String = when {
+        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
+            permissionState() == PermissionState.FINE -> LocationManager.GPS_PROVIDER
+        locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ->
+            LocationManager.NETWORK_PROVIDER
+        else -> LocationManager.PASSIVE_PROVIDER
+    }
+
     private fun LastGoodLocationStore.StoredLocation.toOutcome(): LocationOutcome {
         val location = Location("last-good").apply {
             latitude = this@toOutcome.latitude
@@ -150,13 +245,7 @@ class AppLocationProvider(
     @SuppressLint("MissingPermission")
     private suspend fun requestSingleUpdate(): Location =
         suspendCancellableCoroutine { cont ->
-            val provider = when {
-                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
-                    permissionState() == PermissionState.FINE -> LocationManager.GPS_PROVIDER
-                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ->
-                    LocationManager.NETWORK_PROVIDER
-                else -> LocationManager.PASSIVE_PROVIDER
-            }
+            val provider = preferredProvider()
 
             val listener = object : android.location.LocationListener {
                 override fun onLocationChanged(location: Location) {
@@ -197,5 +286,11 @@ class AppLocationProvider(
         FINE,
         COARSE_ONLY,
         DENIED,
+    }
+
+    companion object {
+        /** Prefer distance-based updates while driving; time is a fallback. */
+        const val TRACKING_MIN_TIME_MS = 1_000L
+        const val TRACKING_MIN_DISTANCE_M = 5f
     }
 }

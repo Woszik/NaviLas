@@ -2,6 +2,7 @@ package pl.navilas.finder.data.saved
 
 import org.json.JSONArray
 import org.json.JSONObject
+import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RelatedBdlObject
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SavedPoint
@@ -237,7 +238,11 @@ class SavedPointsStore(
                     .put("features", features)
                     .put("relatedObjects", related)
                     .put("zanocujStatus", site.zanocujStatus.name)
-                    .put("distanceToZanocujBoundaryMeters", site.distanceToZanocujBoundaryMeters),
+                    .put("distanceToZanocujBoundaryMeters", site.distanceToZanocujBoundaryMeters)
+                    .put(
+                        "naturalSpring",
+                        site.naturalSpring?.name,
+                    ),
             )
     }
 
@@ -284,6 +289,9 @@ class SavedPointsStore(
             }.getOrDefault(ZanocujStatus.OUTSIDE_ZONE),
             distanceToZanocujBoundaryMeters = siteJson.optDouble("distanceToZanocujBoundaryMeters")
                 .takeIf { !it.isNaN() },
+            naturalSpring = siteJson.optString("naturalSpring").takeIf { it.isNotBlank() }?.let {
+                runCatching { NaturalSpringCertainty.valueOf(it) }.getOrNull()
+            },
         )
         val comment = json.optString("userComment").takeIf { it.isNotBlank() }
         if (comment != null && comment.length > 2000) return null

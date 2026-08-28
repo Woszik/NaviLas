@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import pl.navilas.finder.data.bdl.BrowseCarFilterMatcher
 import pl.navilas.finder.data.bdl.BdlOfflineDownloader
 import pl.navilas.finder.data.bdl.BdlOfflineStore
 import pl.navilas.finder.data.bdl.BdlSearchContext
@@ -32,6 +33,9 @@ import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
 import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
+import pl.navilas.finder.domain.BrowseCarFilter
+import pl.navilas.finder.domain.BrowseParkingProximityMode
+import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.BdlDataScope
@@ -57,9 +61,7 @@ import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.ListViewMode
 import pl.navilas.finder.domain.SavedPoint
 import pl.navilas.finder.domain.SavedPointCategory
-import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.TravelProfile
-import pl.navilas.finder.domain.ZanocujFilterMode
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.location.AppLocationProvider
 import pl.navilas.finder.location.LocationOutcome
@@ -88,7 +90,6 @@ data class UserPosition(
 data class UiState(
     val profile: TravelProfile = TravelProfile.CAR,
     val exploreMode: AppExploreMode = AppExploreMode.MAP_BROWSE,
-    val zanocujFilter: ZanocujFilterMode = ZanocujFilterMode.ALL,
     /** GPS / last known device location (blue marker). */
     val userPosition: UserPosition? = null,
     /**
@@ -117,6 +118,13 @@ data class UiState(
     val selectedSiteId: String? = null,
     val currentPage: Int = AppPages.SEARCH,
     val mapCameraRequest: MapCameraRequest? = null,
+    /**
+     * Live GPS follow while driving. [MapTrackingMode.TRACKING] keeps the puck at a screen
+     * focal point; gestures and the track FAB move to [MapTrackingMode.PAUSED].
+     */
+    val mapTrackingMode: MapTrackingMode = MapTrackingMode.OFF,
+    /** Monotonic counter: Activity applies follow camera when this changes in TRACKING. */
+    val mapFollowRevision: Long = 0L,
     val isLocating: Boolean = false,
     val isSearching: Boolean = false,
     /** Moto profile: OSM road analysis running after BDL results are shown. */
@@ -138,7 +146,8 @@ data class UiState(
     /** MapBrowse: permanent offline layer loaded (revision bumps when GeoJSON must reload). */
     val mapBrowseRevision: Long = 0L,
     val isMapBrowseLoading: Boolean = false,
-    val browseParkingOnly: Boolean = false,
+    /** Amenity / Zanocuj filters (browse + search, car + moto). */
+    val browseCarFilter: BrowseCarFilter = BrowseCarFilter(),
 ) {
     fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
         ListViewMode.SEARCH -> results
@@ -214,6 +223,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var browseZanocujIndex: List<pl.navilas.finder.data.bdl.ZanocujBoundsPolygon> = emptyList()
     private var lastBrowseViewportKey: String? = null
     private var browseViewportJob: Job? = null
+    private var mapTrackingJob: Job? = null
+    private var lastFollowAppliedLat: Double? = null
+    private var lastFollowAppliedLon: Double? = null
+    /** True while user pans/zooms/rotates — camera follow suspended until idle. */
+    @Volatile
+    private var mapTrackingGestureHold = false
+    private val mapFollowRevision = AtomicLong(0L)
+
+    /** Screen focal for follow (Activity sets when starting/resuming). */
+    @Volatile
+    var followFocalScreenX: Float = 0f
+    @Volatile
+    var followFocalScreenY: Float = 0f
+    @Volatile
+    var followBearing: Double = 0.0
+    @Volatile
+    var followZoom: Double = 14.0
 
     private val _state = MutableStateFlow(loadInitialState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -735,7 +761,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     },
                     current.profile,
-                    current.zanocujFilter,
+                    current.browseCarFilter,
                     current.roadBySiteId,
                     corridorLine = if (mode == SearchOriginMode.LINE) current.corridorLine else emptyList(),
                 ),
@@ -774,14 +800,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         current.allSites,
                         current.searchOrigin(),
                         profile,
-                        current.zanocujFilter,
+                        current.browseCarFilter,
                         current.roadBySiteId,
                         corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
                             current.corridorLine
                         } else {
                             emptyList()
                         },
-                        parkingOnly = current.browseParkingOnly,
                     )
                 },
             )
@@ -789,41 +814,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setZanocujFilter(mode: ZanocujFilterMode) {
+    fun setBrowseCarFilter(filter: BrowseCarFilter) {
         _state.update { current ->
-            val withFilter = current.copy(zanocujFilter = mode)
-            current.copy(
-                zanocujFilter = mode,
-                results = if (current.isMapBrowse()) {
-                    browseSelectionResults(withFilter, current.selectedSiteId)
-                } else {
-                    buildResults(
-                        current.allSites,
-                        current.searchOrigin(),
-                        current.profile,
-                        mode,
-                        current.roadBySiteId,
-                        corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
-                            current.corridorLine
-                        } else {
-                            emptyList()
-                        },
-                        parkingOnly = current.browseParkingOnly,
-                    )
-                },
-            )
+            val next = current.copy(browseCarFilter = filter)
+            next.copy(results = rebuildResults(next))
         }
     }
 
-    fun setBrowseParkingOnly(enabled: Boolean) {
-        if (!_state.value.isMapBrowse()) return
-        _state.update { current ->
-            val withFlag = current.copy(browseParkingOnly = enabled)
-            current.copy(
-                browseParkingOnly = enabled,
-                results = browseSelectionResults(withFlag, current.selectedSiteId),
-            )
+    /** null = show all markers; otherwise visible site ids for browse amenity filter. */
+    fun browseCarMatchingIds(state: UiState = _state.value): Set<String>? {
+        if (!state.isMapBrowse()) return null
+        return BrowseCarFilterMatcher.matchingIds(state.allSites, state.browseCarFilter)
+    }
+
+    private fun rebuildResults(state: UiState): List<RestSiteResult> {
+        if (state.isMapBrowse()) {
+            return browseSelectionResults(state, state.selectedSiteId)
         }
+        if (state.allSites.isEmpty()) return emptyList()
+        return buildResults(
+            state.allSites,
+            state.searchOrigin(),
+            state.profile,
+            state.browseCarFilter,
+            state.roadBySiteId,
+            corridorLine = if (state.searchOriginMode == SearchOriginMode.LINE) {
+                state.corridorLine
+            } else {
+                emptyList()
+            },
+        )
     }
 
     fun setExploreMode(mode: AppExploreMode) {
@@ -836,7 +856,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { current ->
                     current.copy(
                         exploreMode = AppExploreMode.SEARCH,
-                        browseParkingOnly = false,
                         mapBrowseRevision = 0L,
                         isMapBrowseLoading = false,
                         allSites = emptyList(),
@@ -1012,9 +1031,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             listOf(site),
             browseListOrigin(state),
             state.profile,
-            ZanocujFilterMode.ALL,
+            BrowseCarFilter(),
             state.roadBySiteId,
-            parkingOnly = false,
         )
     }
 
@@ -1227,7 +1245,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current.allSites,
                     UserPosition(latitude, longitude, approximate = false),
                     current.profile,
-                    current.zanocujFilter,
+                    current.browseCarFilter,
                     current.roadBySiteId,
                 ),
                 message = AppMessage.Info(
@@ -1247,7 +1265,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current.allSites,
                     current.userPosition,
                     current.profile,
-                    current.zanocujFilter,
+                    current.browseCarFilter,
                     current.roadBySiteId,
                 ),
                 message = AppMessage.Info("Punkt z mapy wyczyszczony — wyszukiwanie od GPS."),
@@ -1274,6 +1292,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Marker tap on map: select + show POI camera (no page change, no fitBounds). */
     fun onMarkerSelected(siteId: String) {
+        pauseMapTrackingForPoiInteraction()
         val token = cameraToken.getAndIncrement()
         _state.update { current ->
             current.copy(
@@ -1290,6 +1309,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** List row tap: select + go to map + show POI camera (no fitBounds). */
     fun onListItemSelected(siteId: String) {
+        pauseMapTrackingForPoiInteraction()
         val token = cameraToken.getAndIncrement()
         _state.update { current ->
             current.copy(
@@ -1465,6 +1485,163 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Track FAB: TRACKING → PAUSED; OFF/PAUSED → TRACKING with the supplied camera frame.
+     */
+    fun toggleMapTracking(
+        focalScreenX: Float,
+        focalScreenY: Float,
+        bearing: Double,
+        zoom: Double,
+    ) {
+        when (_state.value.mapTrackingMode) {
+            MapTrackingMode.TRACKING -> pauseMapTracking()
+            MapTrackingMode.OFF, MapTrackingMode.PAUSED -> startOrResumeMapTracking(
+                focalScreenX = focalScreenX,
+                focalScreenY = focalScreenY,
+                bearing = bearing,
+                zoom = zoom,
+            )
+        }
+    }
+
+    /**
+     * User gesture on the map while tracking → suspend follow until [onMapGestureEnded].
+     * Manual [MapTrackingMode.PAUSED] (POI / FAB) is unchanged.
+     */
+    fun onMapTrackingGestureStarted() {
+        if (_state.value.mapTrackingMode != MapTrackingMode.TRACKING) return
+        mapTrackingGestureHold = true
+    }
+
+    /** After user finishes a map gesture — adopt bearing/zoom; keep map frame (no recenter). */
+    fun onMapGestureEnded(
+        bearing: Double,
+        zoom: Double,
+        focalScreenX: Float?,
+        focalScreenY: Float?,
+    ) {
+        if (_state.value.mapTrackingMode != MapTrackingMode.TRACKING || !mapTrackingGestureHold) return
+        mapTrackingGestureHold = false
+        followBearing = bearing
+        followZoom = zoom.coerceIn(MIN_FOLLOW_ZOOM, MAX_FOLLOW_ZOOM)
+        if (focalScreenX != null && focalScreenY != null &&
+            focalScreenX.isFinite() && focalScreenY.isFinite()
+        ) {
+            followFocalScreenX = focalScreenX
+            followFocalScreenY = focalScreenY
+        }
+        // Do not forceFollow here — that would snap GPS back to the old focal and undo the pan.
+    }
+
+    /** POI / fit-bounds camera while tracking → manual pause until FAB resume. */
+    fun pauseMapTrackingForPoiInteraction() {
+        if (_state.value.mapTrackingMode != MapTrackingMode.TRACKING) return
+        mapTrackingGestureHold = false
+        pauseMapTracking()
+    }
+
+    private fun pauseMapTracking() {
+        mapTrackingGestureHold = false
+        _state.update {
+            it.copy(
+                mapTrackingMode = MapTrackingMode.PAUSED,
+                message = AppMessage.Info(
+                    getApplication<Application>().getString(R.string.map_tracking_paused),
+                ),
+            )
+        }
+    }
+
+    private fun startOrResumeMapTracking(
+        focalScreenX: Float,
+        focalScreenY: Float,
+        bearing: Double,
+        zoom: Double,
+    ) {
+        mapTrackingGestureHold = false
+        followFocalScreenX = focalScreenX
+        followFocalScreenY = focalScreenY
+        followBearing = bearing
+        followZoom = zoom
+        lastFollowAppliedLat = null
+        lastFollowAppliedLon = null
+        _state.update {
+            it.copy(
+                mapTrackingMode = MapTrackingMode.TRACKING,
+                message = AppMessage.Info(
+                    getApplication<Application>().getString(R.string.map_tracking_active),
+                ),
+            )
+        }
+        ensureMapTrackingUpdates()
+        // Immediate frame on current fix if we have one.
+        _state.value.userPosition?.let { pos ->
+            applyTrackingLocation(pos, forceFollow = true)
+        }
+    }
+
+    private fun ensureMapTrackingUpdates() {
+        if (mapTrackingJob?.isActive == true) return
+        mapTrackingJob = viewModelScope.launch {
+            locationProvider.locationUpdates().collect { outcome ->
+                when (outcome) {
+                    is LocationOutcome.Exact -> applyTrackingLocation(
+                        UserPosition(outcome.location.latitude, outcome.location.longitude, false),
+                    )
+                    is LocationOutcome.Approximate -> applyTrackingLocation(
+                        UserPosition(outcome.location.latitude, outcome.location.longitude, true),
+                    )
+                    is LocationOutcome.Failure -> {
+                        mapTrackingJob?.cancel()
+                        mapTrackingJob = null
+                        _state.update {
+                            it.copy(
+                                mapTrackingMode = MapTrackingMode.OFF,
+                                message = AppMessage.Error(outcome.reason),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyTrackingLocation(pos: UserPosition, forceFollow: Boolean = false) {
+        val mode = _state.value.mapTrackingMode
+        if (mode != MapTrackingMode.TRACKING && mode != MapTrackingMode.PAUSED) return
+
+        val movedEnough = forceFollow || lastFollowAppliedLat == null ||
+            GeoUtils.distanceMeters(
+                lastFollowAppliedLat!!,
+                lastFollowAppliedLon!!,
+                pos.latitude,
+                pos.longitude,
+            ) >= FOLLOW_MOVE_THRESHOLD_M
+
+        _state.update { current ->
+            val next = current.copy(userPosition = pos, isLocating = false)
+            if (current.isMapBrowse()) {
+                next.copy(
+                    results = browseSelectionResults(
+                        next.copy(userPosition = pos),
+                        current.selectedSiteId,
+                    ),
+                )
+            } else {
+                next
+            }
+        }
+
+        if (mode == MapTrackingMode.TRACKING && movedEnough && !mapTrackingGestureHold) {
+            lastFollowAppliedLat = pos.latitude
+            lastFollowAppliedLon = pos.longitude
+            _state.update {
+                it.copy(mapFollowRevision = mapFollowRevision.incrementAndGet())
+            }
+        }
+    }
+
     private fun applyLocation(pos: UserPosition, message: AppMessage?, forceCenter: Boolean = false) {
         val shouldCenter = forceCenter ||
             !liveGpsCentered ||
@@ -1519,7 +1696,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             else -> pos
                         },
                         it.profile,
-                        it.zanocujFilter,
+                        it.browseCarFilter,
                         it.roadBySiteId,
                         corridorLine = if (it.searchOriginMode == SearchOriginMode.LINE) {
                             it.corridorLine
@@ -1870,7 +2047,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 sites,
                 position,
                 current.profile,
-                current.zanocujFilter,
+                current.browseCarFilter,
                 roadBySiteId = roadBySiteId,
                 corridorLine = lineForSort,
             )
@@ -1932,7 +2109,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             current.allSites,
                             position,
                             current.profile,
-                            current.zanocujFilter,
+                            current.browseCarFilter,
                             roadBySiteId,
                             corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
                                 current.corridorLine
@@ -1968,23 +2145,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sites: List<RestSite>,
         position: UserPosition?,
         profile: TravelProfile,
-        zanocujFilter: ZanocujFilterMode,
+        amenityFilter: BrowseCarFilter,
         roadBySiteId: Map<String, RoadAssessment>,
         corridorLine: List<LatLon> = emptyList(),
-        parkingOnly: Boolean = false,
     ): List<RestSiteResult> {
         if (position == null && !_state.value.isMapBrowse()) return emptyList()
-        return sites
+        val matchingIds = BrowseCarFilterMatcher.matchingIds(sites, amenityFilter)
+        val filtered = if (matchingIds == null) {
+            sites
+        } else {
+            sites.filter { it.id in matchingIds }
+        }
+        return filtered
             .asSequence()
-            .filter { site ->
-                when (zanocujFilter) {
-                    ZanocujFilterMode.ALL -> true
-                    ZanocujFilterMode.ONLY_IN_ZONE -> site.zanocujStatus == ZanocujStatus.IN_ZONE
-                }
-            }
-            .filter { site ->
-                !parkingOnly || SiteFeature.PARKING in site.features
-            }
             .map { site ->
                 val assessment = if (profile == TravelProfile.MOTORCYCLE) {
                     roadBySiteId[site.id]
@@ -2032,6 +2205,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         /** Below this zoom, browse skips Zanocuj fills (too many polygons). */
         private const val BROWSE_ZANOCUJ_MIN_ZOOM = 7.5
         private const val BROWSE_ZANOCUJ_MAX_POLYGONS = 50
+        /** Camera follow only after this GPS movement (metres). */
+        private const val FOLLOW_MOVE_THRESHOLD_M = 5.0
+        private const val MIN_FOLLOW_ZOOM = 3.0
+        private const val MAX_FOLLOW_ZOOM = 20.0
     }
 }
 

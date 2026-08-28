@@ -3,10 +3,12 @@ package pl.navilas.finder.ui
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMap.OnCameraMoveStartedListener
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
@@ -48,9 +50,12 @@ class MapController {
     private var onSiteClick: ((String) -> Unit)? = null
     private var onEmptyMapClick: ((Double, Double) -> Unit)? = null
     private var onCorridorVertexClick: ((Int) -> Unit)? = null
-    private var onCameraIdle: ((Double, Double, Double, Double, Double) -> Unit)? = null
+    private var onCameraIdle: ((Double, Double, Double, Double, Double, Double) -> Unit)? = null
+    private var onGestureCameraMoveStarted: (() -> Unit)? = null
     private var clickListenerRegistered = false
     private var cameraIdleRegistered = false
+    private var cameraMoveStartedRegistered = false
+    private var applyingFollowCamera = false
     private var browseModeActive = false
     private var lastBrowseRevision: Long = -1L
     private var lastBrowseZanocujCount: Int = -1
@@ -72,6 +77,7 @@ class MapController {
             ensureSourcesAndLayers(loaded)
             ensureClickListener(mapLibreMap)
             ensureCameraIdleListener(mapLibreMap)
+            ensureCameraMoveStartedListener(mapLibreMap)
             onReady()
         }
     }
@@ -86,6 +92,75 @@ class MapController {
 
     fun setOnCorridorVertexClickListener(listener: ((index: Int) -> Unit)?) {
         onCorridorVertexClick = listener
+    }
+
+    fun setOnGestureCameraMoveStartedListener(listener: (() -> Unit)?) {
+        onGestureCameraMoveStarted = listener
+    }
+
+    fun mapWidthPx(): Int = map?.width?.toInt() ?: 0
+
+    fun mapHeightPx(): Int = map?.height?.toInt() ?: 0
+
+    fun currentBearing(): Double = map?.cameraPosition?.bearing ?: 0.0
+
+    fun currentZoom(): Double = map?.cameraPosition?.zoom ?: 12.0
+
+    /** Screen position of a geographic point, or null if map not ready. */
+    fun screenLocationOf(latitude: Double, longitude: Double): PointF? {
+        val mapLibreMap = map ?: return null
+        if (!latitude.isFinite() || !longitude.isFinite()) return null
+        return mapLibreMap.projection.toScreenLocation(LatLng(latitude, longitude))
+    }
+
+    /**
+     * Moves the camera so [latitude]/[longitude] appear at [focalScreenX]/[focalScreenY],
+     * keeping [bearing] and [zoom]. Used for live GPS follow while driving.
+     */
+    fun followUserAtScreenPoint(
+        latitude: Double,
+        longitude: Double,
+        focalScreenX: Float,
+        focalScreenY: Float,
+        bearing: Double,
+        zoom: Double,
+    ) {
+        val mapLibreMap = map ?: return
+        if (!latitude.isFinite() || !longitude.isFinite()) return
+        if (mapLibreMap.width <= 0 || mapLibreMap.height <= 0) return
+        val z = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+        applyingFollowCamera = true
+        try {
+            val gps = LatLng(latitude, longitude)
+            mapLibreMap.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(gps)
+                        .zoom(z)
+                        .bearing(bearing)
+                        .tilt(0.0)
+                        .build(),
+                ),
+            )
+            val opposite = PointF(
+                mapLibreMap.width - focalScreenX,
+                mapLibreMap.height - focalScreenY,
+            )
+            val newTarget = mapLibreMap.projection.fromScreenLocation(opposite)
+            mapLibreMap.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .target(newTarget)
+                        .zoom(z)
+                        .bearing(bearing)
+                        .tilt(0.0)
+                        .build(),
+                ),
+            )
+            lastCameraCommand = "followUser"
+        } finally {
+            applyingFollowCamera = false
+        }
     }
 
     fun centerOn(latitude: Double, longitude: Double, zoom: Double = 12.0) {
@@ -189,10 +264,46 @@ class MapController {
                     PROP_PARKING,
                     if (SiteFeature.PARKING in site.features) 1 else 0,
                 )
+                addNumberProperty(PROP_FILTER_MATCH, 1)
             }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    fun setBrowseLayerMatchFlags(sites: List<RestSite>, matchingIds: Set<String>?) {
+        val s = style ?: return
+        if (!browseModeActive) return
+        val features = sites.mapNotNull { site ->
+            if (!site.latitude.isFinite() || !site.longitude.isFinite()) return@mapNotNull null
+            val match = matchingIds == null || site.id in matchingIds
+            Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
+                addStringProperty("id", site.id)
+                addStringProperty("name", site.name)
+                addStringProperty(
+                    PROP_ZANOCUJ,
+                    when (site.zanocujStatus) {
+                        ZanocujStatus.IN_ZONE -> "IN"
+                        ZanocujStatus.NEAR_ZONE -> "NEAR"
+                        ZanocujStatus.OUTSIDE_ZONE -> "OUT"
+                    },
+                )
+                addNumberProperty(
+                    PROP_PARKING,
+                    if (SiteFeature.PARKING in site.features) 1 else 0,
+                )
+                addNumberProperty(PROP_FILTER_MATCH, if (match) 1 else 0)
+            }
+        }
+        s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(
+            if (matchingIds == null) {
+                Expression.literal(true)
+            } else {
+                Expression.eq(Expression.get(PROP_FILTER_MATCH), Expression.literal(1))
+            },
+        )
     }
 
     fun setBrowseZanocujPolygons(polygons: List<ZanocujPolygon>) {
@@ -216,7 +327,9 @@ class MapController {
             ?.setGeoJson(FeatureCollection.fromFeatures(areaFeatures))
     }
 
-    fun setOnCameraIdleListener(listener: ((west: Double, south: Double, east: Double, north: Double, zoom: Double) -> Unit)?) {
+    fun setOnCameraIdleListener(
+        listener: ((west: Double, south: Double, east: Double, north: Double, zoom: Double, bearing: Double) -> Unit)?,
+    ) {
         onCameraIdle = listener
     }
 
@@ -364,7 +477,19 @@ class MapController {
                 bounds.longitudeEast,
                 bounds.latitudeNorth,
                 mapLibreMap.cameraPosition.zoom,
+                mapLibreMap.cameraPosition.bearing,
             )
+        }
+    }
+
+    private fun ensureCameraMoveStartedListener(mapLibreMap: MapLibreMap) {
+        if (cameraMoveStartedRegistered) return
+        cameraMoveStartedRegistered = true
+        mapLibreMap.addOnCameraMoveStartedListener { reason ->
+            if (applyingFollowCamera) return@addOnCameraMoveStartedListener
+            if (reason == OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                onGestureCameraMoveStarted?.invoke()
+            }
         }
     }
 
@@ -529,6 +654,8 @@ class MapController {
         const val MAX_ZOOM = 18.0
         const val POI_ZOOM = 15.0
         const val POI_ZOOM_SINGLE = 14.5
+        /** Default GPS puck: ~38% of map height from the bottom (driving look-ahead). */
+        const val DEFAULT_FOLLOW_FOCAL_Y_FROM_TOP = 0.62f
         private const val HIT_PAD_PX = 28f
 
         const val SOURCE_USER = "navilas-user"
@@ -552,5 +679,6 @@ class MapController {
         const val LAYER_CORRIDOR_VERTICES = "navilas-corridor-vertices-layer"
         const val PROP_ZANOCUJ = "zanocuj"
         const val PROP_PARKING = "parking"
+        const val PROP_FILTER_MATCH = "filter_match"
     }
 }

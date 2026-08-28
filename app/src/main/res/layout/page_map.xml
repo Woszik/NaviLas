@@ -37,15 +37,41 @@
             android:id="@+id/mapZoomScale"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|start"
+            android:layout_gravity="top|start"
             android:layout_margin="12dp"
             android:background="#CC212121"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"
+            android:text="z —"
             android:textAppearance="?attr/textAppearanceBodySmall"
             android:textColor="#FFFFFF"
-            android:text="z —"
             tools:text="z 11.2" />
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/btnMapPlaceFilters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="12dp"
+            android:contentDescription="@string/map_filter_fab"
+            android:text="@string/map_filter_fab"
+            app:icon="@drawable/ic_filter_list"
+            app:iconPadding="8dp"
+            app:iconTint="?attr/colorOnSecondaryContainer"
+            app:backgroundTint="?attr/colorSecondaryContainer" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMapTrackLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="68dp"
+            android:contentDescription="@string/map_tracking_cd"
+            app:fabSize="mini"
+            app:srcCompat="@android:drawable/ic_media_play"
+            app:tint="?attr/colorOnSecondaryContainer"
+            app:backgroundTint="?attr/colorSecondaryContainer" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btnMapMyLocation"

@@ -49,8 +49,10 @@ Release keystore (opcjonalnie, dla podpisanego APK): zmienne `RELEASE_KEYSTORE_P
 
 ## Funkcje
 
-- Wyszukiwanie miejsc odpoczynku (GPS, mapa, miejscowość)
-- Mapa ze strefami „Zanocuj w lesie”
+- Wyszukiwanie miejsc odpoczynku (GPS, mapa, miejscowość, korytarz)
+- Przeglądanie mapy (browse) z filtrowaniem punktów
+- Filtry miejsc (wiata, ławostoły, palenisko, woda, źródło, parking, Zanocuj) — wyszukiwanie i mapa
+- Mapa ze strefami „Zanocuj w lesie” i śledzeniem pozycji GPS
 - Dojazd samochód / motocykl
 - BDL offline
 - Zapisane miejsca z kategoriami i komentarzami
@@ -68,6 +70,7 @@ woszi@pm.me
 
 ## Dokumentacja
 
+- [`CHANGELOG.md`](CHANGELOG.md) — historia oficjalnych wydań (GitHub), linki do APK, downgrade
 - [`docs/FDROID.md`](docs/FDROID.md) — F-Droid, flavory, MR do fdroiddata
 - [`docs/fdroid/pl.navilas.finder.yml`](docs/fdroid/pl.navilas.finder.yml) — szablon metadanych F-Droid
 - [`docs/APP_UPDATES.md`](docs/APP_UPDATES.md) — auto-update (flavor `github`)

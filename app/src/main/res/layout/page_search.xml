@@ -355,6 +355,7 @@
             android:layout_marginTop="8dp"
             android:text="@string/zanocuj_filter_label"
             android:textAppearance="?attr/textAppearanceBodySmall"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/localityCandidatesPanel" />
@@ -365,6 +366,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="8dp"
             android:orientation="vertical"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/zanocujLabel">
@@ -394,7 +396,76 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/zanocujFilter"
-            tools:visibility="visible" />
+            tools:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/browseCarFilterSection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/localityCandidatesPanel"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/browseCarFilterLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/browse_car_filter_label"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleBrowseCarFilter"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/browse_car_filter_toggle" />
+
+            <TextView
+                android:id="@+id/browseCarFilterSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:paddingHorizontal="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="Wiata · Parking (max 500 m)" />
+
+            <LinearLayout
+                android:id="@+id/browseCarFilterPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <include
+                    android:id="@+id/browseCarFilterControls"
+                    layout="@layout/browse_car_filter_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnApplyBrowseCarFilter"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/browse_car_filter_apply" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <androidx.constraintlayout.widget.Barrier
+            android:id="@+id/filterBottomBarrier"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:barrierDirection="bottom"
+            app:constraint_referenced_ids="browseCarFilterSection" />
 
         <TextView
             android:id="@+id/mapBrowseHint"
@@ -407,7 +478,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/browseParkingOnly"
+            app:layout_constraintTop_toBottomOf="@id/filterBottomBarrier"
             tools:visibility="visible" />
 
         <LinearLayout
