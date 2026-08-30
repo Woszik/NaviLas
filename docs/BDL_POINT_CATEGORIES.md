@@ -72,7 +72,7 @@ Pakiet **pełna baza BDL** offline dodaje m.in. warstwy noclegowe (1–14), eduk
 
 ### Overlay „Obiekty BDL” (przeglądanie mapy)
 
-Osobna warstwa na mapie, **domyślnie wyłączona**. Nie dubluje wyników odpoczynku (15 / amenity 17/19). Wejście: chip **Obiekty BDL** (ekran wyszukiwania w browse albo arkusz filtrów na mapie).
+Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie dubluje wyników odpoczynku (15 / amenity 17/19). Wejście: chip **Obiekty BDL** (ekran wyszukiwania w browse albo arkusz filtrów na mapie).
 
 | Grupa UI | Warstwy | Pakiet | Kolor |
 |----------|---------|--------|-------|

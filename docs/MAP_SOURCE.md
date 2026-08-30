@@ -13,7 +13,8 @@ Kod: `pl.navilas.finder.map.MapConfig`.
 ## URL używany w aplikacji
 
 - **Style URL (ładowany przez MapLibre):**  
-  `https://tiles.openfreemap.org/styles/liberty`
+  dzień: `https://tiles.openfreemap.org/styles/liberty`  
+  noc: `https://tiles.openfreemap.org/styles/dark`
 - **Źródło wektorowe (zdefiniowane w stylu, TileJSON):**  
   `https://tiles.openfreemap.org/planet`
 - **Raster Natural Earth (ze stylu):**  

@@ -20,7 +20,7 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Kandydat w aktualnym szablonie YAML** | tag `v0.5.34`, versionCode 38 |
 | **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
 | **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
-| **Ostatnia aktywność autora** | ~2026-08-24 — odpowiedź na recenzję (szablon, hash, AntiFeatures, Binaries, fastlane images) |
+| **Ostatnia aktywność autora** | 2026-08-30 — aktualizacja kandydata do Beta 0.5.34 i usunięcie `Binaries` (osobny podpis F-Droid) |
 | **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
 
 ### Zrobione

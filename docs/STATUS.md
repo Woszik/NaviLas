@@ -20,6 +20,8 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
+Oficjalna **Beta 0.5.34** na urządzeniu testowym: APK z [NaviLas-releases v0.5.34](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.34). Propozycja F-Droid: [`FDROID.md`](FDROID.md) / MR !46612.
+
 ## Zakres Beta 0.5.34
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:

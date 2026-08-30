@@ -1,3 +1,6 @@
+AntiFeatures:
+  TetheredNet:
+    en-US: Relies on Bank Danych o Lasach (BDL) and OpenStreetMap online services for map and rest-site data.
 Categories:
   - Navigation
   - Sports & Health
@@ -8,9 +11,6 @@ SourceCode: https://github.com/Woszik/NaviLas
 IssueTracker: https://github.com/Woszik/NaviLas/issues
 WebSite: https://github.com/Woszik/NaviLas-releases
 Changelog: https://github.com/Woszik/NaviLas-releases/releases
-
-AntiFeatures:
-  - TetheredNet
 
 RepoType: git
 Repo: https://github.com/Woszik/NaviLas
