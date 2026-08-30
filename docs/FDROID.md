@@ -17,11 +17,11 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Fork fdroiddata** | https://gitlab.com/Woszik/fdroiddata |
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
-| **Kandydat w szablonie repo NaviLas** | tag `v0.5.35`, versionCode 39 (hash commita po tagu) |
-| **Kandydat na forku GitLab (live MR)** | nadal `0.5.7-fdroid-prep` do czasu `git push` z `/tmp/fdroiddata` (brak tokenu GitLab w tym środowisku) |
+| **Kandydat w szablonie repo NaviLas** | tag `v0.5.35`, versionCode 39, commit `3e94b51` |
+| **Kandydat na forku GitLab (live MR)** | 0.5.35 po `git push` z `/tmp/fdroiddata` |
 | **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
 | **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
-| **Ostatnia aktywność autora** | 2026-08-30 — szablon 0.5.34 i usunięcie `Binaries` w repo NaviLas; commit na klonie forka: `de6444239` (push do GitLab ręcznie) |
+| **Ostatnia aktywność autora** | 2026-08-30 — szablon 0.5.35 (commit `3e94b51`) |
 | **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
 
 ### Zrobione
