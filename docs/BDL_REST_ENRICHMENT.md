@@ -38,6 +38,8 @@ Potwierdzone pola flagowe `T`/`N`:
 **Uwaga:** w tym MapServerze **nie ma** osobnych warstw „Źródło” ani „Pomnik przyrody”.  
 Nie tworzymy sztucznych kategorii o takich nazwach. Obiekty z warstwy 27 (np. drzewo, krzyż) mogą pojawić się wyłącznie jako **powiązane obiekty** z nazwą z `nzw_ob`.
 
+**Filtr „Źródło naturalne” (od 0.5.33):** to nie jest warstwa MapServer. Aplikacja oznacza miejsce, gdy w promieniu 200 m jest obiekt warstwy **27** z `zrodlo=T` albo gdy `inne_atr` na miejscu odpoczynku spełnia heurystykę (`NaturalSpringClassifier`: pewne / niepewne / odrzut). W trybie offline wymaga ponownego pobrania BDL z polami `zrodlo` i `inne_atr`. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) §3.
+
 ## Warstwy powiązań przestrzennych
 
 | ID | Nazwa | Rola |

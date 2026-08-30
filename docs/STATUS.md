@@ -49,11 +49,11 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 
 - **Ekran włączony** podczas aktywnego śledzenia pozycji GPS (`FLAG_KEEP_SCREEN_ON`).
 - **Obiekty BDL** (browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
-- **Przewidywalny start:** pierwszy start otwiera Search, później przywracany jest ostatni tryb. Browse nie uruchamia się w tle dla Search.
+- **Przewidywalny start:** domyślnie pierwszy start otwiera Search, a kolejne przywracają ostatni tryb. Ustawienia mogą to nadpisać na stałe Wyszukiwanie albo Przeglądanie mapy. Browse nie uruchamia się w tle dla Search.
 - **Browse bez blokowania UI:** mapa pojawia się od razu, punkty są przygotowywane w tle, ograniczane do obszaru mapy i grupowane przy szerokim widoku.
 - **Bez wyścigu trybów:** przejście Browse → Search anuluje stare zadanie; zakończone ładowanie nie może przejąć ekranu.
 - **Kosztowne filtry poza UI:** filtrowanie udogodnień i sortowanie wyników działa w tle; duży promień parkingu pokazuje ostrzeżenie.
-- **Etapowe Search:** miejsca BDL są prezentowane przed analizą dróg motocyklowych, której postęp jest widoczny jako `n/50`.
+- **Etapowe Search:** miejsca BDL są prezentowane przed analizą dróg motocyklowych, której postęp jest widoczny jako `Analizuję drogi OSM: n/total` (limit 50 wyników).
 
 ### Interfejs i ustawienia
 

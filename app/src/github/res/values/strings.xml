@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="about_distribution">Kanał: Beta (GitHub)\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej Bety. Pobranie i instalację zawsze zatwierdzasz Ty.\n\nZmiana źródła instalacji (np. na F-Droid) wymaga reinstalacji: najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia).</string>
+    <string name="about_distribution">Kanał: Beta (GitHub)\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej Bety. Pobranie i instalację zawsze zatwierdzasz Ty. Ręcznie: menu ⋮ → Sprawdź aktualizacje albo przycisk na ekranie Wyszukiwanie.\n\nZmiana źródła instalacji (np. na F-Droid) wymaga reinstalacji: najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia → Eksportuj).</string>
 </resources>

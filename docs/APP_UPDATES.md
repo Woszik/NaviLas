@@ -112,7 +112,7 @@ Historia opublikowanych **Beta** i linki do APK: [`CHANGELOG.md`](../CHANGELOG.m
 ## Zachowanie aplikacji
 
 - **Start:** zawsze sprawdzenie manifestu po ~2 s. Brak update → cisza. Jest update → dialog.
-- **Ręcznie:** menu **⋮ → Sprawdź aktualizacje** (przy braku update: komunikat „masz najnowszą”).
+- **Ręcznie:** menu **⋮ → Sprawdź aktualizacje** albo przycisk na ekranie Wyszukiwanie (przy braku update: komunikat „masz najnowszą”).
 - **Nowa wersja:** dialog z release notes → „Aktualizuj” → pobieranie → weryfikacja SHA-256 → instalator systemowy.
 - **Później:** wersja zapisana jako odrzucona do czasu pojawienia się wyższego `versionCode`.
 - **Wymuszenie:** `minVersionCode` w manifest — dialog bez „Później”.

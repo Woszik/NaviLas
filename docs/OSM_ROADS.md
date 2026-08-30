@@ -29,7 +29,7 @@ out tags geom;
 - Promień wokół POI: **400 m** (pokrywa próg REJECTED > 300 m)
 - Batche: do **20** punktów na request (limit długości zapytania / obciążenia)
 - `out tags geom` — tagi + geometria linii (bez full nodes osobno)
-- `User-Agent`: `NaviLas/... (Android; prototype)`
+- `User-Agent`: `NaviLas/${VERSION_NAME} (Android; contact: woszi@pm.me)`
 
 Obszary „Zanocuj w Lesie” (`PoiGeometryKind.AREA`) **nie** są punktami wejściowymi do `around` — bez rankingu drogowego.
 
@@ -49,7 +49,9 @@ Kafelki ~5 km (`OsmRoadTileGrid`). Po restarcie aplikacji ponowne wyszukiwanie m
 - **2 równoległe sloty** na IP; HTTP **429** → odczekać ≥ 30 s
 - Brak SLA — usługa społecznościowa, as-is
 - Wymagana identyfikacja klienta (`User-Agent`)
-- Prototyp: OK przy umiarkowanym użyciu; produkcja: własny Overpass / komercyjny provider / cache offline (poza zakresem CP2)
+- Overpass jest też używany do **wyszukiwania miejscowości** (`OverpassLocalitySearch`), osobno od analizy dróg.
+- Przy profilu motocyklowym aplikacja analizuje do **50** najbliższych wyników; pasek statusu pokazuje `Analizuję drogi OSM: n/total`.
+- Przy umiarkowanym użyciu publiczna instancja jest wystarczająca; produkcja długoterminowa: własny Overpass / komercyjny provider / cache offline.
 
 ## Klasyfikacja (skrót)
 
