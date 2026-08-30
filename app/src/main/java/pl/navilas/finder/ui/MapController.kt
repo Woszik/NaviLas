@@ -212,9 +212,10 @@ class MapController {
         selected: RestSiteResult?,
         profile: TravelProfile,
         zanocujPolygons: List<ZanocujPolygon> = emptyList(),
+        selectedAll: List<RestSiteResult> = emptyList(),
     ) {
         if (browseModeActive) {
-            renderBrowseSelection(selected, profile)
+            renderBrowseSelection(selectedAll.ifEmpty { listOfNotNull(selected) }, selected, profile)
             return
         }
         val s = style ?: return
@@ -243,7 +244,7 @@ class MapController {
         s.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
             ?.setGeoJson(FeatureCollection.fromFeatures(areaFeatures))
 
-        renderBrowseSelection(selected, profile)
+        renderBrowseSelection(selectedAll.ifEmpty { listOfNotNull(selected) }, selected, profile)
     }
 
     /**
@@ -347,16 +348,12 @@ class MapController {
         lastBrowseRevision = -1L
         lastBrowseZanocujCount = -1
         lastBrowseZanocujIdsHash = 0
-        lastOverlayIdsHash = 0
         style?.let { restoreSiteLayerFilter(it) }
         style?.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
-            ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
-        style?.getSourceAs<GeoJsonSource>(SOURCE_BDL_OVERLAY)
             ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
     }
 
     fun setBrowseOverlayPoints(points: List<BdlOverlayPoint>) {
-        if (!browseModeActive) return
         val s = style ?: return
         val idsHash = points.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
         if (idsHash == lastOverlayIdsHash) return
@@ -409,18 +406,21 @@ class MapController {
         layer.setFilter(filter)
     }
 
-    private fun renderBrowseSelection(selected: RestSiteResult?, profile: TravelProfile) {
+    private fun renderBrowseSelection(
+        selectedAll: List<RestSiteResult>,
+        primary: RestSiteResult?,
+        profile: TravelProfile,
+    ) {
         val s = style ?: return
-        val selectedFeature = selected?.let {
-            Feature.fromGeometry(Point.fromLngLat(it.site.longitude, it.site.latitude)).apply {
-                addStringProperty("id", it.site.id)
+        val selectedFeatures = selectedAll.mapNotNull { item ->
+            if (!item.site.latitude.isFinite() || !item.site.longitude.isFinite()) return@mapNotNull null
+            Feature.fromGeometry(Point.fromLngLat(item.site.longitude, item.site.latitude)).apply {
+                addStringProperty("id", item.site.id)
             }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SELECTED)
-            ?.setGeoJson(
-                if (selectedFeature != null) FeatureCollection.fromFeatures(listOf(selectedFeature))
-                else FeatureCollection.fromFeatures(emptyList()),
-            )
+            ?.setGeoJson(FeatureCollection.fromFeatures(selectedFeatures))
+        val selected = primary ?: selectedAll.lastOrNull()
 
         if (profile == TravelProfile.MOTORCYCLE &&
             selected?.navigationTargetKind == NavigationTargetKind.OSM_ROAD

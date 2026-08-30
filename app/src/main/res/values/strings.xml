@@ -13,7 +13,14 @@
     <string name="locate_me">GPS</string>
     <string name="results_title">Miejsca odpoczynku</string>
     <string name="results_empty">Brak wyników. Ustaw GPS, punkt na mapie, linię albo miejscowość i naciśnij ZNAJDŹ.</string>
-    <string name="results_empty_browse">Wybierz punkt na mapie — w przeglądaniu lista pokazuje tylko zaznaczenie.</string>
+    <string name="results_empty_browse">Wybierz punkty na mapie — lista pokazuje zaznaczenie (kolejne stuknięcie dodaje, max 8).</string>
+    <string name="compare_selection">Porównaj zaznaczone</string>
+    <string name="compare_name">Nazwa</string>
+    <string name="compare_distance">Odległość</string>
+    <string name="compare_zanocuj">Zanocuj</string>
+    <string name="compare_moto">Dojazd moto</string>
+    <string name="compare_saved">Zapisane</string>
+    <string name="selection_count">zaznaczono %1$d</string>
     <string name="list_mode_search">Wyniki wyszukiwania</string>
     <string name="list_mode_browse_selection">Zaznaczenie na mapie</string>
     <string name="list_mode_saved">Zapisane</string>
@@ -74,7 +81,7 @@
     <string name="explore_mode_label">Tryb:</string>
     <string name="explore_mode_search">Wyszukiwanie</string>
     <string name="explore_mode_browse">Przeglądanie mapy</string>
-    <string name="map_browse_hint">Przeglądanie: miejsca odpoczynku z BDL offline. „Obiekty BDL” dopina widoki, kapliczki i inne warstwy (domyślnie wyłączone). Strefy Zanocuj i overlay tylko w widocznym obszarze.</string>
+    <string name="map_browse_hint">Przeglądanie: miejsca odpoczynku z BDL offline. „Obiekty BDL” dopina widoki, kapliczki i inne warstwy (domyślnie wyłączone; działa też w wyszukiwaniu). Strefy Zanocuj i overlay tylko w widocznym obszarze.</string>
     <string name="map_browse_parking_only">Tylko z parkingiem</string>
     <string name="browse_car_filter_label">Filtry miejsc:</string>
     <string name="browse_car_filter_toggle">Filtry miejsc</string>
@@ -105,7 +112,7 @@
     <string name="browse_filter_zanocuj">W strefie „Zanocuj w lesie”</string>
     <string name="map_browse_reload">Odśwież mapę</string>
     <string name="map_browse_switched">Przeglądanie mapy — wymagane dane BDL offline.</string>
-    <string name="map_browse_moto_hint">Ocena dróg OSM (motocykl) działa tylko w trybie wyszukiwania.</string>
+    <string name="map_browse_moto_hint">W przeglądaniu ocena dróg OSM dotyczy zaznaczonych punktów.</string>
     <string name="map_browse_loading">Ładowanie wszystkich punktów offline…</string>
     <string name="map_browse_need_offline">Pobierz dane BDL offline, żeby użyć trybu przeglądania mapy.</string>
     <string name="map_browse_loaded">Przeglądanie: %1$d punktów na mapie (filtry gaszą wybrane).</string>

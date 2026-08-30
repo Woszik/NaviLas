@@ -95,6 +95,39 @@ class RoadAnalysisTest {
     }
 
     @Test
+    fun surface_and_tracktype_labels() {
+        val gravel = Road(
+            id = "way/s",
+            type = "track",
+            access = null,
+            motorVehicle = "forestry",
+            motorcycle = null,
+            vehicle = null,
+            surface = "ground",
+            tracktype = "grade2",
+            name = null,
+        )
+        assertEquals("gruntowa", RoadClassifier.surfaceLabelPl("ground"))
+        assertEquals("raczej przejezdna", RoadClassifier.tracktypeLabelPl("grade2"))
+        val label = RoadClassifier.describeMotorcycleRoad(gravel)
+        assertTrue(label.contains("gruntowa"))
+        assertTrue(label.contains("raczej przejezdna"))
+        assertTrue(label.contains("leśna"))
+    }
+
+    @Test
+    fun parse_ways_reads_surface_and_tracktype() {
+        val payload = """
+            {"elements":[{"type":"way","id":9,"tags":{"highway":"track","surface":"gravel","tracktype":"grade3"},
+              "geometry":[{"lat":52.0,"lon":21.0},{"lat":52.001,"lon":21.001}]}]}
+        """.trimIndent()
+        val roads = OverpassRoadClient().parseWays(payload)
+        assertEquals(1, roads.size)
+        assertEquals("gravel", roads[0].surface)
+        assertEquals("grade3", roads[0].tracktype)
+    }
+
+    @Test
     fun missing_access_tags_on_residential_is_allowed() {
         assertEquals(
             RoadAccessClass.MOTO_ALLOWED,

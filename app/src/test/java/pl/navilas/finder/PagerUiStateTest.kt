@@ -44,7 +44,7 @@ class PagerUiStateTest {
         val results = listOf(sampleResult("x"), sampleResult("y"))
         var state = UiState(
             results = results,
-            selectedSiteId = "x",
+            selectedSiteIds = listOf("x"),
             currentPage = AppPages.MAP,
             searchConfig = SearchConfig.DEFAULT,
         )
@@ -59,8 +59,8 @@ class PagerUiStateTest {
     @Test
     fun selection_change_keeps_results_and_page() {
         val results = listOf(sampleResult("x"), sampleResult("y"))
-        var state = UiState(results = results, selectedSiteId = "x", currentPage = AppPages.MAP)
-        state = state.copy(selectedSiteId = "y")
+        var state = UiState(results = results, selectedSiteIds = listOf("x"), currentPage = AppPages.MAP)
+        state = state.copy(selectedSiteIds = listOf("y"))
         assertEquals(results, state.results)
         assertEquals(AppPages.MAP, state.currentPage)
     }
@@ -71,13 +71,13 @@ class PagerUiStateTest {
         val neu = listOf(sampleResult("new1"), sampleResult("new2"))
         var state = UiState(
             results = old,
-            selectedSiteId = "old",
+            selectedSiteIds = listOf("old"),
             currentPage = AppPages.LIST,
         )
         val token = 42L
         state = state.copy(
             results = neu,
-            selectedSiteId = null,
+            selectedSiteIds = emptyList(),
             currentPage = AppPages.MAP,
             mapCameraRequest = PagerNavigation.cameraForNewSearch(token),
         )
@@ -92,7 +92,7 @@ class PagerUiStateTest {
         val results = listOf(sampleResult())
         var state = UiState(
             results = results,
-            selectedSiteId = "a",
+            selectedSiteIds = listOf("a"),
             searchConfig = SearchConfig.DEFAULT.copy(searchRadiusKm = 25.0),
         )
         state = state.copy(
@@ -108,7 +108,7 @@ class PagerUiStateTest {
         val req = PagerNavigation.cameraForMarkerClick("m1", 1L)
         val state = UiState(
             results = listOf(sampleResult("m1")),
-            selectedSiteId = "m1",
+            selectedSiteIds = listOf("m1"),
             currentPage = AppPages.MAP,
             mapCameraRequest = req,
         )
@@ -122,12 +122,19 @@ class PagerUiStateTest {
         val req = PagerNavigation.cameraForListSelect("L1", 2L)
         val state = UiState(
             results = listOf(sampleResult("L1")),
-            selectedSiteId = "L1",
+            selectedSiteIds = listOf("L1"),
             currentPage = AppPages.MAP,
             mapCameraRequest = req,
         )
         assertEquals(AppPages.MAP, state.currentPage)
         assertTrue(state.mapCameraRequest is MapCameraRequest.ShowPoi)
         assertFalse(PagerNavigation.isFitBounds(state.mapCameraRequest))
+    }
+
+    @Test
+    fun multi_select_keeps_last_as_primary() {
+        val state = UiState(selectedSiteIds = listOf("a", "b", "c"))
+        assertEquals("c", state.selectedSiteId)
+        assertEquals(3, state.selectedSiteIds.size)
     }
 }

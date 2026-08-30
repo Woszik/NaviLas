@@ -131,6 +131,8 @@ class OverpassRoadClient(
                 motorVehicle = tags.optString("motor_vehicle").takeIf { it.isNotBlank() },
                 motorcycle = tags.optString("motorcycle").takeIf { it.isNotBlank() },
                 vehicle = tags.optString("vehicle").takeIf { it.isNotBlank() },
+                surface = tags.optString("surface").takeIf { it.isNotBlank() },
+                tracktype = tags.optString("tracktype").takeIf { it.isNotBlank() },
                 name = tags.optString("name").takeIf { it.isNotBlank() },
                 geometry = points,
             )

@@ -75,6 +75,7 @@ import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
+import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.TravelProfile
@@ -580,8 +581,9 @@ class MainActivity : AppCompatActivity() {
         searchBinding.zanocujFilter.isVisible = false
         searchBinding.browseParkingOnly.isVisible = false
         searchBinding.browseCarFilterSection.isVisible = true
-        searchBinding.bdlOverlaySection.isVisible = false
+        searchBinding.bdlOverlaySection.isVisible = true
         bindBrowseCarFilterUi(state)
+        bindBdlOverlayUi(state)
         searchBinding.searchOriginLabel.isVisible = true
         searchBinding.searchOriginGroup.isVisible = true
         bindSearchOriginUi(state)
@@ -874,7 +876,6 @@ class MainActivity : AppCompatActivity() {
         val filter = viewModel.state.value.browseCarFilter
         var placeExpanded = false
         var overlayExpanded = false
-        val browse = viewModel.state.value.isMapBrowse()
 
         fun refreshPlaceChrome() {
             val chevron = if (placeExpanded) " ▲" else " ▼"
@@ -919,17 +920,15 @@ class MainActivity : AppCompatActivity() {
             }
             refreshPlaceChrome()
         }
-        sheetBinding.sheetBdlOverlaySection.isVisible = browse
-        if (browse) {
+        sheetBinding.sheetBdlOverlaySection.isVisible = true
+        refreshBdlChrome()
+        setupBdlOverlayListeners(
+            sheetBinding.bdlOverlaySheetControls,
+            onChanged = { refreshBdlChrome() },
+        )
+        sheetBinding.btnToggleSheetBdlOverlay.setOnClickListener {
+            overlayExpanded = !overlayExpanded
             refreshBdlChrome()
-            setupBdlOverlayListeners(
-                sheetBinding.bdlOverlaySheetControls,
-                onChanged = { refreshBdlChrome() },
-            )
-            sheetBinding.btnToggleSheetBdlOverlay.setOnClickListener {
-                overlayExpanded = !overlayExpanded
-                refreshBdlChrome()
-            }
         }
         sheetBinding.btnApplyMapFilter.setOnClickListener {
             applyBrowseCarFilterFrom(sheetBinding.mapFilterControls)
@@ -1479,7 +1478,7 @@ class MainActivity : AppCompatActivity() {
             mapBinding.mapSearchHint.setText(mapHintRes)
         }
         bindListPageUi(state)
-        val listItems = state.activeListResults()
+        val listItems = viewModel.displayedListResults(state)
         resultsAdapter.submit(listItems)
         val emptyMessage = when {
             state.listViewMode == ListViewMode.SAVED -> getString(R.string.saved_empty)
@@ -1498,12 +1497,9 @@ class MainActivity : AppCompatActivity() {
         }
         updatePageIndicator(state.currentPage)
 
-        // Browse keeps selection in state.results; list tab mode must not hide the map card.
-        val selected = if (state.isMapBrowse()) {
-            state.results.firstOrNull { it.site.id == state.selectedSiteId }
-        } else {
-            listItems.firstOrNull { it.site.id == state.selectedSiteId }
-        }
+        val selectedItems = listItems.filter { it.site.id in state.selectedSiteIds }
+        val selected = selectedItems.lastOrNull { it.site.id == state.selectedSiteId }
+            ?: selectedItems.lastOrNull()
         bindPoiCard(selected, state)
 
         if (mapReady) {
@@ -1524,10 +1520,10 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                     mapController.setBrowseZanocujPolygons(state.zanocujPolygons)
-                    mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
                 }
                 applyBrowseMapFilters(state)
-                val browseHash = (state.selectedSiteId?.hashCode() ?: 0) xor
+                mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
+                val browseHash = state.selectedSiteIds.hashCode() xor
                     state.profile.hashCode() xor
                     state.mapBrowseRevision.hashCode() xor
                     state.browseCarFilter.hashCode() xor
@@ -1537,19 +1533,28 @@ class MainActivity : AppCompatActivity() {
                     state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
                 if (forceMarkers || browseHash != lastRenderedResultsToken) {
                     lastRenderedResultsToken = browseHash
-                    mapController.renderResults(listItems, selected, state.profile, state.zanocujPolygons)
+                    mapController.renderResults(
+                        listItems,
+                        selected,
+                        state.profile,
+                        state.zanocujPolygons,
+                        selectedItems,
+                    )
                 }
             } else {
                 mapController.exitBrowseMode()
+                mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
                 mapController.updateSearchPin(
                     if (state.searchOriginMode == SearchOriginMode.LINE) null else state.mapSearchPin,
                 )
                 mapController.updateCorridorLine(
                     if (state.searchOriginMode == SearchOriginMode.LINE) state.corridorLine else emptyList(),
                 )
-                val resultsHash = listItems.hashCode() xor (state.selectedSiteId?.hashCode() ?: 0) xor
+                val resultsHash = listItems.hashCode() xor state.selectedSiteIds.hashCode() xor
                     state.profile.hashCode() xor state.zanocujPolygons.size xor
                     state.browseCarFilter.hashCode() xor
+                    state.bdlOverlayFilter.hashCode() xor
+                    state.bdlOverlayViewport.size xor
                     (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
                     state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
                 if (forceMarkers || resultsHash != lastRenderedResultsToken) {
@@ -1560,6 +1565,7 @@ class MainActivity : AppCompatActivity() {
                         selected,
                         state.profile,
                         polygons,
+                        selectedItems,
                     )
                 }
             }
@@ -1937,8 +1943,106 @@ class MainActivity : AppCompatActivity() {
         if (state.listViewMode == ListViewMode.SAVED) {
             bindSavedCategoryFilter(state)
         }
+        bindCompareUi(state)
         syncingListUi = false
     }
+
+    private fun bindCompareUi(state: UiState) {
+        val canCompare = state.listViewMode == ListViewMode.SEARCH &&
+            state.selectedSiteIds.size >= 2
+        listBinding.btnCompareSelection.isVisible = canCompare
+        if (!canCompare) {
+            listBinding.compareScroll.isVisible = false
+            return
+        }
+        listBinding.btnCompareSelection.text =
+            getString(R.string.compare_selection) + " (${state.selectedSiteIds.size})"
+        listBinding.btnCompareSelection.setOnClickListener {
+            listBinding.compareScroll.isVisible = !listBinding.compareScroll.isVisible
+            if (listBinding.compareScroll.isVisible) {
+                fillCompareTable(viewModel.displayedListResults(state).filter {
+                    it.site.id in state.selectedSiteIds
+                }, state)
+            }
+        }
+        if (listBinding.compareScroll.isVisible) {
+            fillCompareTable(
+                viewModel.displayedListResults(state).filter { it.site.id in state.selectedSiteIds },
+                state,
+            )
+        }
+    }
+
+    private fun fillCompareTable(items: List<RestSiteResult>, state: UiState) {
+        val table = listBinding.compareTable
+        table.removeAllViews()
+        fun row(label: String, values: List<String>) {
+            val row = android.widget.TableRow(this).apply {
+                setPadding(0, 6, 0, 6)
+            }
+            val header = TextView(this).apply {
+                text = label
+                setPadding(8, 4, 12, 4)
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelMedium)
+            }
+            row.addView(header, android.widget.TableRow.LayoutParams(wrapContentDp(96), -2))
+            values.forEach { value ->
+                row.addView(
+                    TextView(this).apply {
+                        text = value
+                        setPadding(8, 4, 8, 4)
+                        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                    },
+                    android.widget.TableRow.LayoutParams(wrapContentDp(120), -2),
+                )
+            }
+            table.addView(row)
+        }
+        fun yesNo(value: Boolean) = if (value) "tak" else "—"
+        row(getString(R.string.compare_name), items.map { it.site.name })
+        row(
+            getString(R.string.compare_distance),
+            items.map { formatPoiDistance(state, it.distanceKm) },
+        )
+        row("Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
+        row("Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
+        row("Woda pitna", items.map { yesNo(SiteFeature.WODA_PITNA in it.site.features) })
+        row("Parking", items.map { yesNo(SiteFeature.PARKING in it.site.features) })
+        row(
+            getString(R.string.compare_zanocuj),
+            items.map {
+                when (it.site.zanocujStatus) {
+                    ZanocujStatus.IN_ZONE -> "w strefie"
+                    ZanocujStatus.NEAR_ZONE -> "blisko"
+                    ZanocujStatus.OUTSIDE_ZONE -> "—"
+                }
+            },
+        )
+        if (state.profile == TravelProfile.MOTORCYCLE) {
+            row(
+                getString(R.string.compare_moto),
+                items.map { item ->
+                    val road = item.roadAssessment?.nearestRoad
+                    if (road == null) {
+                        "—"
+                    } else {
+                        val dist = item.roadAssessment?.distanceToRoadMeters?.let {
+                            String.format(java.util.Locale.forLanguageTag("pl-PL"), "%.0f m", it)
+                        }
+                        listOfNotNull(RoadClassifier.describeMotorcycleRoad(road), dist)
+                            .joinToString(" · ")
+                    }
+                },
+            )
+        }
+        row(
+            getString(R.string.compare_saved),
+            items.map { if (state.isSaved(it.site.id)) "tak" else "—" },
+        )
+    }
+
+    private fun wrapContentDp(dp: Int): Int =
+        (dp * resources.displayMetrics.density).toInt()
 
     private fun bindSavedCategoryFilter(state: UiState) {
         val labels = buildList {
@@ -1974,10 +2078,15 @@ class MainActivity : AppCompatActivity() {
         }
         mapBinding.poiCard.isVisible = true
         val overlayGroup = BdlOverlayCatalog.groupForLayer(selected.site.sourceLayerId)
-        mapBinding.cardTitle.text = if (overlayGroup != null) {
+        val title = if (overlayGroup != null) {
             getString(R.string.bdl_overlay_card_title, overlayGroup.labelPl, selected.site.name)
         } else {
             "Miejsce odpoczynku „${selected.site.name}”"
+        }
+        mapBinding.cardTitle.text = if (state.selectedSiteIds.size > 1) {
+            title + " · " + getString(R.string.selection_count, state.selectedSiteIds.size)
+        } else {
+            title
         }
         mapBinding.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
         mapBinding.cardFeatures.text = if (overlayGroup != null) {
@@ -2169,11 +2278,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectedResult(): RestSiteResult? {
         val state = viewModel.state.value
-        return if (state.isMapBrowse()) {
-            state.results.firstOrNull { it.site.id == state.selectedSiteId }
-        } else {
-            state.activeListResults().firstOrNull { it.site.id == state.selectedSiteId }
-        }
+        val id = state.selectedSiteId ?: return null
+        return viewModel.displayedListResults(state).lastOrNull { it.site.id == id }
     }
 
     private fun updatePageIndicator(page: Int) {
@@ -2852,7 +2958,8 @@ private class ResultsAdapter(
             if (profileProvider() == TravelProfile.MOTORCYCLE && assessment != null) {
                 road.isVisible = true
                 val dist = assessment.distanceToRoadMeters
-                val type = RoadClassifier.polishRoadType(assessment.nearestRoad?.type)
+                val roadLabel = assessment.nearestRoad?.let { RoadClassifier.describeMotorcycleRoad(it) }
+                    ?: RoadClassifier.polishRoadType(assessment.nearestRoad?.type)
                 val stars = assessment.roadSuitability?.toStars() ?: "—"
                 val distLabel = if (dist != null) {
                     String.format(Locale.forLanguageTag("pl-PL"), "%.0f m od drogi", dist)
@@ -2863,7 +2970,7 @@ private class ResultsAdapter(
                     NavigationTargetKind.OSM_ROAD -> "Cel nawigacji: droga przy miejscu"
                     else -> "Brak celu drogowego OSM"
                 }
-                road.text = "$targetHint · $distLabel · $type · $stars"
+                road.text = "$targetHint · $distLabel · $roadLabel · $stars"
             } else {
                 road.isVisible = false
             }

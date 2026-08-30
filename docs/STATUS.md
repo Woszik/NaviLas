@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-08-30**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.37-nightly | 43 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.38-nightly | 44 |
 | **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.38
+
+Obiekty BDL na mapie w Search i Browse. Wielozaznaczenie punktów (max 8) z listą i tabelą **Porównaj**. W profilu moto etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych.
 
 ## Zakres Nightly 0.5.37
 

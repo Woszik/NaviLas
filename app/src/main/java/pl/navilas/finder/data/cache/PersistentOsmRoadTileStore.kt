@@ -178,6 +178,8 @@ class PersistentOsmRoadTileStore(
                     .put("motorVehicle", road.motorVehicle)
                     .put("motorcycle", road.motorcycle)
                     .put("vehicle", road.vehicle)
+                    .put("surface", road.surface)
+                    .put("tracktype", road.tracktype)
                     .put("name", road.name)
                     .put("geometry", geom),
             )
@@ -214,6 +216,8 @@ class PersistentOsmRoadTileStore(
                             motorVehicle = item.optNullableString("motorVehicle"),
                             motorcycle = item.optNullableString("motorcycle"),
                             vehicle = item.optNullableString("vehicle"),
+                            surface = item.optNullableString("surface"),
+                            tracktype = item.optNullableString("tracktype"),
                             name = item.optNullableString("name"),
                             geometry = geometry,
                         ),

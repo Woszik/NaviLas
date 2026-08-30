@@ -1,5 +1,6 @@
 package pl.navilas.finder.data.osm
 
+import pl.navilas.finder.domain.Road
 import pl.navilas.finder.domain.RoadAccessClass
 
 /**
@@ -81,6 +82,41 @@ object RoadClassifier {
             in TYPICALLY_MOTORABLE -> RoadAccessClass.MOTO_ALLOWED
             else -> RoadAccessClass.MOTO_UNKNOWN
         }
+    }
+
+    fun describeMotorcycleRoad(road: Road): String {
+        val parts = mutableListOf<String>()
+        val surface = surfaceLabelPl(road.surface)
+        if (surface != null) {
+            parts += surface
+        } else {
+            parts += polishRoadType(road.type)
+        }
+        tracktypeLabelPl(road.tracktype)?.let { parts += it }
+        if (isForestryAccess(road.motorVehicle) || isForestryAccess(road.access)) {
+            parts += "leśna (dostęp LP)"
+        }
+        return parts.joinToString(" · ")
+    }
+
+    fun surfaceLabelPl(surface: String?): String? = when (surface?.trim()?.lowercase()) {
+        "asphalt", "concrete" -> "asfalt / utwardzona"
+        "paved", "paving_stones", "sett", "cobblestone" -> "utwardzona"
+        "compacted", "gravel", "fine_gravel", "pebblestone", "chipseal" -> "utwardzona sypko"
+        "ground", "dirt", "earth", "unpaved", "grass", "sand", "mud", "wood" -> "gruntowa"
+        else -> null
+    }
+
+    fun tracktypeLabelPl(tracktype: String?): String? = when (tracktype?.trim()?.lowercase()) {
+        "grade1", "grade2" -> "raczej przejezdna"
+        "grade3" -> "średnia"
+        "grade4", "grade5" -> "raczej trudna"
+        else -> null
+    }
+
+    private fun isForestryAccess(value: String?): Boolean {
+        val v = value?.trim()?.lowercase() ?: return false
+        return v in setOf("forestry", "agricultural")
     }
 
     fun polishRoadType(highway: String?): String {

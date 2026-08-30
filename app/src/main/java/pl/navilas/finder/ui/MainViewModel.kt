@@ -38,6 +38,7 @@ import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
 import pl.navilas.finder.domain.BdlOverlayFilter
 import pl.navilas.finder.domain.BdlOverlayPoint
+import pl.navilas.finder.domain.SiteSelection
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.isUsableBrowseViewport
@@ -139,7 +140,7 @@ data class UiState(
     val zanocujPolygons: List<pl.navilas.finder.data.bdl.ZanocujPolygon> = emptyList(),
     val roadBySiteId: Map<String, RoadAssessment> = emptyMap(),
     val results: List<RestSiteResult> = emptyList(),
-    val selectedSiteId: String? = null,
+    val selectedSiteIds: List<String> = emptyList(),
     val currentPage: Int = AppPages.SEARCH,
     val mapCameraRequest: MapCameraRequest? = null,
     /**
@@ -182,7 +183,7 @@ data class UiState(
     val browseCarFilter: BrowseCarFilter = BrowseCarFilter(),
     /** Precomputed IDs for Browse marker filtering; null means no active filter. */
     val browseFilterMatchingIds: Set<String>? = null,
-    /** Extra BDL objects overlay (browse only). Off by default. */
+    /** Extra BDL objects overlay (Search and Browse). Off by default. */
     val bdlOverlayFilter: BdlOverlayFilter = BdlOverlayFilter(),
     val bdlOverlayViewport: List<BdlOverlayPoint> = emptyList(),
     val bdlOverlayFullAvailable: Boolean = false,
@@ -191,6 +192,8 @@ data class UiState(
         ListViewMode.SEARCH -> results
         ListViewMode.SAVED -> savedListResults
     }
+
+    val selectedSiteId: String? get() = selectedSiteIds.lastOrNull()
 
     fun isSaved(siteId: String): Boolean = savedPoints.containsKey(siteId)
 
@@ -283,6 +286,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastBrowseCenterLon: Double = 0.0
     private var mapBrowseLoadJob: Job? = null
     private var browseViewportJob: Job? = null
+    private var overlayLoadJob: Job? = null
+    private var selectedRoadsJob: Job? = null
     private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
     private var bdlRefreshCheckedThisSession = false
@@ -880,7 +885,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     current.message
                 },
                 results = if (current.isMapBrowse()) {
-                    browseSelectionResults(current.copy(profile = profile), current.selectedSiteId)
+                    browseSelectionResults(current.copy(profile = profile), current.selectedSiteIds)
                 } else {
                     buildResults(
                         current.allSites,
@@ -986,7 +991,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun rebuildResults(state: UiState): List<RestSiteResult> {
         if (state.isMapBrowse()) {
-            return browseSelectionResults(state, state.selectedSiteId)
+            return browseSelectionResults(state, state.selectedSiteIds)
         }
         if (state.allSites.isEmpty()) return emptyList()
         return buildResults(
@@ -1015,10 +1020,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 filterResultsJob?.cancel()
                 filterResultsJob = null
                 browseZanocujIndex = emptyList()
-                browseOverlayIndex = emptyList()
-                browseOverlayById = emptyMap()
                 lastBrowseViewportKey = null
-                lastBrowseBounds = null
                 browseViewportJob?.cancel()
                 _state.update { current ->
                     current.copy(
@@ -1036,8 +1038,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         roadAnalysisCompleted = 0,
                         roadAnalysisTotal = 0,
                         zanocujPolygons = emptyList(),
-                        bdlOverlayViewport = emptyList(),
-                        selectedSiteId = null,
+                        selectedSiteIds = emptyList(),
                         message = AppMessage.Info("Tryb wyszukiwania — ustaw źródło i naciśnij Znajdź."),
                         currentPage = AppPages.SEARCH,
                     )
@@ -1055,7 +1056,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         browseViewportSites = emptyList(),
                         browseMapClusters = emptyList(),
                         results = emptyList(),
-                        selectedSiteId = null,
+                        selectedSiteIds = emptyList(),
                         browseFilterMatchingIds = null,
                         isFilteringPlaces = false,
                         isSearching = false,
@@ -1154,7 +1155,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         bdlOverlayFullAvailable = fullAvailable,
                         roadBySiteId = emptyMap(),
                         results = emptyList(),
-                        selectedSiteId = null,
+                        selectedSiteIds = emptyList(),
                         isMapBrowseLoading = false,
                         mapBrowseRevision = current.mapBrowseRevision + 1,
                         mapCameraRequest = MapCameraRequest.CenterOn(
@@ -1228,8 +1229,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         north: Double,
         zoom: Double,
     ) {
-        if (!_state.value.isMapBrowse()) return
         if (!isUsableBrowseViewport(west, south, east, north)) return
+        val overlayActive = _state.value.bdlOverlayFilter.isActive
+        if (!_state.value.isMapBrowse() && !overlayActive) return
         val padLon = (east - west).coerceAtLeast(0.01) * 0.15
         val padLat = (north - south).coerceAtLeast(0.01) * 0.15
         val envelope = GeoUtils.Envelope(
@@ -1260,6 +1262,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setBdlOverlayFilter(filter: BdlOverlayFilter) {
         lastBrowseViewportKey = null
         _state.update { it.copy(bdlOverlayFilter = filter) }
+        if (filter.isActive) {
+            ensureOverlayIndexLoaded()
+        }
         val bounds = lastBrowseBounds
         if (bounds != null) {
             scheduleBrowseViewportRefresh(
@@ -1331,7 +1336,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     matchingIds,
                 )
             }
-            if (!_state.value.isMapBrowse()) return@launch
+            if (!_state.value.isMapBrowse()) {
+                _state.update { it.copy(bdlOverlayViewport = overlaySubset) }
+                return@launch
+            }
             _state.update {
                 val nextSites = if (
                     browseContent.first.isEmpty() &&
@@ -1371,20 +1379,100 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun browseListOrigin(state: UiState): UserPosition? =
         state.userPosition ?: state.searchOrigin()
 
-    /** Browse keeps all points on the map; list/card only hold the current selection. */
-    private fun browseSelectionResults(state: UiState, siteId: String?): List<RestSiteResult> {
-        if (siteId == null) return emptyList()
-        val site = state.allSites.firstOrNull { it.id == siteId }
-            ?: browseOverlayById[siteId]?.toRestSite()
-            ?: return emptyList()
-        // Explicit map tap: always show the card; map filters only hide markers, not the sheet.
+    /** Browse keeps all points on the map; list/card hold the current multi-selection. */
+    private fun browseSelectionResults(state: UiState, siteIds: List<String>): List<RestSiteResult> {
+        if (siteIds.isEmpty()) return emptyList()
+        val sites = siteIds.mapNotNull { siteId ->
+            state.allSites.firstOrNull { it.id == siteId }
+                ?: browseOverlayById[siteId]?.toRestSite()
+                ?: state.results.firstOrNull { it.site.id == siteId }?.site
+        }
+        if (sites.isEmpty()) return emptyList()
         return buildResults(
-            listOf(site),
+            sites,
             browseListOrigin(state),
             state.profile,
             BrowseCarFilter(),
             state.roadBySiteId,
         )
+    }
+
+    private fun resolveSelectedSite(state: UiState, siteId: String): RestSite? =
+        state.allSites.firstOrNull { it.id == siteId }
+            ?: browseOverlayById[siteId]?.toRestSite()
+            ?: state.results.firstOrNull { it.site.id == siteId }?.site
+
+    private fun resultForSelectedSite(state: UiState, site: RestSite): RestSiteResult {
+        val origin = state.searchOrigin() ?: state.userPosition
+        if (origin != null) {
+            return buildResults(
+                listOf(site),
+                origin,
+                state.profile,
+                BrowseCarFilter(),
+                state.roadBySiteId,
+            ).first()
+        }
+        val assessment = if (state.profile == TravelProfile.MOTORCYCLE) {
+            state.roadBySiteId[site.id]
+        } else {
+            null
+        }
+        val (target, kind) = when (state.profile) {
+            TravelProfile.CAR -> NavigationTargets.forCar(site)
+            TravelProfile.MOTORCYCLE -> {
+                NavigationTargets.forMotorcycle(assessment)
+                    ?: (pl.navilas.finder.domain.LatLon(site.latitude, site.longitude) to
+                        NavigationTargetKind.REST_SITE)
+            }
+        }
+        return RestSiteResult(
+            site = site,
+            distanceKm = 0.0,
+            roadAssessment = assessment,
+            navigationTarget = target,
+            navigationTargetKind = kind,
+        )
+    }
+
+    fun displayedListResults(state: UiState): List<RestSiteResult> {
+        if (state.listViewMode == ListViewMode.SAVED) return state.savedListResults
+        if (state.isMapBrowse()) return state.results
+        if (state.selectedSiteIds.isEmpty()) return state.results
+        val inResults = state.results.associateBy { it.site.id }
+        val extras = state.selectedSiteIds.mapNotNull { id ->
+            if (id in inResults) return@mapNotNull null
+            val site = resolveSelectedSite(state, id) ?: return@mapNotNull null
+            resultForSelectedSite(state, site)
+        }
+        val pinned = state.selectedSiteIds.mapNotNull { inResults[it] }
+        val rest = state.results.filter { it.site.id !in state.selectedSiteIds.toSet() }
+        return extras + pinned + rest
+    }
+
+    private fun ensureOverlayIndexLoaded() {
+        if (browseOverlayIndex.isNotEmpty()) return
+        if (overlayLoadJob?.isActive == true) return
+        overlayLoadJob = viewModelScope.launch {
+            if (!offlineStore.isReady()) return@launch
+            val fullAvailable = _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
+            val overlay = withContext(Dispatchers.IO) {
+                BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
+            }
+            browseOverlayIndex = overlay
+            browseOverlayById = overlay.associateBy { it.id }
+            _state.update { it.copy(bdlOverlayFullAvailable = fullAvailable) }
+            lastBrowseViewportKey = null
+            val bounds = lastBrowseBounds
+            if (bounds != null && _state.value.bdlOverlayFilter.isActive) {
+                scheduleBrowseViewportRefresh(
+                    bounds,
+                    lastBrowseCenterLat,
+                    lastBrowseCenterLon,
+                    lastBrowseZoom,
+                )
+            }
+        }
     }
 
     fun setListViewMode(mode: ListViewMode) {
@@ -1625,54 +1713,124 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeSelectedSite() {
-        selectSite(null)
+        applySelection(SiteSelection.removeLast(_state.value.selectedSiteIds))
     }
 
     fun selectSite(siteId: String?) {
-        _state.update { current ->
-            if (current.isMapBrowse()) {
-                current.copy(
-                    selectedSiteId = siteId,
-                    results = browseSelectionResults(current, siteId),
-                )
-            } else {
-                current.copy(selectedSiteId = siteId)
-            }
-        }
+        applySelection(if (siteId == null) emptyList() else listOf(siteId))
     }
 
-    /** Marker tap on map: select + show POI camera (no page change, no fitBounds). */
+    private fun applySelection(
+        nextIds: List<String>,
+        cameraSiteId: String? = null,
+        goToMap: Boolean = false,
+        cameraTokenValue: Long? = null,
+    ) {
+        _state.update { current ->
+            current.copy(
+                selectedSiteIds = nextIds,
+                results = if (current.isMapBrowse()) {
+                    browseSelectionResults(current, nextIds)
+                } else {
+                    current.results
+                },
+                currentPage = if (goToMap) AppPages.MAP else current.currentPage,
+                mapCameraRequest = if (cameraSiteId != null && cameraTokenValue != null) {
+                    if (goToMap) {
+                        PagerNavigation.cameraForListSelect(cameraSiteId, cameraTokenValue)
+                    } else {
+                        PagerNavigation.cameraForMarkerClick(cameraSiteId, cameraTokenValue)
+                    }
+                } else {
+                    current.mapCameraRequest
+                },
+            )
+        }
+        analyzeSelectedRoadsIfNeeded()
+    }
+
+    /** Marker tap on map: toggle selection + show POI camera (no page change, no fitBounds). */
     fun onMarkerSelected(siteId: String) {
         pauseMapTrackingForPoiInteraction()
         val token = cameraToken.getAndIncrement()
-        _state.update { current ->
-            current.copy(
-                selectedSiteId = siteId,
-                results = if (current.isMapBrowse()) {
-                    browseSelectionResults(current, siteId)
-                } else {
-                    current.results
-                },
-                mapCameraRequest = PagerNavigation.cameraForMarkerClick(siteId, token),
-            )
-        }
+        val nextIds = SiteSelection.toggle(_state.value.selectedSiteIds, siteId)
+        val cameraId = if (siteId in nextIds) siteId else nextIds.lastOrNull()
+        applySelection(nextIds, cameraSiteId = cameraId, cameraTokenValue = token)
     }
 
-    /** List row tap: select + go to map + show POI camera (no fitBounds). */
+    /** List row tap: focus site + go to map + show POI camera (no fitBounds). */
     fun onListItemSelected(siteId: String) {
         pauseMapTrackingForPoiInteraction()
         val token = cameraToken.getAndIncrement()
-        _state.update { current ->
-            current.copy(
-                selectedSiteId = siteId,
-                results = if (current.isMapBrowse()) {
-                    browseSelectionResults(current, siteId)
-                } else {
-                    current.results
-                },
-                currentPage = AppPages.MAP,
-                mapCameraRequest = PagerNavigation.cameraForListSelect(siteId, token),
-            )
+        val nextIds = SiteSelection.add(_state.value.selectedSiteIds, siteId)
+        applySelection(nextIds, cameraSiteId = siteId, goToMap = true, cameraTokenValue = token)
+    }
+
+    private fun analyzeSelectedRoadsIfNeeded() {
+        val snapshot = _state.value
+        if (snapshot.profile != TravelProfile.MOTORCYCLE) return
+        val missing = snapshot.selectedSiteIds.filter { it !in snapshot.roadBySiteId }
+        if (missing.isEmpty()) return
+        val sites = missing.mapNotNull { resolveSelectedSite(snapshot, it) }
+        if (sites.isEmpty()) return
+        selectedRoadsJob?.cancel()
+        selectedRoadsJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isAnalyzingRoads = true,
+                    roadAnalysisCompleted = 0,
+                    roadAnalysisTotal = sites.size,
+                )
+            }
+            try {
+                val assessed = withContext(Dispatchers.IO) {
+                    roadAnalyzer.assessAll(sites.map { it.toPointPoi() }) { completed, total ->
+                        _state.update { current ->
+                            current.copy(
+                                roadAnalysisCompleted = completed,
+                                roadAnalysisTotal = total,
+                            )
+                        }
+                    }
+                }
+                _state.update { current ->
+                    val merged = current.roadBySiteId + assessed
+                    val next = current.copy(
+                        isAnalyzingRoads = false,
+                        roadBySiteId = merged,
+                        roadAnalysisCompleted = sites.size,
+                        roadAnalysisTotal = sites.size,
+                        results = if (current.isMapBrowse()) {
+                            browseSelectionResults(current.copy(roadBySiteId = merged), current.selectedSiteIds)
+                        } else {
+                            current.results.map { item ->
+                                val assessment = merged[item.site.id]
+                                if (assessment == null) {
+                                    item
+                                } else {
+                                    val (target, kind) = NavigationTargets.forMotorcycle(assessment)
+                                        ?: (item.navigationTarget to item.navigationTargetKind)
+                                    item.copy(
+                                        roadAssessment = assessment,
+                                        navigationTarget = target,
+                                        navigationTargetKind = kind,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    next.copy(savedListResults = buildSavedListResults(next))
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isAnalyzingRoads = false,
+                        message = AppMessage.Error(
+                            "Analiza dróg OSM: ${e.message ?: "błąd"}",
+                        ),
+                    )
+                }
+            }
         }
     }
 
@@ -2014,7 +2172,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 next.copy(
                     results = browseSelectionResults(
                         next.copy(userPosition = pos),
-                        current.selectedSiteId,
+                        current.selectedSiteIds,
                     ),
                 )
             } else {
@@ -2076,7 +2234,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 mapCameraRequest = camera,
                 results = if (it.isMapBrowse()) {
-                    browseSelectionResults(it.copy(userPosition = pos), it.selectedSiteId)
+                    browseSelectionResults(it.copy(userPosition = pos), it.selectedSiteIds)
                 } else {
                     buildResults(
                         it.allSites,
@@ -2480,7 +2638,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 zanocujPolygons = zanocujPolygons,
                 roadBySiteId = roadBySiteId,
                 results = results,
-                selectedSiteId = null,
+                selectedSiteIds = emptyList(),
                 currentPage = AppPages.MAP,
                 mapCameraRequest = PagerNavigation.cameraForNewSearch(cameraToken),
                 message = AppMessage.Info(messageText),

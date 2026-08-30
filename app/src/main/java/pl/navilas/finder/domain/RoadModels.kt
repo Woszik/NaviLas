@@ -17,6 +17,10 @@ data class Road(
     val motorcycle: String?,
     /** OSM `vehicle`, if present. */
     val vehicle: String?,
+    /** OSM `surface`, if present. */
+    val surface: String? = null,
+    /** OSM `tracktype` (grade1–5), if present. */
+    val tracktype: String? = null,
     val name: String?,
     /** Nearest point on the way to the evaluated POI (WGS84), if computed. */
     val latitude: Double? = null,

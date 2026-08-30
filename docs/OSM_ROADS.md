@@ -64,6 +64,8 @@ Zob. `RoadClassifier` w kodzie:
 | `MOTO_ALLOWED` | typowe drogi jezdne (`residential`, `tertiary`, …) bez restrykcji |
 | `MOTO_UNKNOWN` | pozostałe / niejednoznaczne tagi |
 
+Etykieta dojazdu (Nightly 0.5.38) czyta też `surface` i `tracktype`: asfalt / utwardzona / gruntowa oraz grade1–5 (raczej przejezdna / średnia / raczej trudna). `motor_vehicle=forestry` pokazuje „leśna (dostęp LP)”. W przeglądaniu analiza OSM jest tylko dla zaznaczonych punktów.
+
 ## Suitability (progi konfigurowalne)
 
 `<=50 m` EXCELLENT · `<=150 m` GOOD · `<=300 m` WEAK · `>300 m` / brak drogi / NOT_ROAD / RESTRICTED → REJECTED
