@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.36 (42) — 2026-08-30
+
+**APK:** [navilas-0.5.36.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.36/navilas-0.5.36.apk)
+
+W przeglądaniu mapy punkty BDL są znowu rysowane na widocznym obszarze (bez klastrów). Domyślny kanał aktualizacji to Beta i nowsze.
+
+**Poprzednia wersja:** [0.5.35](#0535-39--2026-08-30)
+
+---
+
 ## 0.5.35 (39) — 2026-08-30
 
 **APK:** [navilas-0.5.35.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.35/navilas-0.5.35.apk)

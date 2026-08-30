@@ -1,0 +1,1 @@
+Browse mode draws BDL points again on the visible map area. The default update channel is Beta.

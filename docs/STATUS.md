@@ -6,8 +6,8 @@ Ostatnia aktualizacja dokumentacji: **2026-08-30**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.36-nightly | 41 |
-| **Beta** | GitHub Releases | 0.5.35 | 39 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.36 | 42 |
+| **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,9 +20,9 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.35** na urządzeniu testowym: APK z [NaviLas-releases v0.5.35](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.35). Propozycja F-Droid: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
-## Zakres Beta 0.5.35
+## Zakres Beta 0.5.36
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:
 
@@ -50,7 +50,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 - **Ekran włączony** podczas aktywnego śledzenia pozycji GPS (`FLAG_KEEP_SCREEN_ON`).
 - **Obiekty BDL** (browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
 - **Przewidywalny start:** domyślnie pierwszy start otwiera Search, a kolejne przywracają ostatni tryb. Ustawienia mogą to nadpisać na stałe Wyszukiwanie albo Przeglądanie mapy. Browse nie uruchamia się w tle dla Search.
-- **Browse bez blokowania UI:** mapa pojawia się od razu, punkty są przygotowywane w tle, ograniczane do obszaru mapy i grupowane przy szerokim widoku.
+- **Browse bez blokowania UI:** mapa pojawia się od razu, punkty są przygotowywane w tle i rysowane na widocznym obszarze (bez klastrów).
 - **Bez wyścigu trybów:** przejście Browse → Search anuluje stare zadanie; zakończone ładowanie nie może przejąć ekranu.
 - **Kosztowne filtry poza UI:** filtrowanie udogodnień i sortowanie wyników działa w tle; duży promień parkingu pokazuje ostrzeżenie.
 - **Etapowe Search:** miejsca BDL są prezentowane przed analizą dróg motocyklowych, której postęp jest widoczny jako `Analizuję drogi OSM: n/total` (limit 50 wyników).
