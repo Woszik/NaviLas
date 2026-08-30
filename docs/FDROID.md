@@ -17,7 +17,7 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Fork fdroiddata** | https://gitlab.com/Woszik/fdroiddata |
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
-| **Kandydat w szablonie repo NaviLas** | tag `v0.5.34`, versionCode 38, commit `531ecd1` |
+| **Kandydat w szablonie repo NaviLas** | tag `v0.5.34`, versionCode 38, commit `64bcec3` |
 | **Kandydat na forku GitLab (live MR)** | nadal `0.5.7-fdroid-prep` do czasu `git push` z `/tmp/fdroiddata` (brak tokenu GitLab w tym środowisku) |
 | **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
 | **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |

@@ -18,7 +18,7 @@ Repo: https://github.com/Woszik/NaviLas
 Builds:
   - versionName: '0.5.34'
     versionCode: 38
-    commit: 531ecd150235635136867fefae389170a1d57d81
+    commit: 64bcec381cca119307118c9fd58f6754f7c8bddf
     gradle:
       - fdroidRelease
 

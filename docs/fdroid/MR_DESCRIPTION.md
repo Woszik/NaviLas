@@ -28,6 +28,6 @@ Public: https://github.com/Woszik/NaviLas
 
 ## Notes for reviewers
 
-- Proposed build is now **0.5.34** (versionCode 38), commit `531ecd150235635136867fefae389170a1d57d81`
+- Proposed build is now **0.5.34** (versionCode 38), commit `64bcec381cca119307118c9fd58f6754f7c8bddf`
 - No reproducible builds / `Binaries` — GitHub APK is the `github` flavor and cannot match `fdroidRelease`. F-Droid may sign with its own key (accepted by author)
 - GitHub Releases remain a separate tester channel from F-Droid
