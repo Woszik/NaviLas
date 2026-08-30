@@ -20,7 +20,7 @@ Public: https://github.com/Woszik/NaviLas
 
 - Flavor `fdroidRelease` — no in-app GitHub updater (`APP_UPDATE_ENABLED=false`)
 - Parallel `github` flavor for sideload/APK releases (not used by F-Droid)
-- Tag for first build: `v0.5.7-fdroid-prep`
+- Current proposed build: `v0.5.34` (versionCode 38)
 
 ## Anti-Features
 

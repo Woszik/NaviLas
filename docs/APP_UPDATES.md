@@ -3,16 +3,23 @@
 Dotyczy wyłącznie buildu **`github`** (`BuildConfig.APP_UPDATE_ENABLED = true`).  
 Flavor **`fdroid`** nie łączy się z GitHub — aktualizacje tylko przez klienta F-Droid.
 
-NaviLas pobiera informacje o nowej wersji z publicznego repozytorium **NaviLas-releases**.
+**Kanały:** Nightly / Beta / Final — model: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
 
-## Architektura
+**Dziś ten dokument opisuje updater kanału Beta.**
+
+Nightly jest lokalny (bez in-app). Final jeszcze nie istnieje (docelowo osobny manifest na GitHub). F-Droid jest niezależną dystrybucją flavoru `fdroid`.
+
+NaviLas (Beta) pobiera informacje o nowej wersji z publicznego repozytorium **NaviLas-releases** (`latest.json`).
+
+## Architektura (Beta — obecny stan)
 
 | Element | Lokalizacja |
 |---------|-------------|
 | Kod aplikacji | `Woszik/NaviLas` (publiczne) |
-| APK + `latest.json` | `Woszik/NaviLas-releases` (publiczne) |
+| APK + `latest.json` (Beta) | `Woszik/NaviLas-releases` (publiczne) |
 | URL manifestu | `BuildConfig.UPDATE_MANIFEST_URL` (flavor `github`) |
 | Build CI | `./gradlew :app:assembleGithubRelease` |
+| Nightly / Final manifesty | jeszcze nie — patrz TODO w [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) |
 
 ## Pierwsze uruchomienie (jednorazowo)
 
@@ -47,30 +54,32 @@ keytool -genkeypair -v \
 | `RELEASE_KEY_ALIAS` | np. `navilas` |
 | `RELEASE_KEY_PASSWORD` | hasło klucza |
 
-### 4. Pierwszy release ręczny (smoke test)
+### 4. Pierwsza Beta ręczna (smoke test)
 
 1. Podnieś `versionCode` i `versionName` w `app/build.gradle.kts`.
 2. Zbuduj i opublikuj APK:
 
 ```bash
-./gradlew :app:assembleRelease
-sha256sum app/build/outputs/apk/release/app-release.apk
+./gradlew :app:assembleGithubRelease
+sha256sum app/build/outputs/apk/github/release/app-github-release.apk
 ```
 
 3. Utwórz release w `NaviLas-releases` z assetem `navilas-X.Y.Z.apk`.
 4. Wrzuć `latest.json` (wzór: `releases/latest.json.example`) na gałąź `main`.
 
-## Publikacja kolejnych wersji (CI)
+## Publikacja kolejnej Beta (CI)
+
+Nightly nie wchodzi tu — lokalny debug albo przyszły osobny pipeline.
 
 1. Zaktualizuj w `app/build.gradle.kts`:
-   - `versionCode` — zawsze +1
-   - `versionName` — np. `0.5.33` (krótka nazwa, bez sufiksu roboczego)
-2. Uzupełnij [`CHANGELOG.md`](../CHANGELOG.md) — wpis dla nowej wersji + link do APK.
+   - `versionCode` — zawsze +1 względem poprzedniej Beta (i wyżej niż zainstalowany Nightly, jeśli ma ten sam podpis i ma się dać nadpisać)
+   - `versionName` — np. `0.5.34` (krótka nazwa, bez sufiksu roboczego Nightly)
+2. Uzupełnij [`CHANGELOG.md`](../CHANGELOG.md) — wpis Beta + link do APK.
 3. Commit — **pierwszy akapit** commita trafia do `releaseNotes` w `latest.json` (dialog aktualizacji w aplikacji). Bez pustej linii w środku — CI bierze tylko do pierwszej pustej linii.
 4. Tag + push:
 
 ```bash
-git tag v0.5.33
+git tag v0.5.34
 git push origin main --tags
 ```
 
@@ -92,18 +101,18 @@ git push origin main --tags
 
 Auto-update **nie** instaluje starszej wersji. Downgrade in-app **nie jest wspierany** (ograniczenie Androida — niższy `versionCode` nie nadpisze nowszego APK).
 
-**Ręczny powrót** (ten sam kanał GitHub, ten sam podpis):
+**Ręczny powrót** (ten sam podpis GitHub, zwykle w obrębie Beta):
 
 1. **Lista → Zapisane → Kopia → Eksportuj** (zabezpieczenie danych).
 2. [NaviLas-releases → Releases](https://github.com/Woszik/NaviLas-releases/releases) — pobierz starszy `navilas-*.apk`.
 3. Zainstaluj ręcznie (jak przy pierwszej instalacji).
 
-Historia opublikowanych wersji i linki do APK: [`CHANGELOG.md`](../CHANGELOG.md).
+Historia opublikowanych **Beta** i linki do APK: [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Zachowanie aplikacji
 
 - **Start:** zawsze sprawdzenie manifestu po ~2 s. Brak update → cisza. Jest update → dialog.
-- **Ręcznie:** ekran Wyszukiwanie → „Sprawdź aktualizacje” (przy braku update: komunikat „masz najnowszą”).
+- **Ręcznie:** menu **⋮ → Sprawdź aktualizacje** (przy braku update: komunikat „masz najnowszą”).
 - **Nowa wersja:** dialog z release notes → „Aktualizuj” → pobieranie → weryfikacja SHA-256 → instalator systemowy.
 - **Później:** wersja zapisana jako odrzucona do czasu pojawienia się wyższego `versionCode`.
 - **Wymuszenie:** `minVersionCode` w manifest — dialog bez „Później”.

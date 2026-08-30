@@ -17,11 +17,14 @@ import pl.navilas.finder.data.bdl.BdlOfflineDownloader
 import pl.navilas.finder.data.bdl.BdlOfflineStore
 import pl.navilas.finder.data.bdl.BdlSearchContext
 import pl.navilas.finder.data.bdl.BdlSearchSubsetFilter
+import pl.navilas.finder.data.bdl.BdlOverlayLoader
 import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
 import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
 import pl.navilas.finder.data.cache.RoadAssessmentCache
+import pl.navilas.finder.data.preferences.StartupMode
+import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
 import pl.navilas.finder.data.osm.NominatimGeocoder
 import pl.navilas.finder.data.osm.OverpassRoadClient
@@ -33,7 +36,11 @@ import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
 import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
+import pl.navilas.finder.domain.BdlOverlayFilter
+import pl.navilas.finder.domain.BdlOverlayGroup
+import pl.navilas.finder.domain.BdlOverlayPoint
 import pl.navilas.finder.domain.BrowseCarFilter
+import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.BrowseParkingProximityMode
 import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
@@ -87,9 +94,21 @@ data class UserPosition(
     val approximate: Boolean,
 )
 
+internal fun savedExploreMode(value: String?): AppExploreMode =
+    value?.let { saved ->
+        AppExploreMode.entries.firstOrNull { it.name == saved }
+    } ?: AppExploreMode.SEARCH
+
+internal fun startupExploreMode(mode: StartupMode, savedValue: String?): AppExploreMode =
+    when (mode) {
+        StartupMode.SEARCH -> AppExploreMode.SEARCH
+        StartupMode.MAP_BROWSE -> AppExploreMode.MAP_BROWSE
+        StartupMode.REMEMBER_LAST -> savedExploreMode(savedValue)
+    }
+
 data class UiState(
     val profile: TravelProfile = TravelProfile.CAR,
-    val exploreMode: AppExploreMode = AppExploreMode.MAP_BROWSE,
+    val exploreMode: AppExploreMode = AppExploreMode.SEARCH,
     /** GPS / last known device location (blue marker). */
     val userPosition: UserPosition? = null,
     /**
@@ -129,6 +148,10 @@ data class UiState(
     val isSearching: Boolean = false,
     /** Moto profile: OSM road analysis running after BDL results are shown. */
     val isAnalyzingRoads: Boolean = false,
+    val roadAnalysisCompleted: Int = 0,
+    val roadAnalysisTotal: Int = 0,
+    /** Amenity filtering/sorting runs off the UI thread. */
+    val isFilteringPlaces: Boolean = false,
     val message: AppMessage? = null,
     val searchConfig: SearchConfig = SearchConfig.DEFAULT,
     val offlineBdl: OfflineBdlState = OfflineBdlState(),
@@ -146,8 +169,17 @@ data class UiState(
     /** MapBrowse: permanent offline layer loaded (revision bumps when GeoJSON must reload). */
     val mapBrowseRevision: Long = 0L,
     val isMapBrowseLoading: Boolean = false,
+    /** Rest-site points currently sent to MapLibre in Browse mode. */
+    val browseViewportSites: List<RestSite> = emptyList(),
+    val browseMapClusters: List<BrowseMapCluster> = emptyList(),
     /** Amenity / Zanocuj filters (browse + search, car + moto). */
     val browseCarFilter: BrowseCarFilter = BrowseCarFilter(),
+    /** Precomputed IDs for Browse marker filtering; null means no active filter. */
+    val browseFilterMatchingIds: Set<String>? = null,
+    /** Extra BDL objects overlay (browse only). Off by default. */
+    val bdlOverlayFilter: BdlOverlayFilter = BdlOverlayFilter(),
+    val bdlOverlayViewport: List<BdlOverlayPoint> = emptyList(),
+    val bdlOverlayFullAvailable: Boolean = false,
 ) {
     fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
         ListViewMode.SEARCH -> results
@@ -208,21 +240,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
         assessmentCache = roadAssessmentCache,
     )
-    private val localityGeocoder = NominatimGeocoder(localityStore = localityStore)
+    private val localityGeocoder = NominatimGeocoder(
+        localityStore = localityStore,
+        voivodeshipCacheFile = File(application.filesDir, "county_voivodeship_cache.json"),
+    )
     private val savedPointsStore = SavedPointsStore.fromAppFilesDir(application.filesDir)
     private val appUpdatePrefs = AppUpdatePreferences(application)
     private val appUpdateChecker = AppUpdateChecker(BuildConfig.UPDATE_MANIFEST_URL)
     private val appUpdateDownloader = AppUpdateDownloader()
+    private val uiPreferences = UiPreferences(application)
+    private val exploreModePrefs =
+        application.getSharedPreferences(EXPLORE_MODE_PREFS, Application.MODE_PRIVATE)
     private val cameraToken = AtomicLong(1L)
     private val searchGeneration = AtomicLong(0L)
+    private val mapBrowseGeneration = AtomicLong(0L)
+    private val filterGeneration = AtomicLong(0L)
     private var lastBdlSearchContext: BdlSearchContext? = null
     private var pendingCorridorLocalityStart: LatLon? = null
     private var liveGpsCentered = false
     /** Browse-only: full Zanocuj geometries for viewport clips (not drawn nationwide). */
     @Volatile
     private var browseZanocujIndex: List<pl.navilas.finder.data.bdl.ZanocujBoundsPolygon> = emptyList()
+    @Volatile
+    private var browseOverlayIndex: List<BdlOverlayPoint> = emptyList()
+    private var browseOverlayById: Map<String, BdlOverlayPoint> = emptyMap()
     private var lastBrowseViewportKey: String? = null
+    private var lastBrowseBounds: GeoUtils.Envelope? = null
+    private var lastBrowseZoom: Double = 0.0
+    private var lastBrowseCenterLat: Double = 0.0
+    private var lastBrowseCenterLon: Double = 0.0
+    private var mapBrowseLoadJob: Job? = null
     private var browseViewportJob: Job? = null
+    private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
     private var lastFollowAppliedLat: Double? = null
     private var lastFollowAppliedLon: Double? = null
@@ -245,6 +294,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private fun loadInitialState(): UiState {
+        val initialExploreMode = loadSavedExploreMode()
         val saved = savedPointsStore.allPoints().associateBy { it.site.id }
         val categories = savedPointsStore.allCategories()
         val lastGps = lastGpsPreferences.load()
@@ -262,6 +312,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             null
         }
         val base = UiState(
+            exploreMode = initialExploreMode,
+            currentPage = if (initialExploreMode == AppExploreMode.MAP_BROWSE) {
+                AppPages.MAP
+            } else {
+                AppPages.SEARCH
+            },
             offlineBdl = loadOfflineState(),
             savedPoints = saved,
             savedCategories = categories,
@@ -271,10 +327,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return base.copy(savedListResults = buildSavedListResults(base))
     }
 
+    private fun loadSavedExploreMode(): AppExploreMode {
+        val saved = exploreModePrefs.getString(EXPLORE_MODE_KEY, null)
+        return startupExploreMode(uiPreferences.startupMode, saved)
+    }
+
+    private fun saveExploreMode(mode: AppExploreMode) {
+        exploreModePrefs.edit().putString(EXPLORE_MODE_KEY, mode.name).apply()
+    }
+
     init {
         refreshOfflineStateFromDisk()
         if (_state.value.isMapBrowse()) {
-            viewModelScope.launch { loadMapBrowseLayer(force = false) }
+            loadMapBrowseLayer(force = false)
         }
         if (BuildConfig.APP_UPDATE_ENABLED) {
             viewModelScope.launch {
@@ -815,16 +880,87 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setBrowseCarFilter(filter: BrowseCarFilter) {
+        val generation = filterGeneration.incrementAndGet()
+        filterResultsJob?.cancel()
         _state.update { current ->
-            val next = current.copy(browseCarFilter = filter)
-            next.copy(results = rebuildResults(next))
+            current.copy(
+                browseCarFilter = filter,
+                isFilteringPlaces = current.allSites.isNotEmpty(),
+                browseFilterMatchingIds = null,
+                message = if (
+                    filter.requireParking &&
+                    filter.parkingMode == BrowseParkingProximityMode.MAX_DISTANCE &&
+                    filter.parkingMaxMeters >= LARGE_PARKING_FILTER_WARNING_METERS
+                ) {
+                    AppMessage.Info(
+                        "Duży promień parkingu (${filter.parkingMaxMeters} m) może wydłużyć filtrowanie.",
+                    )
+                } else {
+                    current.message
+                },
+            )
+        }
+        val snapshot = _state.value
+        if (snapshot.allSites.isEmpty()) {
+            _state.update { it.copy(isFilteringPlaces = false) }
+            return
+        }
+        filterResultsJob = viewModelScope.launch {
+            if (snapshot.isMapBrowse()) {
+                val matchingIds = withContext(Dispatchers.Default) {
+                    BrowseCarFilterMatcher.matchingIds(snapshot.allSites, filter)
+                }
+                if (filterGeneration.get() != generation) return@launch
+                _state.update { current ->
+                    if (!current.isMapBrowse() || current.browseCarFilter != filter) {
+                        return@update current
+                    }
+                    current.copy(
+                        browseFilterMatchingIds = matchingIds,
+                        isFilteringPlaces = false,
+                    )
+                }
+                val user = _state.value.userPosition
+                val bounds = lastBrowseBounds ?: if (user != null) {
+                    GeoUtils.envelopeAround(
+                        user.latitude,
+                        user.longitude,
+                        BROWSE_INITIAL_VIEWPORT_RADIUS_KM,
+                    )
+                } else {
+                    POLAND_BROWSE_ENVELOPE
+                }
+                scheduleBrowseViewportRefresh(
+                    bounds,
+                    user?.latitude ?: 52.1,
+                    user?.longitude ?: 19.4,
+                    if (lastBrowseBounds != null) {
+                        lastBrowseZoom
+                    } else if (user != null) {
+                        BROWSE_INITIAL_USER_ZOOM
+                    } else {
+                        5.5
+                    },
+                )
+            } else {
+                val results = withContext(Dispatchers.Default) {
+                    rebuildResults(snapshot)
+                }
+                if (filterGeneration.get() != generation) return@launch
+                _state.update { current ->
+                    if (current.isMapBrowse() || current.browseCarFilter != filter) {
+                        return@update current
+                    }
+                    current.copy(results = results, isFilteringPlaces = false)
+                }
+            }
         }
     }
 
     /** null = show all markers; otherwise visible site ids for browse amenity filter. */
     fun browseCarMatchingIds(state: UiState = _state.value): Set<String>? {
         if (!state.isMapBrowse()) return null
-        return BrowseCarFilterMatcher.matchingIds(state.allSites, state.browseCarFilter)
+        return state.browseFilterMatchingIds
     }
 
     private fun rebuildResults(state: UiState): List<RestSiteResult> {
@@ -848,10 +984,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setExploreMode(mode: AppExploreMode) {
         if (_state.value.exploreMode == mode) return
+        saveExploreMode(mode)
         when (mode) {
             AppExploreMode.SEARCH -> {
+                mapBrowseGeneration.incrementAndGet()
+                mapBrowseLoadJob?.cancel()
+                mapBrowseLoadJob = null
+                filterGeneration.incrementAndGet()
+                filterResultsJob?.cancel()
+                filterResultsJob = null
                 browseZanocujIndex = emptyList()
+                browseOverlayIndex = emptyList()
+                browseOverlayById = emptyMap()
                 lastBrowseViewportKey = null
+                lastBrowseBounds = null
                 browseViewportJob?.cancel()
                 _state.update { current ->
                     current.copy(
@@ -859,8 +1005,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         mapBrowseRevision = 0L,
                         isMapBrowseLoading = false,
                         allSites = emptyList(),
+                        browseViewportSites = emptyList(),
+                        browseMapClusters = emptyList(),
                         results = emptyList(),
+                        browseFilterMatchingIds = null,
+                        isFilteringPlaces = false,
+                        isSearching = false,
+                        isAnalyzingRoads = false,
+                        roadAnalysisCompleted = 0,
+                        roadAnalysisTotal = 0,
                         zanocujPolygons = emptyList(),
+                        bdlOverlayViewport = emptyList(),
                         selectedSiteId = null,
                         message = AppMessage.Info("Tryb wyszukiwania — ustaw źródło i naciśnij Znajdź."),
                         currentPage = AppPages.SEARCH,
@@ -868,13 +1023,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             AppExploreMode.MAP_BROWSE -> {
+                searchGeneration.incrementAndGet()
+                filterGeneration.incrementAndGet()
+                filterResultsJob?.cancel()
+                filterResultsJob = null
                 _state.update {
                     it.copy(
                         exploreMode = AppExploreMode.MAP_BROWSE,
-                        message = AppMessage.Info(
-                            getApplication<Application>().getString(R.string.map_browse_switched),
-                        ),
-                        currentPage = AppPages.SEARCH,
+                        allSites = emptyList(),
+                        browseViewportSites = emptyList(),
+                        browseMapClusters = emptyList(),
+                        results = emptyList(),
+                        selectedSiteId = null,
+                        browseFilterMatchingIds = null,
+                        isFilteringPlaces = false,
+                        isSearching = false,
+                        isAnalyzingRoads = false,
+                        roadAnalysisCompleted = 0,
+                        roadAnalysisTotal = 0,
+                        message = null,
+                        currentPage = AppPages.MAP,
                     )
                 }
                 loadMapBrowseLayer(force = true)
@@ -886,9 +1054,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!_state.value.isMapBrowse()) return
         if (_state.value.isMapBrowseLoading) return
         if (!force && _state.value.mapBrowseRevision > 0 && _state.value.allSites.isNotEmpty()) return
-        viewModelScope.launch {
+        val generation = mapBrowseGeneration.incrementAndGet()
+        mapBrowseLoadJob?.cancel()
+        mapBrowseLoadJob = viewModelScope.launch {
             if (!offlineStore.isReady()) {
                 _state.update {
+                    if (!it.isMapBrowse() || mapBrowseGeneration.get() != generation) {
+                        return@update it
+                    }
                     it.copy(
                         message = AppMessage.Info(
                             getApplication<Application>().getString(R.string.map_browse_need_offline),
@@ -899,34 +1072,74 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             _state.update {
+                if (!it.isMapBrowse() || mapBrowseGeneration.get() != generation) {
+                    return@update it
+                }
                 it.copy(
                     isMapBrowseLoading = true,
-                    isSearching = true,
-                    message = AppMessage.Info(
-                        getApplication<Application>().getString(R.string.map_browse_loading),
-                    ),
+                    message = null,
                 )
             }
             try {
                 val bundle = OfflineMapBrowseLoader(offlineStore).loadAll()
+                val fullAvailable =
+                    _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
+                val overlay = withContext(Dispatchers.IO) {
+                    BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
+                }
+                if (!isActiveMapBrowseLoad(generation)) return@launch
+                val initialUser = _state.value.userPosition
+                val initialBounds = if (initialUser != null) {
+                    GeoUtils.envelopeAround(
+                        initialUser.latitude,
+                        initialUser.longitude,
+                        BROWSE_INITIAL_VIEWPORT_RADIUS_KM,
+                    )
+                } else {
+                    POLAND_BROWSE_ENVELOPE
+                }
+                val initialCenterLat = initialUser?.latitude ?: 52.1
+                val initialCenterLon = initialUser?.longitude ?: 19.4
+                val initialZoom = if (initialUser != null) {
+                    BROWSE_INITIAL_USER_ZOOM
+                } else {
+                    5.5
+                }
+                val initialContent = withContext(Dispatchers.Default) {
+                    selectBrowseContent(
+                        bundle.sites,
+                        initialBounds,
+                        initialCenterLat,
+                        initialCenterLon,
+                        initialZoom,
+                        matchingIds = null,
+                    )
+                }
                 browseZanocujIndex = bundle.zanocujIndex
+                browseOverlayIndex = overlay
+                browseOverlayById = overlay.associateBy { it.id }
                 lastBrowseViewportKey = null
                 // Nationwide MapLibre overlays OOMs — keep index private; draw viewport subset only.
                 _state.update { current ->
+                    if (!current.isMapBrowse() || mapBrowseGeneration.get() != generation) {
+                        return@update current
+                    }
                     current.copy(
                         allSites = bundle.sites,
+                        browseViewportSites = initialContent.first,
+                        browseMapClusters = initialContent.second,
                         zanocujPolygons = emptyList(),
+                        bdlOverlayViewport = emptyList(),
+                        bdlOverlayFullAvailable = fullAvailable,
                         roadBySiteId = emptyMap(),
                         results = emptyList(),
                         selectedSiteId = null,
                         isMapBrowseLoading = false,
-                        isSearching = false,
                         mapBrowseRevision = current.mapBrowseRevision + 1,
-                        currentPage = AppPages.MAP,
                         mapCameraRequest = MapCameraRequest.CenterOn(
                             latitude = current.userPosition?.latitude ?: 52.1,
                             longitude = current.userPosition?.longitude ?: 19.4,
-                            zoom = if (current.userPosition != null) 11.0 else 5.5,
+                            zoom = if (current.userPosition != null) BROWSE_INITIAL_USER_ZOOM else 5.5,
                             token = cameraToken.getAndIncrement(),
                         ),
                         message = AppMessage.Info(
@@ -945,20 +1158,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         ),
                     )
                 }
+                if (isActiveMapBrowseLoad(generation)) {
+                    scheduleBrowseViewportRefresh(
+                        initialBounds,
+                        initialCenterLat,
+                        initialCenterLon,
+                        initialZoom,
+                    )
+                }
+                if (_state.value.browseCarFilter.isActive && isActiveMapBrowseLoad(generation)) {
+                    setBrowseCarFilter(_state.value.browseCarFilter)
+                }
             } catch (e: Exception) {
+                if (!isActiveMapBrowseLoad(generation)) return@launch
                 browseZanocujIndex = emptyList()
+                browseOverlayIndex = emptyList()
+                browseOverlayById = emptyMap()
                 _state.update {
+                    if (!it.isMapBrowse() || mapBrowseGeneration.get() != generation) {
+                        return@update it
+                    }
                     it.copy(
                         isMapBrowseLoading = false,
-                        isSearching = false,
                         message = AppMessage.Error(
                             "Przeglądanie mapy: ${e.message ?: "błąd ładowania"}",
                         ),
                     )
                 }
+            } finally {
+                if (mapBrowseGeneration.get() == generation) {
+                    mapBrowseLoadJob = null
+                }
             }
         }
     }
+
+    private fun isActiveMapBrowseLoad(generation: Long): Boolean =
+        _state.value.isMapBrowse() && mapBrowseGeneration.get() == generation
 
     /**
      * Browse: draw Zanocuj fills only for the visible map bbox (capped).
@@ -972,25 +1208,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         zoom: Double,
     ) {
         if (!_state.value.isMapBrowse()) return
-        if (browseZanocujIndex.isEmpty()) return
-        if (zoom < BROWSE_ZANOCUJ_MIN_ZOOM) {
-            lastBrowseViewportKey = "zoomed-out"
-            if (_state.value.zanocujPolygons.isNotEmpty()) {
-                _state.update { it.copy(zanocujPolygons = emptyList()) }
-            }
-            return
-        }
         val padLon = (east - west).coerceAtLeast(0.01) * 0.15
         val padLat = (north - south).coerceAtLeast(0.01) * 0.15
-        val key = listOf(
-            (west * 100).toInt(),
-            (south * 100).toInt(),
-            (east * 100).toInt(),
-            (north * 100).toInt(),
-            zoom.toInt(),
-        ).joinToString(",")
-        if (key == lastBrowseViewportKey) return
-        lastBrowseViewportKey = key
         val envelope = GeoUtils.Envelope(
             xmin = west - padLon,
             ymin = south - padLat,
@@ -999,24 +1218,190 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         val centerLat = (south + north) / 2.0
         val centerLon = (west + east) / 2.0
+        lastBrowseBounds = envelope
+        lastBrowseZoom = zoom
+        lastBrowseCenterLat = centerLat
+        lastBrowseCenterLon = centerLon
+        val key = listOf(
+            (west * 100).toInt(),
+            (south * 100).toInt(),
+            (east * 100).toInt(),
+            (north * 100).toInt(),
+            zoom.toInt(),
+            _state.value.bdlOverlayFilter.hashCode(),
+        ).joinToString(",")
+        if (key == lastBrowseViewportKey) return
+        lastBrowseViewportKey = key
+        scheduleBrowseViewportRefresh(envelope, centerLat, centerLon, zoom)
+    }
+
+    fun setBdlOverlayFilter(filter: BdlOverlayFilter) {
+        val normalized = if (filter.enabled && filter.groups.isEmpty()) {
+            filter.copy(groups = BdlOverlayGroup.CORE_GROUPS)
+        } else {
+            filter
+        }
+        lastBrowseViewportKey = null
+        _state.update { it.copy(bdlOverlayFilter = normalized) }
+        val bounds = lastBrowseBounds
+        if (bounds != null) {
+            scheduleBrowseViewportRefresh(
+                bounds,
+                lastBrowseCenterLat,
+                lastBrowseCenterLon,
+                lastBrowseZoom,
+            )
+        } else if (!normalized.isActive) {
+            _state.update { it.copy(bdlOverlayViewport = emptyList()) }
+        }
+    }
+
+    private fun scheduleBrowseViewportRefresh(
+        envelope: GeoUtils.Envelope,
+        centerLat: Double,
+        centerLon: Double,
+        zoom: Double,
+    ) {
         browseViewportJob?.cancel()
         browseViewportJob = viewModelScope.launch {
-            val subset = withContext(Dispatchers.Default) {
-                browseZanocujIndex
-                    .asSequence()
-                    .filter { it.intersects(envelope) }
-                    .sortedBy {
-                        val dLat = it.centerLat() - centerLat
-                        val dLon = it.centerLon() - centerLon
-                        dLat * dLat + dLon * dLon
-                    }
-                    .take(BROWSE_ZANOCUJ_MAX_POLYGONS)
-                    .map { it.polygon }
-                    .toList()
+            val allSites = _state.value.allSites
+            val matchingIds = _state.value.browseFilterMatchingIds
+            val drawZanocuj = zoom >= BROWSE_ZANOCUJ_MIN_ZOOM && browseZanocujIndex.isNotEmpty()
+            val overlayGroups = _state.value.bdlOverlayFilter.effectiveGroups(
+                _state.value.bdlOverlayFullAvailable,
+            )
+            val drawOverlay = overlayGroups.isNotEmpty() &&
+                zoom >= BROWSE_OVERLAY_MIN_ZOOM &&
+                browseOverlayIndex.isNotEmpty()
+            val zanocujSubset = if (drawZanocuj) {
+                withContext(Dispatchers.Default) {
+                    browseZanocujIndex
+                        .asSequence()
+                        .filter { it.intersects(envelope) }
+                        .sortedBy {
+                            val dLat = it.centerLat() - centerLat
+                            val dLon = it.centerLon() - centerLon
+                            dLat * dLat + dLon * dLon
+                        }
+                        .take(BROWSE_ZANOCUJ_MAX_POLYGONS)
+                        .map { it.polygon }
+                        .toList()
+                }
+            } else {
+                emptyList()
+            }
+            val overlaySubset = if (drawOverlay) {
+                withContext(Dispatchers.Default) {
+                    BdlOverlayLoader.inEnvelope(
+                        points = browseOverlayIndex,
+                        envelope = envelope,
+                        groups = overlayGroups,
+                        centerLat = centerLat,
+                        centerLon = centerLon,
+                        limit = BROWSE_OVERLAY_MAX_POINTS,
+                    )
+                }
+            } else {
+                emptyList()
+            }
+            val browseContent = withContext(Dispatchers.Default) {
+                selectBrowseContent(
+                    allSites,
+                    envelope,
+                    centerLat,
+                    centerLon,
+                    zoom,
+                    matchingIds,
+                )
             }
             if (!_state.value.isMapBrowse()) return@launch
-            _state.update { it.copy(zanocujPolygons = subset) }
+            _state.update {
+                val nextSites = if (
+                    browseContent.first.isEmpty() &&
+                    browseContent.second.isEmpty() &&
+                    (it.browseViewportSites.isNotEmpty() || it.browseMapClusters.isNotEmpty())
+                ) {
+                    it.browseViewportSites
+                } else {
+                    browseContent.first
+                }
+                val nextClusters = if (
+                    browseContent.first.isEmpty() &&
+                    browseContent.second.isEmpty() &&
+                    (it.browseViewportSites.isNotEmpty() || it.browseMapClusters.isNotEmpty())
+                ) {
+                    it.browseMapClusters
+                } else {
+                    browseContent.second
+                }
+                val viewportChanged = it.browseViewportSites.map(RestSite::id) !=
+                    nextSites.map(RestSite::id) || it.browseMapClusters != nextClusters
+                it.copy(
+                    zanocujPolygons = zanocujSubset,
+                    bdlOverlayViewport = overlaySubset,
+                    browseViewportSites = nextSites,
+                    browseMapClusters = nextClusters,
+                    mapBrowseRevision = if (viewportChanged) {
+                        it.mapBrowseRevision + 1
+                    } else {
+                        it.mapBrowseRevision
+                    },
+                )
+            }
         }
+    }
+
+    private fun selectBrowseContent(
+        sites: List<RestSite>,
+        envelope: GeoUtils.Envelope,
+        centerLat: Double,
+        centerLon: Double,
+        zoom: Double,
+        matchingIds: Set<String>?,
+    ): Pair<List<RestSite>, List<BrowseMapCluster>> {
+        val filteredSites = if (matchingIds == null) {
+            sites
+        } else {
+            sites.filter { it.id in matchingIds }
+        }
+        val candidates = if (zoom < BROWSE_SITE_VIEWPORT_MIN_ZOOM) {
+            filteredSites
+        } else {
+            filteredSites.asSequence()
+            .filter { site ->
+                site.latitude >= envelope.ymin &&
+                    site.latitude <= envelope.ymax &&
+                    site.longitude >= envelope.xmin &&
+                    site.longitude <= envelope.xmax
+            }
+            .sortedBy { site ->
+                val dLat = site.latitude - centerLat
+                val dLon = site.longitude - centerLon
+                dLat * dLat + dLon * dLon
+            }
+            .take(BROWSE_SITE_VIEWPORT_MAX_POINTS)
+            .toList()
+        }
+        if (zoom >= BROWSE_CLUSTER_MAX_ZOOM) return candidates to emptyList()
+        val cellDegrees = when {
+            zoom < 6.0 -> 1.0
+            zoom < 8.0 -> 0.35
+            else -> 0.12
+        }
+        val clusters = candidates
+            .groupBy { site ->
+                (site.latitude / cellDegrees).toInt() to
+                    (site.longitude / cellDegrees).toInt()
+            }
+            .map { (cell, grouped) ->
+                BrowseMapCluster(
+                    id = "${cell.first}:${cell.second}",
+                    latitude = grouped.map(RestSite::latitude).average(),
+                    longitude = grouped.map(RestSite::longitude).average(),
+                    count = grouped.size,
+                )
+            }
+        return emptyList<RestSite>() to clusters
     }
 
     private fun browseListOrigin(state: UiState): UserPosition? =
@@ -1025,7 +1410,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Browse keeps all points on the map; list/card only hold the current selection. */
     private fun browseSelectionResults(state: UiState, siteId: String?): List<RestSiteResult> {
         if (siteId == null) return emptyList()
-        val site = state.allSites.firstOrNull { it.id == siteId } ?: return emptyList()
+        val site = state.allSites.firstOrNull { it.id == siteId }
+            ?: browseOverlayById[siteId]?.toRestSite()
+            ?: return emptyList()
         // Explicit map tap: always show the card; map filters only hide markers, not the sheet.
         return buildResults(
             listOf(site),
@@ -2018,7 +2405,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun publishBdlSearchResults(
+    private suspend fun publishBdlSearchResults(
         generation: Long,
         position: UserPosition,
         sites: List<RestSite>,
@@ -2033,24 +2420,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         corridorLine: List<LatLon> = emptyList(),
     ) {
         if (searchGeneration.get() != generation) return
-        _state.update { current ->
-            if (searchGeneration.get() != generation) return@update current
-            val roadBySiteId = if (retainedRoadAssessments.isNotEmpty()) {
-                retainedRoadAssessments
-            } else {
-                emptyMap()
-            }
-            val lineForSort = corridorLine.ifEmpty {
-                if (current.searchOriginMode == SearchOriginMode.LINE) current.corridorLine else emptyList()
-            }
-            val results = buildResults(
+        val snapshot = _state.value
+        val roadBySiteId = if (retainedRoadAssessments.isNotEmpty()) {
+            retainedRoadAssessments
+        } else {
+            emptyMap()
+        }
+        val lineForSort = corridorLine.ifEmpty {
+            if (snapshot.searchOriginMode == SearchOriginMode.LINE) snapshot.corridorLine else emptyList()
+        }
+        val results = withContext(Dispatchers.Default) {
+            buildResults(
                 sites,
                 position,
-                current.profile,
-                current.browseCarFilter,
+                snapshot.profile,
+                snapshot.browseCarFilter,
                 roadBySiteId = roadBySiteId,
                 corridorLine = lineForSort,
             )
+        }
+        if (searchGeneration.get() != generation) return
+        _state.update { current ->
+            if (searchGeneration.get() != generation) return@update current
             val originLabel = when {
                 corridorSummary != null -> corridorSummary
                 current.searchOriginMode == SearchOriginMode.LOCALITY ->
@@ -2076,6 +2467,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             current.copy(
                 isSearching = false,
                 isAnalyzingRoads = roadsPending,
+                roadAnalysisCompleted = 0,
+                roadAnalysisTotal = if (roadsPending) {
+                    minOf(sites.size, UiState.MOTORCYCLE_ROAD_ANALYZE_LIMIT)
+                } else {
+                    0
+                },
+                isFilteringPlaces = false,
                 allSites = sites,
                 zanocujPolygons = zanocujPolygons,
                 roadBySiteId = roadBySiteId,
@@ -2097,26 +2495,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val toAssess = sites.take(UiState.MOTORCYCLE_ROAD_ANALYZE_LIMIT)
                 val roadBySiteId = withContext(Dispatchers.IO) {
-                    roadAnalyzer.assessAll(toAssess.map { it.toPointPoi() })
+                    roadAnalyzer.assessAll(toAssess.map { it.toPointPoi() }) { completed, total ->
+                        if (searchGeneration.get() == generation) {
+                            _state.update { current ->
+                                if (searchGeneration.get() != generation) {
+                                    current
+                                } else {
+                                    current.copy(
+                                        roadAnalysisCompleted = completed,
+                                        roadAnalysisTotal = total,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                if (searchGeneration.get() != generation) return@launch
+                val snapshot = _state.value
+                val rebuiltResults = withContext(Dispatchers.Default) {
+                    buildResults(
+                        snapshot.allSites,
+                        position,
+                        snapshot.profile,
+                        snapshot.browseCarFilter,
+                        roadBySiteId,
+                        corridorLine = if (snapshot.searchOriginMode == SearchOriginMode.LINE) {
+                            snapshot.corridorLine
+                        } else {
+                            emptyList()
+                        },
+                    )
                 }
                 if (searchGeneration.get() != generation) return@launch
                 _state.update { current ->
                     if (searchGeneration.get() != generation) return@update current
                     val next = current.copy(
                         isAnalyzingRoads = false,
+                        roadAnalysisCompleted = toAssess.size,
+                        roadAnalysisTotal = toAssess.size,
                         roadBySiteId = roadBySiteId,
-                        results = buildResults(
-                            current.allSites,
-                            position,
-                            current.profile,
-                            current.browseCarFilter,
-                            roadBySiteId,
-                            corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
-                                current.corridorLine
-                            } else {
-                                emptyList()
-                            },
-                        ),
+                        results = rebuiltResults,
                         message = if (sites.size > toAssess.size) {
                             AppMessage.Info(
                                 "Analiza dróg OSM: ${toAssess.size}/${sites.size} punktów (limit szybkości).",
@@ -2132,6 +2550,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update {
                     it.copy(
                         isAnalyzingRoads = false,
+                        roadAnalysisCompleted = 0,
+                        roadAnalysisTotal = 0,
                         message = AppMessage.Error(
                             "Miejsca BDL OK, analiza dróg OSM: ${e.message ?: "błąd"}",
                         ),
@@ -2202,9 +2622,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
+        private const val EXPLORE_MODE_PREFS = "navilas_explore_mode"
+        private const val EXPLORE_MODE_KEY = "last_mode"
+        private const val LARGE_PARKING_FILTER_WARNING_METERS = 2_000
         /** Below this zoom, browse skips Zanocuj fills (too many polygons). */
         private const val BROWSE_ZANOCUJ_MIN_ZOOM = 7.5
         private const val BROWSE_ZANOCUJ_MAX_POLYGONS = 50
+        private const val BROWSE_SITE_VIEWPORT_MIN_ZOOM = 7.0
+        private const val BROWSE_CLUSTER_MAX_ZOOM = 10.0
+        private const val BROWSE_SITE_VIEWPORT_MAX_POINTS = 1_500
+        private const val BROWSE_INITIAL_VIEWPORT_RADIUS_KM = 75.0
+        private const val BROWSE_INITIAL_USER_ZOOM = 8.5
+        private val POLAND_BROWSE_ENVELOPE = GeoUtils.Envelope(
+            xmin = 14.0,
+            ymin = 49.0,
+            xmax = 24.5,
+            ymax = 55.0,
+        )
+        private const val BROWSE_OVERLAY_MIN_ZOOM = 8.5
+        private const val BROWSE_OVERLAY_MAX_POINTS = 400
         /** Camera follow only after this GPS movement (metres). */
         private const val FOLLOW_MOVE_THRESHOLD_M = 5.0
         private const val MIN_FOLLOW_ZOOM = 3.0

@@ -1,9 +1,23 @@
-# Historia wersji NaviLas (kanał GitHub)
+# Historia wersji NaviLas (kanał Beta)
 
-Oficjalne wydania opublikowane w [NaviLas-releases](https://github.com/Woszik/NaviLas-releases).  
-Wersje robocze (lokalne buildy bez tagu) nie są tu uwzględniane.
+Wydania **Beta** opublikowane w [NaviLas-releases](https://github.com/Woszik/NaviLas-releases).
+
+- **Nightly** (lokalne / przyszłe CI) — nie są tu uwzględniane; stan: [`docs/STATUS.md`](docs/STATUS.md).
+- **Final** — jeszcze nie istnieje; model kanałów: [`docs/RELEASE_CHANNELS.md`](docs/RELEASE_CHANNELS.md).
 
 Format: `versionName` (versionCode) — data — krótki opis. Link do APK na GitHub Releases.
+
+---
+
+## 0.5.34 (38) — 2026-08-30
+
+**APK:** [navilas-0.5.34.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.34/navilas-0.5.34.apk)
+
+Przewidywalny i szybszy start: domyślne Wyszukiwanie, bez wyścigu z trybem Przeglądania, obliczenia filtrów poza wątkiem interfejsu, etapowa analiza dróg OSM oraz grupowanie punktów BDL na mapie. Rozszerzone obiekty BDL, pełniejsze wyszukiwanie miejscowości, poprawiony eksport do nawigacji i czytelne komunikaty postępu.
+
+Nowe menu i ustawienia obejmują tryb startowy, niewygaszanie ekranu oraz motyw System / Czujnik światła / Dzień / Noc. Motyw nocny ma własną paletę i ciemny styl mapy; układ zweryfikowano na KINGKONG 8 w pionie i poziomie.
+
+**Poprzednia wersja:** [0.5.33](#0533-37--2026-08-28)
 
 ---
 

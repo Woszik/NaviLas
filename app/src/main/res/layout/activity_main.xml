@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F4F7F2"
+    android:background="?attr/colorSurface"
     tools:context=".ui.MainActivity">
 
     <pl.navilas.finder.ui.PageSwipeZone
@@ -19,7 +19,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#1B5E20"
+            android:background="@color/toolbar_green"
             android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
             app:menu="@menu/main_toolbar"
             app:title="@string/app_name" />
@@ -49,7 +49,7 @@
         android:id="@+id/pageIndicatorBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="?attr/colorSurface"
         android:elevation="2dp"
         android:minHeight="48dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -72,52 +72,47 @@
                 android:padding="12dp"
                 android:src="@drawable/ic_chevron_left" />
 
-            <LinearLayout
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/pageTabs"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:paddingVertical="2dp">
+                app:selectionRequired="true"
+                app:singleSelection="true">
 
-                <TextView
-                    android:id="@+id/pageLabels"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceLabelSmall"
-                    android:textColor="#556655"
-                    tools:text="WYSZUKIWANIE  ·  MAPA  ·  LISTA" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageSearch"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_search_short" />
 
-                <LinearLayout
-                    android:id="@+id/pageDots"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:gravity="center"
-                    android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageMap"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_map" />
 
-                    <View
-                        android:id="@+id/dot0"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:layout_marginHorizontal="4dp"
-                        android:background="@drawable/page_dot_active" />
-
-                    <View
-                        android:id="@+id/dot1"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:layout_marginHorizontal="4dp"
-                        android:background="@drawable/page_dot_inactive" />
-
-                    <View
-                        android:id="@+id/dot2"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:layout_marginHorizontal="4dp"
-                        android:background="@drawable/page_dot_inactive" />
-                </LinearLayout>
-            </LinearLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageList"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_list" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
 
             <ImageButton
                 android:id="@+id/btnPageNext"

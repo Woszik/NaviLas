@@ -1,8 +1,10 @@
 # F-Droid — NaviLas
 
-Stan: **MR złożony, czekamy na review maintainerów** (2026-08-23).
+Stan: **MR otwarty, po pierwszej rundzie recenzji — czekamy na kolejne spojrzenie maintainera** (2026-08-30).
 
 Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/)
+
+**Relacja do kanałów GitHub:** F-Droid to osobna dystrybucja (inny podpis, flavor `fdroid`). Do otwartego MR proponowana jest obecna stabilna **Beta 0.5.34**; przyjęcie i publikacja nadal zależą od maintainerów F-Droid. Model kanałów GitHub: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
 
 ---
 
@@ -15,9 +17,11 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Fork fdroiddata** | https://gitlab.com/Woszik/fdroiddata |
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
-| **Pierwszy build w YAML** | tag `v0.5.7-fdroid-prep`, versionCode 9 |
-| **Status MR** | Open — oczekiwanie na komentarz maintainera |
-| **Pipeline na forku** | może być czerwony — **normalne**, nie blokuje review |
+| **Kandydat w aktualnym szablonie YAML** | tag `v0.5.34`, versionCode 38 |
+| **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
+| **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
+| **Ostatnia aktywność autora** | ~2026-08-24 — odpowiedź na recenzję (szablon, hash, AntiFeatures, Binaries, fastlane images) |
+| **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
 
 ### Zrobione
 
@@ -27,12 +31,22 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 - [x] Plik `metadata/pl.navilas.finder.yml` na branchu `pl.navilas.finder`
 - [x] Merge Request !46612
 
+### Co znaczy `waiting-on-response`
+
+To **nie** jest kolejka „czekamy aż Woj coś dopisze”. Label wstawia recenzent/bot przy prośbie o poprawki i **często zostaje**, nawet po Twojej odpowiedzi. Nikt go automatycznie nie zdejmuje.
+
+**New App** = typ MR (nowa aplikacja), nie „nieruszony ticket”.
+
+Kolejka nowych aplikacji jest długa, recenzenci to wolontariusze. **6 dni ciszy po odpowiedzi jest normalne** — typowy czas to dni–tygodnie, bywa kilka miesięcy. **Nie pingować** po mniej niż ~2–3 tygodniach od ostatniej odpowiedzi (krótko, po angielsku, bez „please merge”).
+
 ### Po powrocie (gdy maintainer odpowie)
 
 1. Przeczytać komentarze w MR → odpowiedzieć w wątku (krótko, po angielsku).
 2. Jeśli prośba o poprawkę: commit na branch `pl.navilas.finder` w fork — MR się zaktualizuje.
 3. Po **merge** MR: aplikacja trafi do F-Droid po kolejnym cyklu publikacji (nie od razu).
 4. Kolejne wersje: tag na GitHub; F-Droid łapie tagi (`UpdateCheckMode: Tags`).
+
+**Prawdopodobna następna uwaga:** w YAML jest `Binaries` + `AllowedAPKSigningKeys` (reproducible). APK z NaviLas-releases to flavor **`github`**, recipe buduje **`fdroidRelease`** — sumy się nie zepną. Albo usunąć `Binaries` i zostawić podpis F-Droid, albo publikować osobny APK flavoru `fdroid` pod ten sam tag (koszt: reproducible). Decyzja projektu: **nie** robimy reproducible (patrz tabela poniżej).
 
 Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRIPTION.md)
 
@@ -45,9 +59,9 @@ Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRI
 | Licencja | **GPL-3.0-or-later** — plik [`LICENSE`](../LICENSE) |
 | Źródła | **Publiczne** — `https://github.com/Woszik/NaviLas` |
 | Reproducible / jeden podpis | **Nie** — za wysoki koszt utrzymania |
-| GitHub + F-Droid równolegle | **Tak** — dwa kanały, różne podpisy |
-| Zmiana kanału | Reinstalacja + eksport/import punktów |
-| Flavory Gradle | `github` (auto-update), `fdroid` (bez GitHub update) |
+| GitHub + F-Droid równolegle | **Tak** — różne podpisy; wersja 0.5.34 jest Betą GitHub i kandydatem do otwartego MR F-Droid |
+| Zmiana źródła APK | Reinstalacja + eksport/import punktów |
+| Flavory Gradle | `github` (updater Beta), `fdroid` (bez GitHub update) |
 
 ---
 
@@ -55,10 +69,10 @@ Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRI
 
 | Flavor | `APP_UPDATE_ENABLED` | Dystrybucja | Build release |
 |--------|----------------------|-------------|---------------|
-| `github` | tak | NaviLas-releases, CI tag | `assembleGithubRelease` |
-| `fdroid` | nie | F-Droid (po merge MR) | `assembleFdroidRelease` |
+| `github` | tak | NaviLas-releases (**Beta**), CI tag | `assembleGithubRelease` |
+| `fdroid` | nie | F-Droid (po merge MR); obecny kandydat 0.5.34 | `assembleFdroidRelease` |
 
-CI GitHub Actions buduje wyłącznie **`githubRelease`**.
+CI GitHub Actions buduje wyłącznie **`githubRelease`** (dziś = Beta).
 
 ---
 
@@ -67,7 +81,7 @@ CI GitHub Actions buduje wyłącznie **`githubRelease`**.
 | Repo | Rola |
 |------|------|
 | [Woszik/NaviLas](https://github.com/Woszik/NaviLas) | Kod źródłowy (publiczny) |
-| [Woszik/NaviLas-releases](https://github.com/Woszik/NaviLas-releases) | APK dla testerów, `latest.json` |
+| [Woszik/NaviLas-releases](https://github.com/Woszik/NaviLas-releases) | APK **Beta**, `latest.json` |
 | [Woszik/fdroiddata](https://gitlab.com/Woszik/fdroiddata) | Fork pod MR (branch `pl.navilas.finder`) |
 
 ---

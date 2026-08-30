@@ -31,7 +31,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#556655"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Wiata · Palenisko · Woda pitna" />
 
             <TextView
@@ -39,7 +39,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#1B5E20"
+                android:textColor="?attr/colorPrimary"
                 tools:text="W strefie Zanocuj w lesie" />
 
             <TextView
@@ -47,7 +47,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#555555"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textStyle="italic"
                 android:visibility="gone"
                 tools:text="Komentarz: fajne miejsce na kawę"
@@ -58,7 +58,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textColor="#795548"
+                android:textColor="?attr/colorTertiary"
                 android:visibility="gone"
                 tools:text="Kategoria: Weekend"
                 tools:visibility="visible" />
@@ -68,7 +68,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#1B5E20"
+                android:textColor="?attr/colorPrimary"
                 android:visibility="gone"
                 tools:text="Cel nawigacji: droga przy miejscu · 65 m · droga lokalna · ★★★★☆"
                 tools:visibility="visible" />
@@ -80,7 +80,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="top"
             android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:textColor="#1B5E20"
+            android:textColor="?attr/colorPrimary"
             tools:text="4,2 km" />
     </LinearLayout>
 

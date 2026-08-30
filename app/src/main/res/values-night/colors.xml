@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="forest_green">#81C784</color>
+    <color name="forest_on_primary">#07390D</color>
+    <color name="forest_container">#24502A</color>
+    <color name="forest_on_container">#C8E6C9</color>
+</resources>

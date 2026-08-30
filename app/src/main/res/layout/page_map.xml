@@ -14,12 +14,13 @@
             android:id="@+id/mapSearchHint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#CCFFFFFF"
+            android:alpha="0.92"
+            android:background="?attr/colorSurface"
             android:paddingHorizontal="12dp"
             android:paddingVertical="8dp"
             android:text="@string/map_search_pin_hint"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="#333333" />
+            android:textColor="?attr/colorOnSurface" />
     </pl.navilas.finder.ui.NestedScrollableHost>
 
     <pl.navilas.finder.ui.MapPagerTouchBridge
@@ -153,7 +154,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodyLarge"
-                        android:textColor="#1B5E20"
+                        android:textColor="?attr/colorPrimary"
                         tools:text="13,0 km" />
 
                     <TextView
@@ -168,7 +169,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="#1B5E20"
+                        android:textColor="?attr/colorPrimary"
                         tools:text="🌲 W strefie „Zanocuj w lesie”" />
 
                     <TextView
@@ -176,7 +177,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="#795548"
+                        android:textColor="?attr/colorTertiary"
                         android:visibility="gone"
                         tools:text="Kategoria: Ulubione · Komentarz: …"
                         tools:visibility="visible" />

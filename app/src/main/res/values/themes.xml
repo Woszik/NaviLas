@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.NaviLas" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Theme.NaviLas" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/forest_green</item>
+        <item name="colorOnPrimary">@color/forest_on_primary</item>
+        <item name="colorPrimaryContainer">@color/forest_container</item>
+        <item name="colorOnPrimaryContainer">@color/forest_on_container</item>
         <item name="colorSecondary">@color/forest_green</item>
-        <item name="android:statusBarColor">@color/forest_green</item>
-        <item name="android:navigationBarColor">@color/white</item>
+        <item name="colorOnSecondary">@color/forest_on_primary</item>
+        <item name="colorSecondaryContainer">@color/forest_container</item>
+        <item name="colorOnSecondaryContainer">@color/forest_on_container</item>
+        <item name="android:statusBarColor">@color/toolbar_green</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

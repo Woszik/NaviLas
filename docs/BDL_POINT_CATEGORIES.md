@@ -68,7 +68,21 @@ Pakiet **NaviLas core** (offline + online) pobiera **6 warstw**:
 
 Implementacja: `RestSiteRepository` (`pl.navilas.finder.data.bdl`).
 
-Pakiet **pełna baza BDL** offline dodaje m.in. warstwy noclegowe (1–14), edukacyjne (28–31), strefy (32–33), szlaki (34–35), zabytki (36–47) — lista ID w `BdlOfflineStore.FULL_BDL_LAYER_IDS`.
+Pakiet **pełna baza BDL** offline dodaje m.in. warstwy noclegowe (1–14), edukacyjne (28–31), strefy (32–33), szlaki (34–35) — lista ID w `BdlOfflineStore.FULL_BDL_LAYER_IDS`. Zabytki 36–47 **nie** są pobierane.
+
+### Overlay „Obiekty BDL” (przeglądanie mapy)
+
+Osobna warstwa na mapie, **domyślnie wyłączona**. Nie dubluje wyników odpoczynku (15 / amenity 17/19). Wejście: chip **Obiekty BDL** (ekran wyszukiwania w browse albo arkusz filtrów na mapie).
+
+| Grupa UI | Warstwy | Pakiet | Kolor |
+|----------|---------|--------|-------|
+| Widok | 25 | CORE | niebieski |
+| Inne / edukacja | 27; 28–31 | 27 = CORE; 28–31 = FULL | brąz |
+| Woda | 26 | FULL | turkus |
+| Zabawa / rekreacja | 21, 23 | FULL | pomarańcz |
+| Nocleg leśny | 1–6, 8, 10, 12 (punktowe) | FULL | burgund |
+
+Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników zostaje przy zaznaczeniu. Overlay rysowany tylko w bbox widoku (min. zoom ~8.5, cap 400). Poligony/szlaki — poza zakresem.
 
 ---
 

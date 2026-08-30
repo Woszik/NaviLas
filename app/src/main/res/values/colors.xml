@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="forest_green">#1B5E20</color>
+    <color name="forest_on_primary">#FFFFFF</color>
+    <color name="forest_container">#C8E6C9</color>
+    <color name="forest_on_container">#123815</color>
+    <color name="toolbar_green">#1B5E20</color>
     <color name="forest_light">#F4F7F2</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>

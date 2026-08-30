@@ -139,6 +139,30 @@ class RoadAnalysisTest {
     }
 
     @Test
+    fun assess_all_reports_progress_for_each_poi() {
+        val areas = listOf("a", "b").map { id ->
+            Poi(
+                id = id,
+                categories = setOf(PoiCategory.CAMP),
+                name = id,
+                latitude = 52.0,
+                longitude = 21.0,
+                description = null,
+                source = "test",
+                geometryKind = PoiGeometryKind.AREA,
+                areaRings = emptyList(),
+            )
+        }
+        val progress = mutableListOf<Pair<Int, Int>>()
+
+        analyzer.assessAll(areas) { completed, total ->
+            progress += completed to total
+        }
+
+        assertEquals(listOf(1 to 2, 2 to 2), progress)
+    }
+
+    @Test
     fun prefers_motorable_road_over_nearby_path() {
         val path = road(
             id = "way/path",

@@ -18,7 +18,7 @@
         android:layout_marginBottom="8dp"
         android:text="@string/saved_categories_pick_hint"
         android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="#666666" />
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <ScrollView
         android:layout_width="match_parent"

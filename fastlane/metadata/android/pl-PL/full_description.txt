@@ -1,10 +1,13 @@
 <p>NaviLas pomaga znaleźć miejsca odpoczynku w lasach na podstawie otwartych danych Banku Danych o Lasach (BDL) i OpenStreetMap.</p>
 <p><b>Funkcje</b></p>
 <ul>
-<li>Wyszukiwanie wokół GPS, punktu na mapie lub miejscowości</li>
+<li>Wyszukiwanie wokół GPS, punktu na mapie, miejscowości lub wzdłuż linii</li>
+<li>Przeglądanie oraz filtrowanie miejsc i dodatkowych obiektów BDL na mapie</li>
 <li>Mapa wyników i stref programu „Zanocuj w lesie”</li>
 <li>Profile dojazdu: samochód i motocykl</li>
+<li>Przekazywanie celu do zewnętrznej nawigacji</li>
 <li>Opcjonalne pobranie danych BDL do użycia offline</li>
+<li>Motyw System, Czujnik światła, Dzień lub Noc</li>
 <li>Zapis ulubionych miejsc z kategoriami i komentarzami</li>
 <li>Eksport i import zapisanych miejsc (kopia JSON)</li>
 </ul>

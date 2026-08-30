@@ -26,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="#556655"
+            android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="Odpoczynek/wiata" />
 
         <TextView
@@ -34,7 +34,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="#1B5E20"
+            android:textColor="?attr/colorPrimary"
             android:visibility="gone"
             tools:text="65 m od drogi · droga lokalna · ★★★★☆"
             tools:visibility="visible" />
@@ -46,6 +46,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:textAppearance="?attr/textAppearanceTitleSmall"
-        android:textColor="#1B5E20"
+        android:textColor="?attr/colorPrimary"
         tools:text="4,2 km" />
 </LinearLayout>

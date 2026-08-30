@@ -21,9 +21,14 @@ class RoadProximityAnalyzer(
     private val searchRadiusMeters: Double = OverpassRoadClient.DEFAULT_RADIUS_METERS,
     private val assessmentCache: RoadAssessmentCache? = null,
 ) {
-    fun assessAll(pois: List<Poi>): Map<String, RoadAssessment> {
+    fun assessAll(
+        pois: List<Poi>,
+        onProgress: ((completed: Int, total: Int) -> Unit)? = null,
+    ): Map<String, RoadAssessment> {
         val result = LinkedHashMap<String, RoadAssessment>()
         val pointPois = pois.filter { it.geometryKind == PoiGeometryKind.POINT }
+        val total = pois.size
+        var completed = 0
         pois.filter { it.geometryKind == PoiGeometryKind.AREA }.forEach { area ->
             result[area.id] = RoadAssessment(
                 nearestRoad = null,
@@ -32,6 +37,8 @@ class RoadProximityAnalyzer(
                 roadSuitability = null,
                 skippedReason = "Obszar Zanocuj — bez rankingu drogowego (centroid nie jest punktem drogi).",
             )
+            completed++
+            onProgress?.invoke(completed, total)
         }
         if (pointPois.isEmpty()) return result
 
@@ -55,10 +62,16 @@ class RoadProximityAnalyzer(
                 val assessment = assessPoint(poi, roads)
                 result[poi.id] = assessment
                 assessmentCache?.put(poi.id, assessment)
+                completed++
+                onProgress?.invoke(completed, total)
             }
         }
 
-        result.putAll(fromCache)
+        fromCache.forEach { (id, assessment) ->
+            result[id] = assessment
+            completed++
+            onProgress?.invoke(completed, total)
+        }
         return result
     }
 

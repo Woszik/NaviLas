@@ -9,13 +9,14 @@ object MapConfig {
     const val ENGINE_NAME = "MapLibre Native Android"
     const val ENGINE_ARTIFACT = "org.maplibre.gl:android-sdk:11.8.6"
 
-    /**
-     * MapLibre Style JSON (Liberty) hosted by OpenFreeMap.
-     * This is the URL passed to [org.maplibre.android.maps.Style.Builder.fromUri].
-     */
+    /** MapLibre styles hosted by OpenFreeMap. */
     const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
-    const val STYLE_NAME = "OpenFreeMap Liberty"
+    const val STYLE_URL_DARK = "https://tiles.openfreemap.org/styles/dark"
+    const val STYLE_NAME = "OpenFreeMap Liberty / Dark"
     const val STYLE_PROVIDER = "OpenFreeMap"
+
+    fun styleUrl(darkMode: Boolean): String =
+        if (darkMode) STYLE_URL_DARK else STYLE_URL
 
     /**
      * Vector tile source referenced by the style (OpenMapTiles schema over OSM data).

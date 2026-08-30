@@ -1,0 +1,1 @@
+Szybszy i przewidywalny start, progresywne przeglądanie mapy BDL, dodatkowe warstwy obiektów BDL oraz pełniejsze wyszukiwanie miejscowości i eksport do nawigacji. Dodano menu, trwałe ustawienia startowe oraz motywy System/Czujnik/Dzień/Noc z ciemną mapą.

@@ -2,10 +2,14 @@ package pl.navilas.finder.ui
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +19,7 @@ import android.view.LayoutInflater
 import android.view.inputmethod.InputMethodManager
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
@@ -22,6 +27,7 @@ import android.widget.CompoundButton
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RadioGroup
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.widget.PopupMenu
@@ -31,7 +37,6 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -54,10 +59,14 @@ import pl.navilas.finder.update.AppUpdateOffer
 import pl.navilas.finder.data.osm.RoadClassifier
 import pl.navilas.finder.databinding.ActivityMainBinding
 import pl.navilas.finder.databinding.BottomSheetMapFiltersBinding
+import pl.navilas.finder.databinding.BdlOverlayControlsBinding
 import pl.navilas.finder.databinding.BrowseCarFilterControlsBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
+import pl.navilas.finder.data.bdl.BdlOverlayCatalog
+import pl.navilas.finder.domain.BdlOverlayFilter
+import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseParkingProximityMode
 import pl.navilas.finder.domain.AppExploreMode
@@ -83,7 +92,12 @@ import pl.navilas.finder.data.saved.SavedPointsBackupCodec
 import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
 import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
+import pl.navilas.finder.data.preferences.AppThemeApplier
+import pl.navilas.finder.data.preferences.AppThemeMode
+import pl.navilas.finder.data.preferences.StartupMode
+import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.nav.NavigationLinks
+import pl.navilas.finder.nav.OsmAndMotoRouteStyle
 import java.io.File
 import java.util.Locale
 
@@ -94,15 +108,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var listBinding: PageListBinding
     private lateinit var mapView: MapView
     private val viewModel: MainViewModel by viewModels()
+    private val uiPreferences by lazy { UiPreferences(this) }
+    private lateinit var ambientLightThemeController: AmbientLightThemeController
     private val mapController = MapController()
     private lateinit var resultsAdapter: ResultsAdapter
     private var mapReady = false
     private var currentProfile: TravelProfile = TravelProfile.CAR
     private var syncingPager = false
+    private var syncingPageTabs = false
     private var syncingOfflineUi = false
     private var syncingSearchOriginUi = false
     private var syncingBrowseCarFilterUi = false
     private var browseCarFilterExpanded = false
+    private var browseOverlayExpanded = false
+    private var syncingBdlOverlayUi = false
     private var syncingExploreModeUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
     private var lastBrowseCarFilterToken: Int = 0
@@ -234,6 +253,14 @@ class MainActivity : AppCompatActivity() {
         MapLibre.getInstance(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        ambientLightThemeController = AmbientLightThemeController(
+            context = this,
+            initialNightMode = uiPreferences.ambientLightNightMode,
+        ) { nightMode ->
+            if (uiPreferences.themeMode != AppThemeMode.AMBIENT_LIGHT) return@AmbientLightThemeController
+            uiPreferences.ambientLightNightMode = nightMode
+            AppThemeApplier.apply(AppThemeMode.AMBIENT_LIGHT, nightMode)
+        }
 
         val inflater = layoutInflater
         searchBinding = PageSearchBinding.inflate(inflater)
@@ -259,7 +286,10 @@ class MainActivity : AppCompatActivity() {
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync { map ->
             map.uiSettings.isAttributionEnabled = true
-            mapController.attach(map) {
+            val darkMode =
+                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                    Configuration.UI_MODE_NIGHT_YES
+            mapController.attach(map, darkMode) {
                 mapReady = true
                 mapController.setOnSiteClickListener { siteId ->
                     viewModel.onMarkerSelected(siteId)
@@ -305,10 +335,32 @@ class MainActivity : AppCompatActivity() {
                 updatePageIndicator(position)
             }
         })
+        binding.pageTabs.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || syncingPageTabs) return@addOnButtonCheckedListener
+            viewModel.setCurrentPage(
+                when (checkedId) {
+                    R.id.btnPageMap -> AppPages.MAP
+                    R.id.btnPageList -> AppPages.LIST
+                    else -> AppPages.SEARCH
+                },
+            )
+        }
 
-        binding.pageLabels.text = getString(R.string.page_labels)
+        binding.toolbar.menu.findItem(R.id.action_check_updates).isVisible = BuildConfig.APP_UPDATE_ENABLED
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.action_settings -> {
+                    showSettingsDialog()
+                    true
+                }
+                R.id.action_offline_data -> {
+                    openOfflineDataSettings()
+                    true
+                }
+                R.id.action_check_updates -> {
+                    viewModel.checkForAppUpdate(force = true)
+                    true
+                }
                 R.id.action_about -> {
                     showAboutDialog()
                     true
@@ -341,6 +393,87 @@ class MainActivity : AppCompatActivity() {
         binding.pageIndicatorBar.onSwipeToPrevious = goPrev
         binding.btnPageNext.setOnClickListener { goNext() }
         binding.btnPagePrev.setOnClickListener { goPrev() }
+    }
+
+    private fun showSettingsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_settings, null)
+        val themeGroup = dialogView.findViewById<RadioGroup>(R.id.themeGroup)
+        val ambientTheme =
+            dialogView.findViewById<com.google.android.material.radiobutton.MaterialRadioButton>(
+                R.id.themeAmbient,
+            )
+        val startupGroup = dialogView.findViewById<RadioGroup>(R.id.startupGroup)
+        val keepScreenOn =
+            dialogView.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
+                R.id.keepScreenOnTracking,
+            )
+
+        ambientTheme.isEnabled = ambientLightThemeController.isAvailable
+        if (!ambientTheme.isEnabled) {
+            ambientTheme.setText(R.string.settings_theme_ambient_unavailable)
+        }
+        val savedThemeMode = uiPreferences.themeMode
+        themeGroup.check(
+            when {
+                savedThemeMode == AppThemeMode.AMBIENT_LIGHT && !ambientTheme.isEnabled -> {
+                    R.id.themeSystem
+                }
+                savedThemeMode == AppThemeMode.SYSTEM -> R.id.themeSystem
+                savedThemeMode == AppThemeMode.AMBIENT_LIGHT -> R.id.themeAmbient
+                savedThemeMode == AppThemeMode.DAY -> R.id.themeDay
+                else -> R.id.themeNight
+            },
+        )
+        startupGroup.check(
+            when (uiPreferences.startupMode) {
+                StartupMode.REMEMBER_LAST -> R.id.startupRemember
+                StartupMode.SEARCH -> R.id.startupSearch
+                StartupMode.MAP_BROWSE -> R.id.startupBrowse
+            },
+        )
+        keepScreenOn.isChecked = uiPreferences.keepScreenOnWhileTracking
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings_title)
+            .setView(dialogView)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val oldTheme = uiPreferences.themeMode
+                val newTheme = when (themeGroup.checkedRadioButtonId) {
+                    R.id.themeAmbient -> AppThemeMode.AMBIENT_LIGHT
+                    R.id.themeDay -> AppThemeMode.DAY
+                    R.id.themeNight -> AppThemeMode.NIGHT
+                    else -> AppThemeMode.SYSTEM
+                }
+                uiPreferences.themeMode = newTheme
+                uiPreferences.startupMode = when (startupGroup.checkedRadioButtonId) {
+                    R.id.startupSearch -> StartupMode.SEARCH
+                    R.id.startupBrowse -> StartupMode.MAP_BROWSE
+                    else -> StartupMode.REMEMBER_LAST
+                }
+                uiPreferences.keepScreenOnWhileTracking = keepScreenOn.isChecked
+                updateKeepScreenOn(viewModel.state.value)
+                if (newTheme == AppThemeMode.AMBIENT_LIGHT) {
+                    ambientLightThemeController.start()
+                } else {
+                    ambientLightThemeController.stop()
+                }
+                if (newTheme != oldTheme) {
+                    AppThemeApplier.apply(newTheme, uiPreferences.ambientLightNightMode)
+                } else {
+                    Snackbar.make(binding.root, R.string.settings_saved, Snackbar.LENGTH_SHORT).show()
+                }
+            }
+            .show()
+    }
+
+    private fun openOfflineDataSettings() {
+        viewModel.setCurrentPage(AppPages.SEARCH)
+        offlineSectionExpanded = true
+        updateOfflinePanelVisibility()
+        searchBinding.root.post {
+            searchBinding.root.smoothScrollTo(0, searchBinding.offlinePanel.top)
+        }
     }
 
     private fun showAboutDialog() {
@@ -378,6 +511,7 @@ class MainActivity : AppCompatActivity() {
         }
         searchBinding.zanocujFilter.setOnCheckedChangeListener(null)
         setupBrowseCarFilterSection()
+        setupBdlOverlaySection()
         searchBinding.btnSearch.setOnClickListener { viewModel.searchNearby() }
         searchBinding.btnLocate.setOnClickListener { requestLocationPermissions() }
         searchBinding.btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
@@ -396,7 +530,9 @@ class MainActivity : AppCompatActivity() {
         searchBinding.zanocujFilter.isVisible = false
         searchBinding.browseParkingOnly.isVisible = false
         searchBinding.browseCarFilterSection.isVisible = true
+        searchBinding.bdlOverlaySection.isVisible = true
         bindBrowseCarFilterUi(state)
+        bindBdlOverlayUi(state)
         searchBinding.searchOriginLabel.isVisible = false
         searchBinding.searchOriginGroup.isVisible = false
         searchBinding.corridorPanel.isVisible = false
@@ -416,6 +552,7 @@ class MainActivity : AppCompatActivity() {
         searchBinding.zanocujFilter.isVisible = false
         searchBinding.browseParkingOnly.isVisible = false
         searchBinding.browseCarFilterSection.isVisible = true
+        searchBinding.bdlOverlaySection.isVisible = false
         bindBrowseCarFilterUi(state)
         searchBinding.searchOriginLabel.isVisible = true
         searchBinding.searchOriginGroup.isVisible = true
@@ -447,6 +584,76 @@ class MainActivity : AppCompatActivity() {
             browseCarFilterExpanded = false
             updateBrowseCarFilterChrome(viewModel.state.value)
             bindMapFilterFab(viewModel.state.value)
+        }
+    }
+
+    private fun setupBdlOverlaySection() {
+        setupBdlOverlayListeners(searchBinding.bdlOverlayControls)
+        searchBinding.btnToggleBdlOverlay.setOnClickListener {
+            browseOverlayExpanded = !browseOverlayExpanded
+            bindBdlOverlayUi(viewModel.state.value)
+        }
+    }
+
+    private fun setupBdlOverlayListeners(controls: BdlOverlayControlsBinding) {
+        val listener = CompoundButton.OnCheckedChangeListener { _, _ ->
+            if (!syncingBdlOverlayUi) {
+                viewModel.setBdlOverlayFilter(readBdlOverlayFilter(controls))
+                bindBdlOverlayUi(viewModel.state.value)
+            }
+        }
+        controls.overlayEnable.setOnCheckedChangeListener(listener)
+        controls.overlayGroupView.setOnCheckedChangeListener(listener)
+        controls.overlayGroupOther.setOnCheckedChangeListener(listener)
+        controls.overlayGroupWater.setOnCheckedChangeListener(listener)
+        controls.overlayGroupPlay.setOnCheckedChangeListener(listener)
+        controls.overlayGroupLodging.setOnCheckedChangeListener(listener)
+    }
+
+    private fun readBdlOverlayFilter(controls: BdlOverlayControlsBinding): BdlOverlayFilter {
+        val groups = buildSet {
+            if (controls.overlayGroupView.isChecked) add(BdlOverlayGroup.VIEW)
+            if (controls.overlayGroupOther.isChecked) add(BdlOverlayGroup.OTHER)
+            if (controls.overlayGroupWater.isChecked) add(BdlOverlayGroup.WATER)
+            if (controls.overlayGroupPlay.isChecked) add(BdlOverlayGroup.PLAY)
+            if (controls.overlayGroupLodging.isChecked) add(BdlOverlayGroup.LODGING)
+        }
+        return BdlOverlayFilter(
+            enabled = controls.overlayEnable.isChecked,
+            groups = groups.ifEmpty { BdlOverlayGroup.CORE_GROUPS },
+        )
+    }
+
+    private fun syncBdlOverlayDraftTo(
+        controls: BdlOverlayControlsBinding,
+        filter: BdlOverlayFilter,
+        fullAvailable: Boolean,
+    ) {
+        syncingBdlOverlayUi = true
+        controls.overlayEnable.isChecked = filter.enabled
+        controls.overlayGroupView.isChecked = BdlOverlayGroup.VIEW in filter.groups
+        controls.overlayGroupOther.isChecked = BdlOverlayGroup.OTHER in filter.groups
+        controls.overlayGroupWater.isChecked = BdlOverlayGroup.WATER in filter.groups
+        controls.overlayGroupPlay.isChecked = BdlOverlayGroup.PLAY in filter.groups
+        controls.overlayGroupLodging.isChecked = BdlOverlayGroup.LODGING in filter.groups
+        controls.overlayGroupWater.isEnabled = fullAvailable
+        controls.overlayGroupPlay.isEnabled = fullAvailable
+        controls.overlayGroupLodging.isEnabled = fullAvailable
+        controls.overlayFullHint.isVisible = !fullAvailable
+        syncingBdlOverlayUi = false
+    }
+
+    private fun bindBdlOverlayUi(state: UiState) {
+        val chevron = if (browseOverlayExpanded) " ▲" else " ▼"
+        searchBinding.btnToggleBdlOverlay.text = getString(R.string.bdl_overlay_toggle) + chevron
+        searchBinding.bdlOverlaySummary.text = state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
+        searchBinding.bdlOverlayPanel.isVisible = browseOverlayExpanded
+        if (browseOverlayExpanded) {
+            syncBdlOverlayDraftTo(
+                searchBinding.bdlOverlayControls,
+                state.bdlOverlayFilter,
+                state.bdlOverlayFullAvailable,
+            )
         }
     }
 
@@ -643,6 +850,17 @@ class MainActivity : AppCompatActivity() {
             sheetBinding.mapFilterControls,
             onDraftChanged = { refreshSheetSummary() },
         )
+        val browse = viewModel.state.value.isMapBrowse()
+        sheetBinding.bdlOverlaySheetLabel.isVisible = browse
+        sheetBinding.bdlOverlaySheetControls.root.isVisible = browse
+        if (browse) {
+            syncBdlOverlayDraftTo(
+                sheetBinding.bdlOverlaySheetControls,
+                viewModel.state.value.bdlOverlayFilter,
+                viewModel.state.value.bdlOverlayFullAvailable,
+            )
+            setupBdlOverlayListeners(sheetBinding.bdlOverlaySheetControls)
+        }
         sheetBinding.btnApplyMapFilter.setOnClickListener {
             applyBrowseCarFilterFrom(sheetBinding.mapFilterControls)
             browseCarFilterExpanded = false
@@ -658,14 +876,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyBrowseMapFilters(state: UiState) {
         if (!state.isMapBrowse() || state.mapBrowseRevision <= 0) return
-        val match = viewModel.browseCarMatchingIds(state)
+        // Wide-zoom clusters are already built from the prefiltered site set.
+        if (state.browseMapClusters.isNotEmpty()) return
+        val match = state.browseFilterMatchingIds
         val token = (state.browseCarFilter.hashCode()) xor
             (match?.size ?: -1) xor
             state.mapBrowseRevision.hashCode() xor
-            state.allSites.size
+            state.browseViewportSites.size
         if (token == lastBrowseCarFilterToken) return
         lastBrowseCarFilterToken = token
-        mapController.setBrowseLayerMatchFlags(state.allSites, match)
+        mapController.setBrowseLayerMatchFlags(state.browseViewportSites, match)
     }
 
     private fun setupSearchOriginSection() {
@@ -1117,6 +1337,18 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** Keep display on while live GPS follow is active on the map page (▶ tracking). */
+    private fun updateKeepScreenOn(state: UiState) {
+        val keepOn = uiPreferences.keepScreenOnWhileTracking &&
+            state.currentPage == AppPages.MAP &&
+            state.mapTrackingMode == MapTrackingMode.TRACKING
+        if (keepOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     private fun applyFollowCameraIfNeeded(state: UiState) {
         if (state.mapTrackingMode != MapTrackingMode.TRACKING) return
         if (state.mapFollowRevision == lastAppliedFollowRevision) return
@@ -1146,10 +1378,11 @@ class MainActivity : AppCompatActivity() {
         currentProfile = state.profile
         binding.progress.isVisible = state.isLocating || state.isSearching ||
             state.isAnalyzingRoads ||
+            state.isFilteringPlaces ||
             state.isMapBrowseLoading ||
             state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING
         searchBinding.btnSearch.isEnabled = !state.isSearching && !state.isLocating &&
-            !state.isAnalyzingRoads && !state.isMapBrowseLoading
+            !state.isAnalyzingRoads && !state.isFilteringPlaces && !state.isMapBrowseLoading
         searchBinding.btnClearMapPin.isVisible = !state.isMapBrowse() &&
             state.searchOriginMode == SearchOriginMode.MAP &&
             state.usesMapPinForSearch()
@@ -1209,17 +1442,27 @@ class MainActivity : AppCompatActivity() {
             }
             if (state.isMapBrowse()) {
                 if (state.mapBrowseRevision > 0) {
-                    mapController.setBrowseLayer(
-                        state.allSites,
-                        state.mapBrowseRevision,
-                    )
+                    if (state.browseMapClusters.isNotEmpty()) {
+                        mapController.setBrowseClusters(
+                            state.browseMapClusters,
+                            state.mapBrowseRevision,
+                        )
+                    } else {
+                        mapController.setBrowseLayer(
+                            state.browseViewportSites,
+                            state.mapBrowseRevision,
+                        )
+                    }
                     mapController.setBrowseZanocujPolygons(state.zanocujPolygons)
+                    mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
                 }
                 applyBrowseMapFilters(state)
                 val browseHash = (state.selectedSiteId?.hashCode() ?: 0) xor
                     state.profile.hashCode() xor
                     state.mapBrowseRevision.hashCode() xor
                     state.browseCarFilter.hashCode() xor
+                    state.bdlOverlayFilter.hashCode() xor
+                    state.bdlOverlayViewport.size xor
                     state.zanocujPolygons.size xor
                     state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
                 if (forceMarkers || browseHash != lastRenderedResultsToken) {
@@ -1255,6 +1498,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         bindMapTrackingFab(state.mapTrackingMode)
+        updateKeepScreenOn(state)
         bindMapFilterFab(state)
 
         state.message?.let { showMessage(it) }
@@ -1596,9 +1840,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
         mapBinding.poiCard.isVisible = true
-        mapBinding.cardTitle.text = "Miejsce odpoczynku „${selected.site.name}”"
+        val overlayGroup = BdlOverlayCatalog.groupForLayer(selected.site.sourceLayerId)
+        mapBinding.cardTitle.text = if (overlayGroup != null) {
+            getString(R.string.bdl_overlay_card_title, overlayGroup.labelPl, selected.site.name)
+        } else {
+            "Miejsce odpoczynku „${selected.site.name}”"
+        }
         mapBinding.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
-        mapBinding.cardFeatures.text = selected.site.featureSummaryPl()
+        mapBinding.cardFeatures.text = if (overlayGroup != null) {
+            selected.site.description?.replace("\n", " · ")
+                ?: selected.site.featureSummaryPl()
+        } else {
+            selected.site.featureSummaryPl()
+        }
         mapBinding.cardZanocuj.text = when (selected.site.zanocujStatus) {
             ZanocujStatus.IN_ZONE -> getString(R.string.zanocuj_in_zone_emoji)
             ZanocujStatus.NEAR_ZONE -> getString(R.string.zanocuj_near_zone_emoji)
@@ -1790,23 +2044,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updatePageIndicator(page: Int) {
-        binding.dot0.setBackgroundResource(
-            if (page == AppPages.SEARCH) R.drawable.page_dot_active else R.drawable.page_dot_inactive,
-        )
-        binding.dot1.setBackgroundResource(
-            if (page == AppPages.MAP) R.drawable.page_dot_active else R.drawable.page_dot_inactive,
-        )
-        binding.dot2.setBackgroundResource(
-            if (page == AppPages.LIST) R.drawable.page_dot_active else R.drawable.page_dot_inactive,
-        )
-        val labels = listOf(
-            getString(R.string.page_search),
-            getString(R.string.page_map),
-            getString(R.string.page_list),
-        )
-        binding.pageLabels.text = labels.mapIndexed { index, label ->
-            if (index == page) "【$label】" else label
-        }.joinToString("  ·  ")
+        val checkedId = when (page) {
+            AppPages.MAP -> R.id.btnPageMap
+            AppPages.LIST -> R.id.btnPageList
+            else -> R.id.btnPageSearch
+        }
+        if (binding.pageTabs.checkedButtonId != checkedId) {
+            syncingPageTabs = true
+            binding.pageTabs.check(checkedId)
+            syncingPageTabs = false
+        }
         binding.btnPagePrev.isEnabled = page > AppPages.SEARCH
         binding.btnPageNext.isEnabled = page < AppPages.LIST
         binding.btnPagePrev.alpha = if (binding.btnPagePrev.isEnabled) 1f else 0.35f
@@ -1820,15 +2067,31 @@ class MainActivity : AppCompatActivity() {
         }
         val filterLabel = state.browseCarFilter.summaryPl()
         val offline = if (state.offlineBdl.isReady) " · offline" else ""
+        val workStatus = when {
+            state.isMapBrowseLoading -> "Przygotowuję punkty BDL…"
+            state.isSearching -> "Wyszukuję miejsca BDL…"
+            state.isFilteringPlaces -> "Filtruję miejsca…"
+            state.isAnalyzingRoads -> {
+                val total = state.roadAnalysisTotal.coerceAtLeast(1)
+                "Analizuję drogi OSM: ${state.roadAnalysisCompleted}/$total"
+            }
+            else -> null
+        }
         if (state.isMapBrowse()) {
-            return getString(
+            val base = getString(
                 R.string.status_browse,
                 profile,
                 filterLabel,
                 "",
+                if (state.browseMapClusters.isNotEmpty()) {
+                    state.browseMapClusters.sumOf { it.count }
+                } else {
+                    state.browseViewportSites.size
+                },
                 state.allSites.size,
                 offline,
             )
+            return workStatus?.let { "$base\n$it" } ?: base
         }
         val radius = "${state.searchConfig.searchRadiusKm.toInt()} km"
         val origin = when (state.searchOriginMode) {
@@ -1842,11 +2105,12 @@ class MainActivity : AppCompatActivity() {
                 "linia: ${state.corridorLine.size} pkt L${state.corridorLeftKm.toInt()}/P${state.corridorRightKm.toInt()}"
             }
         }
-        return if (state.searchOriginMode == SearchOriginMode.LINE) {
+        val base = if (state.searchOriginMode == SearchOriginMode.LINE) {
             "$profile · $origin · $filterLabel · wyników: ${state.results.size}$offline"
         } else {
             "$profile · $radius · $filterLabel · wyników: ${state.results.size} · $origin$offline"
         }
+        return workStatus?.let { "$base\n$it" } ?: base
     }
 
     private fun formatPoiDistance(state: UiState, distanceKm: Double): String {
@@ -1929,32 +2193,54 @@ class MainActivity : AppCompatActivity() {
             list.removeAllViews()
             return
         }
-        // Rebuild only when content identity changes (size + first/last labels).
-        val signature = candidates!!.joinToString("|") { "${it.latitude},${it.longitude}" }
-        if (list.tag == signature && list.childCount == candidates.size) return
+        val signature = candidates!!.joinToString("|") {
+            "${it.latitude},${it.longitude},${it.voivodeship.orEmpty()}"
+        }
+        if (list.tag == signature && list.childCount > 0) return
         list.tag = signature
         list.removeAllViews()
         val padH = (12 * resources.displayMetrics.density).toInt()
         val padV = (10 * resources.displayMetrics.density).toInt()
-        candidates.forEach { place ->
-            val row = com.google.android.material.button.MaterialButton(
-                this,
-                null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle,
-            ).apply {
+        val grouped = candidates
+            .groupBy { pl.navilas.finder.data.osm.VoivodeshipResolver.groupLabel(it) }
+            .entries
+            .sortedWith(
+                compareBy<Map.Entry<String, List<pl.navilas.finder.data.osm.GeocodedPlace>>> {
+                    if (it.key == pl.navilas.finder.data.osm.VoivodeshipResolver.UNKNOWN_GROUP) 1 else 0
+                }.thenBy { it.key },
+            )
+        grouped.forEach { (voivodeship, places) ->
+            val header = android.widget.TextView(this).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).also { lp ->
-                    lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                    lp.topMargin = (8 * resources.displayMetrics.density).toInt()
                 }
-                text = place.shortLabel()
-                isAllCaps = false
-                textAlignment = android.view.View.TEXT_ALIGNMENT_VIEW_START
-                setPadding(padH, padV, padH, padV)
-                setOnClickListener { viewModel.applyLocalityChoice(place) }
+                text = getString(R.string.locality_group_voivodeship, voivodeship, places.size)
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleSmall)
             }
-            list.addView(row)
+            list.addView(header)
+            places.forEach { place ->
+                val row = com.google.android.material.button.MaterialButton(
+                    this,
+                    null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle,
+                ).apply {
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).also { lp ->
+                        lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                    }
+                    text = place.pickerRowLabel()
+                    isAllCaps = false
+                    textAlignment = android.view.View.TEXT_ALIGNMENT_VIEW_START
+                    setPadding(padH, padV, padH, padV)
+                    setOnClickListener { viewModel.applyLocalityChoice(place) }
+                }
+                list.addView(row)
+            }
         }
     }
 
@@ -2111,21 +2397,29 @@ class MainActivity : AppCompatActivity() {
                 append(it.userComment ?: "—")
             }
         }.orEmpty()
+        val overlayGroup = BdlOverlayCatalog.groupForLayer(site.sourceLayerId)
+        val detailsBody = if (overlayGroup != null) {
+            """
+            ${site.description.orEmpty()}
+
+            Źródło: ${site.sourceLayerName}$savedBlock
+            """.trimIndent()
+        } else {
+            """
+            Cechy BDL:
+            $features
+
+            Powiązane obiekty BDL:
+            $related
+
+            Zanocuj: $zone
+
+            Źródło: ${site.sourceLayerName}$savedBlock
+            """.trimIndent()
+        }
         val builder = AlertDialog.Builder(this)
             .setTitle(site.name)
-            .setMessage(
-                """
-                Cechy BDL:
-                $features
-                
-                Powiązane obiekty BDL:
-                $related
-                
-                Zanocuj: $zone
-                
-                Źródło: ${site.sourceLayerName}$savedBlock
-                """.trimIndent(),
-            )
+            .setMessage(detailsBody)
             .setNeutralButton(R.string.btn_navigate) { _, _ -> showNavigateChooser(item) }
             .setPositiveButton(android.R.string.ok, null)
         if (saved != null) {
@@ -2149,53 +2443,89 @@ class MainActivity : AppCompatActivity() {
         val options = arrayOf(
             getString(R.string.nav_google),
             getString(R.string.nav_osmand),
-            getString(R.string.nav_gpx),
+            getString(R.string.nav_cruiser),
+            getString(R.string.nav_copy_gps),
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.btn_navigate)
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> openUri(NavigationLinks.googleMapsDirUrl(target))
-                    1 -> openOsmAnd(item)
-                    2 -> shareGpx(item)
+                    1 -> openOsmAnd(item, currentProfile)
+                    2 -> openCruiser(item)
+                    3 -> copyGpsCoordinates(item)
                 }
             }
             .show()
     }
 
-    private fun openOsmAnd(item: RestSiteResult) {
-        val geo = NavigationLinks.osmAndGeoUri(item.navigationTarget, item.site.name)
-        val mapUrl = NavigationLinks.osmAndMapUrl(item.navigationTarget, currentProfile)
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(geo)))
-        } catch (_: Exception) {
-            openUri(mapUrl)
+    private fun openOsmAnd(item: RestSiteResult, profile: TravelProfile) {
+        if (profile == TravelProfile.MOTORCYCLE) {
+            showOsmAndMotoStyleChooser(item)
+            return
         }
+        launchOsmAnd(item, NavigationLinks.OSMAND_PROFILE_CAR)
     }
 
-    private fun shareGpx(item: RestSiteResult) {
-        val features = item.site.features.joinToString(", ") { it.labelPl }
-        val gpx = NavigationLinks.gpxWaypoint(
-            name = item.site.name,
-            destination = item.navigationTarget,
-            description = features.ifBlank { item.site.description },
+    private fun showOsmAndMotoStyleChooser(item: RestSiteResult) {
+        val options = arrayOf(
+            getString(R.string.nav_osmand_moto_short),
+            getString(R.string.nav_osmand_moto_twisty),
+            getString(R.string.nav_osmand_moto_standard),
         )
-        val dir = File(cacheDir, "gpx").apply { mkdirs() }
-        val file = File(dir, "navilas-${System.currentTimeMillis()}.gpx")
-        file.writeText(gpx)
-        val uri = FileProvider.getUriForFile(
-            this,
-            getString(R.string.file_provider_authority),
-            file,
-        )
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "application/gpx+xml"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, item.site.name)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(send, getString(R.string.nav_gpx)))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.nav_osmand_moto_style_title)
+            .setItems(options) { _, which ->
+                val profileKey = when (which) {
+                    0 -> OsmAndMotoRouteStyle.SHORT.profileKey
+                    1 -> OsmAndMotoRouteStyle.TWISTY.profileKey
+                    2 -> OsmAndMotoRouteStyle.STANDARD.profileKey
+                    else -> return@setItems
+                }
+                launchOsmAnd(item, profileKey)
+            }
+            .show()
     }
+
+    private fun launchOsmAnd(item: RestSiteResult, profileKey: String) {
+        val target = item.navigationTarget
+        val navigate = NavigationLinks.osmAndNavigateUri(target, item.site.name, profileKey)
+        if (openViewInPackage(navigate, OSMAND_PACKAGE)) return
+        val geo = NavigationLinks.osmAndGeoUri(target, item.site.name)
+        val geoIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geo)).apply {
+            setClassName(OSMAND_PACKAGE, OSMAND_GEO_ACTIVITY)
+        }
+        if (startIntentSafely(geoIntent)) return
+        Snackbar.make(binding.root, R.string.nav_osmand_missing, Snackbar.LENGTH_LONG).show()
+    }
+
+    private fun openCruiser(item: RestSiteResult) {
+        val geo = NavigationLinks.osmAndGeoUri(item.navigationTarget, item.site.name)
+        if (openViewInPackage(geo, CRUISER_PACKAGE)) return
+        openUri(geo)
+    }
+
+    private fun openViewInPackage(uri: String, packageName: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            setPackage(packageName)
+        }
+        return startIntentSafely(intent)
+    }
+
+    private fun copyGpsCoordinates(item: RestSiteResult) {
+        val text = NavigationLinks.gpsCoordinatesText(item.navigationTarget)
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("gps", text))
+        Snackbar.make(binding.root, getString(R.string.nav_copy_gps_done, text), Snackbar.LENGTH_LONG).show()
+    }
+
+    private fun startIntentSafely(intent: Intent): Boolean =
+        try {
+            startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
 
     private fun openUri(url: String) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -2218,11 +2548,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (::mapView.isInitialized) mapView.onResume()
+        if (uiPreferences.themeMode == AppThemeMode.AMBIENT_LIGHT) {
+            ambientLightThemeController.start()
+        }
         resumePendingAfterInstallPermission()
     }
 
     override fun onPause() {
+        ambientLightThemeController.stop()
         if (::mapView.isInitialized) mapView.onPause()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (waitingForSystemInstallerUi) {
             // System installer is on top — drop our overlay to avoid flicker underneath.
             dismissUpdateProgressDialog()
@@ -2249,6 +2584,12 @@ class MainActivity : AppCompatActivity() {
         unregisterInstallReceiver()
         if (::mapView.isInitialized) mapView.onDestroy()
         super.onDestroy()
+    }
+
+    companion object {
+        private const val OSMAND_PACKAGE = "net.osmand.plus"
+        private const val OSMAND_GEO_ACTIVITY = "net.osmand.plus.activities.search.GeoIntentActivity"
+        private const val CRUISER_PACKAGE = "gr.talent.cruiser"
     }
 }
 

@@ -14,6 +14,7 @@ import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
 import org.maplibre.android.style.layers.PropertyFactory.circleOpacity
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
@@ -24,6 +25,11 @@ import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineDasharray
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
+import org.maplibre.android.style.layers.PropertyFactory.textColor
+import org.maplibre.android.style.layers.PropertyFactory.textField
+import org.maplibre.android.style.layers.PropertyFactory.textAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.textIgnorePlacement
+import org.maplibre.android.style.layers.PropertyFactory.textSize
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -31,6 +37,8 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 import pl.navilas.finder.data.bdl.ZanocujPolygon
+import pl.navilas.finder.domain.BdlOverlayPoint
+import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
@@ -60,19 +68,20 @@ class MapController {
     private var lastBrowseRevision: Long = -1L
     private var lastBrowseZanocujCount: Int = -1
     private var lastBrowseZanocujIdsHash: Int = 0
+    private var lastOverlayIdsHash: Int = 0
 
     /** Diagnostics: last camera command applied (not fitBounds from selection). */
     var lastCameraCommand: String? = null
         private set
 
-    fun attach(mapLibreMap: MapLibreMap, onReady: () -> Unit) {
+    fun attach(mapLibreMap: MapLibreMap, darkMode: Boolean, onReady: () -> Unit) {
         map = mapLibreMap
         mapLibreMap.uiSettings.isRotateGesturesEnabled = true
         mapLibreMap.uiSettings.isScrollGesturesEnabled = true
         mapLibreMap.uiSettings.isZoomGesturesEnabled = true
         mapLibreMap.setMinZoomPreference(MIN_ZOOM)
         mapLibreMap.setMaxZoomPreference(MAX_ZOOM)
-        mapLibreMap.setStyle(Style.Builder().fromUri(MapConfig.STYLE_URL)) { loaded ->
+        mapLibreMap.setStyle(Style.Builder().fromUri(MapConfig.styleUrl(darkMode))) { loaded ->
             style = loaded
             ensureSourcesAndLayers(loaded)
             ensureClickListener(mapLibreMap)
@@ -214,6 +223,7 @@ class MapController {
             ).apply {
                 addStringProperty("id", result.site.id)
                 addStringProperty("name", result.site.name)
+                addNumberProperty(PROP_IS_CLUSTER, 0)
             }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
@@ -252,6 +262,7 @@ class MapController {
             Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
                 addStringProperty("id", site.id)
                 addStringProperty("name", site.name)
+                addNumberProperty(PROP_IS_CLUSTER, 0)
                 addStringProperty(
                     PROP_ZANOCUJ,
                     when (site.zanocujStatus) {
@@ -269,17 +280,19 @@ class MapController {
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
+        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
     }
 
     fun setBrowseLayerMatchFlags(sites: List<RestSite>, matchingIds: Set<String>?) {
         val s = style ?: return
         if (!browseModeActive) return
-        val features = sites.mapNotNull { site ->
+        val visibleSites = if (matchingIds == null) sites else sites.filter { it.id in matchingIds }
+        val features = visibleSites.mapNotNull { site ->
             if (!site.latitude.isFinite() || !site.longitude.isFinite()) return@mapNotNull null
-            val match = matchingIds == null || site.id in matchingIds
             Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
                 addStringProperty("id", site.id)
                 addStringProperty("name", site.name)
+                addNumberProperty(PROP_IS_CLUSTER, 0)
                 addStringProperty(
                     PROP_ZANOCUJ,
                     when (site.zanocujStatus) {
@@ -292,18 +305,12 @@ class MapController {
                     PROP_PARKING,
                     if (SiteFeature.PARKING in site.features) 1 else 0,
                 )
-                addNumberProperty(PROP_FILTER_MATCH, if (match) 1 else 0)
+                addNumberProperty(PROP_FILTER_MATCH, 1)
             }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
-        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(
-            if (matchingIds == null) {
-                Expression.literal(true)
-            } else {
-                Expression.eq(Expression.get(PROP_FILTER_MATCH), Expression.literal(1))
-            },
-        )
+        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
     }
 
     fun setBrowseZanocujPolygons(polygons: List<ZanocujPolygon>) {
@@ -339,9 +346,45 @@ class MapController {
         lastBrowseRevision = -1L
         lastBrowseZanocujCount = -1
         lastBrowseZanocujIdsHash = 0
+        lastOverlayIdsHash = 0
         style?.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
         style?.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
             ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        style?.getSourceAs<GeoJsonSource>(SOURCE_BDL_OVERLAY)
+            ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+    }
+
+    fun setBrowseOverlayPoints(points: List<BdlOverlayPoint>) {
+        if (!browseModeActive) return
+        val s = style ?: return
+        val idsHash = points.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
+        if (idsHash == lastOverlayIdsHash) return
+        lastOverlayIdsHash = idsHash
+        val features = points.mapNotNull { point ->
+            if (!point.latitude.isFinite() || !point.longitude.isFinite()) return@mapNotNull null
+            Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
+                addStringProperty("id", point.id)
+                addStringProperty("name", point.name)
+                addStringProperty(PROP_OVERLAY_GROUP, point.group.name)
+            }
+        }
+        s.getSourceAs<GeoJsonSource>(SOURCE_BDL_OVERLAY)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    fun setBrowseClusters(clusters: List<BrowseMapCluster>, revision: Long) {
+        if (revision == lastBrowseRevision && browseModeActive) return
+        lastBrowseRevision = revision
+        browseModeActive = true
+        val features = clusters.map { cluster ->
+            Feature.fromGeometry(Point.fromLngLat(cluster.longitude, cluster.latitude)).apply {
+                addStringProperty(PROP_CLUSTER_COUNT_LABEL, cluster.count.toString())
+                addNumberProperty(PROP_IS_CLUSTER, 1)
+            }
+        }
+        style?.getSourceAs<GeoJsonSource>(SOURCE_SITES)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+        style?.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
     }
 
     fun applyBrowseFilters(zanocujOnly: Boolean, parkingOnly: Boolean) {
@@ -453,6 +496,8 @@ class MapController {
             if (vertexIndex != null) {
                 onCorridorVertexClick?.invoke(vertexIndex)
                 true
+            } else if (zoomIntoCluster(PointF(screen.x, screen.y))) {
+                true
             } else {
                 val hit = querySiteId(PointF(screen.x, screen.y))
                 if (hit != null) {
@@ -507,12 +552,40 @@ class MapController {
         // Pad hit box: single-pixel taps often miss 7px circles.
         val pad = HIT_PAD_PX
         val box = RectF(screen.x - pad, screen.y - pad, screen.x + pad, screen.y + pad)
-        val features = mapLibreMap.queryRenderedFeatures(box, LAYER_SELECTED, LAYER_SITES)
-        return features.asSequence()
+        val restHits = mapLibreMap.queryRenderedFeatures(box, LAYER_SELECTED, LAYER_SITES)
+        restHits.asSequence()
             .mapNotNull { feature ->
                 feature.getStringProperty("id")?.takeIf { it.isNotBlank() }
             }
             .firstOrNull()
+            ?.let { return it }
+        val overlayHits = mapLibreMap.queryRenderedFeatures(box, LAYER_BDL_OVERLAY)
+        return overlayHits.asSequence()
+            .mapNotNull { feature ->
+                feature.getStringProperty("id")?.takeIf { it.isNotBlank() }
+            }
+            .firstOrNull()
+    }
+
+    private fun zoomIntoCluster(screen: PointF): Boolean {
+        val mapLibreMap = map ?: return false
+        val feature = mapLibreMap.queryRenderedFeatures(
+            screen,
+            LAYER_SITE_CLUSTER_COUNT,
+            LAYER_SITE_CLUSTERS,
+            LAYER_SITES,
+        ).firstOrNull {
+            it.getNumberProperty(PROP_IS_CLUSTER)?.toInt() == 1
+        } ?: return false
+        val point = feature.geometry() as? Point ?: return false
+        mapLibreMap.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(
+                LatLng(point.latitude(), point.longitude()),
+                (mapLibreMap.cameraPosition.zoom + 2.0).coerceAtMost(CLUSTER_MAX_ZOOM + 1.0),
+            ),
+        )
+        lastCameraCommand = "zoomCluster"
+        return true
     }
 
     private fun ensureSourcesAndLayers(style: Style) {
@@ -558,11 +631,61 @@ class MapController {
         if (style.getSource(SOURCE_SITES) == null) {
             style.addSource(GeoJsonSource(SOURCE_SITES, FeatureCollection.fromFeatures(emptyList())))
             style.addLayer(
-                CircleLayer(LAYER_SITES, SOURCE_SITES).withProperties(
-                    circleRadius(7f),
-                    circleColor(Color.parseColor("#2E7D32")),
+                CircleLayer(LAYER_SITE_CLUSTERS, SOURCE_SITES)
+                    .withFilter(
+                        Expression.eq(Expression.get(PROP_IS_CLUSTER), Expression.literal(1)),
+                    )
+                    .withProperties(
+                        circleRadius(18f),
+                        circleColor(Color.parseColor("#1B5E20")),
+                        circleStrokeColor(Color.WHITE),
+                        circleStrokeWidth(2f),
+                    ),
+            )
+            style.addLayer(
+                SymbolLayer(LAYER_SITE_CLUSTER_COUNT, SOURCE_SITES)
+                    .withProperties(
+                        textField(Expression.get(PROP_CLUSTER_COUNT_LABEL)),
+                        textColor(Color.WHITE),
+                        textSize(12f),
+                        textIgnorePlacement(true),
+                        textAllowOverlap(true),
+                    ),
+            )
+            style.addLayer(
+                CircleLayer(LAYER_SITES, SOURCE_SITES)
+                    .withProperties(
+                        circleRadius(7f),
+                        circleColor(Color.parseColor("#2E7D32")),
+                        circleStrokeColor(Color.WHITE),
+                        circleStrokeWidth(1.5f),
+                    ),
+            )
+        }
+        if (style.getSource(SOURCE_BDL_OVERLAY) == null) {
+            style.addSource(GeoJsonSource(SOURCE_BDL_OVERLAY, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                CircleLayer(LAYER_BDL_OVERLAY, SOURCE_BDL_OVERLAY).withProperties(
+                    circleRadius(6.5f),
+                    circleColor(
+                        Expression.match(
+                            Expression.get(PROP_OVERLAY_GROUP),
+                            Expression.literal("VIEW"),
+                            Expression.color(Color.parseColor("#1565C0")),
+                            Expression.literal("OTHER"),
+                            Expression.color(Color.parseColor("#6D4C41")),
+                            Expression.literal("WATER"),
+                            Expression.color(Color.parseColor("#00838F")),
+                            Expression.literal("PLAY"),
+                            Expression.color(Color.parseColor("#EF6C00")),
+                            Expression.literal("LODGING"),
+                            Expression.color(Color.parseColor("#880E4F")),
+                            Expression.color(Color.parseColor("#757575")),
+                        ),
+                    ),
                     circleStrokeColor(Color.WHITE),
                     circleStrokeWidth(1.5f),
+                    circleOpacity(0.95f),
                 ),
             )
         }
@@ -657,10 +780,12 @@ class MapController {
         /** Default GPS puck: ~38% of map height from the bottom (driving look-ahead). */
         const val DEFAULT_FOLLOW_FOCAL_Y_FROM_TOP = 0.62f
         private const val HIT_PAD_PX = 28f
+        private const val CLUSTER_MAX_ZOOM = 9.0
 
         const val SOURCE_USER = "navilas-user"
         const val SOURCE_SEARCH_PIN = "navilas-search-pin"
         const val SOURCE_SITES = "navilas-sites"
+        const val SOURCE_BDL_OVERLAY = "navilas-bdl-overlay"
         const val SOURCE_SELECTED = "navilas-selected"
         const val SOURCE_ZANOCUJ = "navilas-zanocuj"
         const val SOURCE_ROAD_TARGET = "navilas-road-target"
@@ -670,6 +795,9 @@ class MapController {
         const val LAYER_USER = "navilas-user-layer"
         const val LAYER_SEARCH_PIN = "navilas-search-pin-layer"
         const val LAYER_SITES = "navilas-sites-layer"
+        const val LAYER_SITE_CLUSTERS = "navilas-site-clusters"
+        const val LAYER_SITE_CLUSTER_COUNT = "navilas-site-cluster-count"
+        const val LAYER_BDL_OVERLAY = "navilas-bdl-overlay-layer"
         const val LAYER_SELECTED = "navilas-selected-layer"
         const val LAYER_ZANOCUJ_FILL = "navilas-zanocuj-fill"
         const val LAYER_ZANOCUJ_LINE = "navilas-zanocuj-line"
@@ -680,5 +808,8 @@ class MapController {
         const val PROP_ZANOCUJ = "zanocuj"
         const val PROP_PARKING = "parking"
         const val PROP_FILTER_MATCH = "filter_match"
+        const val PROP_OVERLAY_GROUP = "overlay_group"
+        private const val PROP_CLUSTER_COUNT_LABEL = "count"
+        private const val PROP_IS_CLUSTER = "is_cluster"
     }
 }

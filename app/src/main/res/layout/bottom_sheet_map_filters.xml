@@ -37,4 +37,21 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/browse_car_filter_apply" />
+
+    <TextView
+        android:id="@+id/bdlOverlaySheetLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/bdl_overlay_label"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:visibility="gone" />
+
+    <include
+        android:id="@+id/bdlOverlaySheetControls"
+        layout="@layout/bdl_overlay_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
 </LinearLayout>

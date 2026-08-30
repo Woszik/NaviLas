@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
             android:layout_marginTop="4dp"
-            app:checkedButton="@+id/btnExploreBrowse"
+            app:checkedButton="@+id/btnExploreSearch"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/exploreModeLabel"
@@ -202,7 +202,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/corridor_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#667766" />
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
                 android:id="@+id/corridorStatus"
@@ -210,7 +210,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#335C33"
+                android:textColor="?attr/colorPrimary"
                 tools:text="Punkty linii: 0" />
 
             <LinearLayout
@@ -460,12 +460,58 @@
             </LinearLayout>
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/bdlOverlaySection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/browseCarFilterSection"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleBdlOverlay"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/bdl_overlay_toggle" />
+
+            <TextView
+                android:id="@+id/bdlOverlaySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:paddingHorizontal="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="Ukryte" />
+
+            <LinearLayout
+                android:id="@+id/bdlOverlayPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <include
+                    android:id="@+id/bdlOverlayControls"
+                    layout="@layout/bdl_overlay_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+
         <androidx.constraintlayout.widget.Barrier
             android:id="@+id/filterBottomBarrier"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:barrierDirection="bottom"
-            app:constraint_referenced_ids="browseCarFilterSection" />
+            app:constraint_referenced_ids="browseCarFilterSection,bdlOverlaySection" />
 
         <TextView
             android:id="@+id/mapBrowseHint"
@@ -529,7 +575,7 @@
             android:layout_marginHorizontal="12dp"
             android:layout_marginTop="8dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="#335C33"
+            android:textColor="?attr/colorPrimary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnClearMapPin"
@@ -543,7 +589,7 @@
             android:layout_marginTop="8dp"
             android:text="@string/search_page_hint"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="#667766"
+            android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/statusText" />
@@ -651,7 +697,7 @@
                 android:layout_marginHorizontal="12dp"
                 android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#667766"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Szacowany rozmiar: ~15–25 MB" />
 
             <TextView
@@ -661,7 +707,7 @@
                 android:layout_marginHorizontal="12dp"
                 android:layout_marginTop="4dp"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#335C33"
+                android:textColor="?attr/colorPrimary"
                 tools:text="Pobrano NaviLas · strefy dokładne · zajmuje 36 MB\nOstatnia aktualizacja: 22 sie 2026, 12:16" />
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -710,7 +756,7 @@
                 android:layout_marginBottom="8dp"
                 android:text="@string/offline_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#667766" />
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 
         <LinearLayout
@@ -733,7 +779,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#667766"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 tools:text="Wersja 0.5.0-app-update" />
 
             <com.google.android.material.button.MaterialButton

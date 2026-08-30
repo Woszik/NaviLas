@@ -2,8 +2,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_settings"
+        android:title="@string/settings_title"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_offline_data"
+        android:title="@string/offline_section_title"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_check_updates"
+        android:title="@string/app_check_updates"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_about"
-        android:icon="@drawable/ic_info"
         android:title="@string/about_title"
-        app:showAsAction="always" />
+        app:showAsAction="never" />
 </menu>

@@ -5,7 +5,7 @@
 | Warstwa | Wybór | Uwagi |
 |---|---|---|
 | **Silnik mapy** | MapLibre Native Android (`org.maplibre.gl:android-sdk:11.8.6`) | Renderuje styl + kafelki; nie jest źródłem danych OSM. |
-| **Styl mapy** | OpenFreeMap **Liberty** | Style JSON zgodny ze specyfikacją MapLibre. |
+| **Styl mapy** | OpenFreeMap **Liberty / Dark** | Styl jest wybierany automatycznie zgodnie z motywem aplikacji. Oba pliki JSON są zgodne ze specyfikacją MapLibre. |
 | **Źródło kafelków / danych** | OpenFreeMap / OpenMapTiles (wektor) + Natural Earth (raster cieniowania) | Dane mapowe pochodzą z OpenStreetMap (przetworzone do schematu OpenMapTiles). |
 
 Kod: `pl.navilas.finder.map.MapConfig`.
@@ -48,7 +48,7 @@ Kod: `pl.navilas.finder.map.MapConfig`.
 
 ## Czy nadaje się do prototypu?
 
-**Tak.** OpenFreeMap Liberty to rzeczywista mapa OSM (nie demotiles), bez klucza API, z jasną atrybucją i pozwoleniem na użycie w tym etapie.
+**Tak.** OpenFreeMap Liberty/Dark to rzeczywista mapa OSM (nie demotiles), bez klucza API, z jasną atrybucją i pozwoleniem na użycie w tym etapie.
 
 ## Czy nadaje się do produkcji?
 

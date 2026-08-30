@@ -1,0 +1,66 @@
+OsmAnd — profile moto dla NaviLas (KINGKONG 8)
+================================================
+Data: 2026-08-30
+
+CEL
+---
+3 profile gotowe pod wybór stylu trasy w NaviLas (import .osf wykonany; integracja w aplikacji: DO DOPRACOWANIA — docs/STATUS.md):
+
+  1. Brouter[moped]   — kręta (BRouter moped.brf)
+  2. Brouter[trekking] — krótka / szybsza (BRouter trekking.brf)
+  3. Motocykl          — standard OsmAnd (wbudowany profil motorcycle)
+
+STAN BROUTER (sprawdzone ADB)
+-----------------------------
+  /Android/media/btools.routingapp/brouter/profiles2/moped.brf     OK
+  /Android/media/btools.routingapp/brouter/profiles2/trekking.brf  OK
+  serviceconfig.dat:
+    motorcar_fast  → moped
+    motorcar_short → trekking
+
+IMPORT PROFILI OSMAND (1×, ~30 s)
+----------------------------------
+Telefon odblokowany. Najpierw uruchom BRouter (ikona aplikacji), potem:
+
+  1. Otwórz Pliki / Downloads → NaviLas_osmand_moto_profiles.osf
+     (lub: OsmAnd → Menu ☰ → Ustawienia → Importuj → wybierz plik .osf)
+
+  2. Zaznacz do importu:
+     - profile Brouter[moped], Brouter[trekking]
+     - ustawienia globalne (włącza profil Motocykl)
+     Przy duplikacie istniejącego Brouter[moped] → „Zastąp” lub usuń stary profil ręcznie.
+
+  3. Po imporcie: OsmAnd → Menu ☰ → Ustawienia → Profile aplikacji
+     Sprawdź listę:
+       ☑ Motocykl
+       ☑ Brouter[moped]
+       ☑ Brouter[trekking]
+
+WERYFIKACJA (2 min)
+-------------------
+  a) BRouter działa w tle: uruchom BRouter przed testem.
+  b) OsmAnd, profil Brouter[moped]: dowolny punkt → Nawiguj → trasa liczy się offline.
+  c) Przełącz na Brouter[trekking] → inna trasa (mniej „kręta”).
+  d) Profil Motocykl → routing OsmAnd (nie BRouter).
+
+RĘCZNY FALLBACK (gdy import .osf nie zadziała)
+----------------------------------------------
+Dla każdego profilu BRouter:
+  OsmAnd → Ustawienia → Profile aplikacji → + Dodaj profil
+  → skopiuj „Motocykl”
+  → nazwa dokładnie: Brouter[moped] lub Brouter[trekking]
+  → Nawigacja → Offline → Zewnętrzna → BRouter (offline)
+  (Opcja BRouter widoczna tylko gdy BRouter był uruchomiony przed OsmAnd)
+
+Włączenie wbudowanego Motocykl:
+  Profile aplikacji → Motocykl → włącz (pokaż na liście)
+
+MAPOWANIE → NaviLas
+-------------------
+  STATUS: DO DOPRACOWANIA (dialog w kodzie roboczym, wymaga weryfikacji API OsmAnd)
+
+  Krótka      → Brouter[trekking]  (profile=brouter_trekking)
+  Kręta       → Brouter[moped]     (profile=brouter_moped)
+  Standardowa → motorcycle (Motocykl)
+
+  Szczegóły: docs/NAVIGATION_EXPORT.md, docs/STATUS.md

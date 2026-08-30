@@ -1,0 +1,29 @@
+OsmAnd cleanup — KINGKONG 8 — 2026-08-29
+Variant: A + extras (keep UMP-PL, World_basemap_mini, srtm)
+
+=== DELETED ===
+- 16× Poland_*_europe.obf (~4.1 GB)
+- roads/ — 16× Poland_*.road.obf (~1.8 GB)
+- World_basemap.obf (427 MB)
+- wiki/ (~1.1 GB)
+- geotiff/ (~245 MB)
+- weather_forecast/ (~77 MB)
+
+=== KEPT ===
+- UMP-PL-CCBySA.obf (1.4 GB)
+- World_basemap_mini.obf (58 MB)
+- srtm/Poland_europe.srtm.obf (~156 MB)
+
+=== RESULT ===
+Before: ~10 GB total (37 OBF files)
+After:  ~1.7 GB total (3 OBF files)
+Freed:  ~8.3 GB
+
+Cold start after cleanup (2026-08-29 23:14):
+- NATIVE_INITIALIZED: 1350 ms (was ~1554 ms)
+- INDEX_REGION_BOUNDARIES: 1212 ms (was ~1195 ms — UMP 1.4 GB still heavy to index)
+- RSS after start: ~448 MB
+
+=== RESTORE (if needed) ===
+OsmAnd → Mapy i zasoby → pobierz ponownie województwa Polski.
+UMP można pobrać z pluginu UMP lub download.ump.waw.pl

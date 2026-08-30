@@ -1,10 +1,13 @@
 <p>NaviLas helps you find forest rest sites in Poland using open data from the Forest Data Bank (BDL) and OpenStreetMap.</p>
 <p><b>Features</b></p>
 <ul>
-<li>Search near GPS, a map point, or a locality</li>
+<li>Search near GPS, a map point, a locality, or along a drawn line</li>
+<li>Browse and filter rest sites and additional BDL objects on the map</li>
 <li>Map with results and “Zanocuj w lesie” zones</li>
 <li>Travel profiles: car and motorcycle</li>
+<li>Send destinations to external navigation apps</li>
 <li>Optional offline BDL data download</li>
+<li>System, ambient-light sensor, day, and night themes</li>
 <li>Save favourite places with categories and comments</li>
 <li>Export and import saved places (JSON backup)</li>
 </ul>

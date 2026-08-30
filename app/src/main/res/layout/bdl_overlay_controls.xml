@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <CheckBox
+        android:id="@+id/overlayEnable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_enable" />
+
+    <CheckBox
+        android:id="@+id/overlayGroupView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_group_view" />
+
+    <CheckBox
+        android:id="@+id/overlayGroupOther"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_group_other" />
+
+    <CheckBox
+        android:id="@+id/overlayGroupWater"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_group_water" />
+
+    <CheckBox
+        android:id="@+id/overlayGroupPlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_group_play" />
+
+    <CheckBox
+        android:id="@+id/overlayGroupLodging"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/bdl_overlay_group_lodging" />
+
+    <TextView
+        android:id="@+id/overlayFullHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="4dp"
+        android:paddingTop="2dp"
+        android:text="@string/bdl_overlay_full_hint"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/overlayLegend"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="4dp"
+        android:paddingTop="4dp"
+        android:text="@string/bdl_overlay_legend"
+        android:textAppearance="?attr/textAppearanceBodySmall" />
+</LinearLayout>

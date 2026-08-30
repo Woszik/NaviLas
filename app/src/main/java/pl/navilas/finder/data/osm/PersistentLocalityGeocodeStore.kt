@@ -40,6 +40,8 @@ class PersistentLocalityGeocodeStore(
                         latitude = item.getDouble("lat"),
                         longitude = item.getDouble("lon"),
                         displayName = item.getString("displayName"),
+                        voivodeship = item.optString("voivodeship").trim().ifBlank { null },
+                        county = item.optString("county").trim().ifBlank { null },
                     ),
                     storedAtMs = item.getLong("storedAtMs"),
                 )
@@ -51,14 +53,14 @@ class PersistentLocalityGeocodeStore(
         file.parentFile?.mkdirs()
         val root = JSONObject()
         memory.snapshotNonExpired().forEach { (key, entry) ->
-            root.put(
-                key,
-                JSONObject()
-                    .put("lat", entry.place.latitude)
-                    .put("lon", entry.place.longitude)
-                    .put("displayName", entry.place.displayName)
-                    .put("storedAtMs", entry.storedAtMs),
-            )
+            val obj = JSONObject()
+                .put("lat", entry.place.latitude)
+                .put("lon", entry.place.longitude)
+                .put("displayName", entry.place.displayName)
+                .put("storedAtMs", entry.storedAtMs)
+            entry.place.voivodeship?.let { obj.put("voivodeship", it) }
+            entry.place.county?.let { obj.put("county", it) }
+            root.put(key, obj)
         }
         file.writeText(root.toString())
     }

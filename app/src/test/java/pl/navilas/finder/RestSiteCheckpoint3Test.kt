@@ -25,6 +25,7 @@ import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujFilterMode
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.nav.NavigationLinks
+import pl.navilas.finder.nav.OsmAndMotoRouteStyle
 import pl.navilas.finder.nav.NavigationTargets
 import pl.navilas.finder.ui.canNavigateMotorcycle
 import pl.navilas.finder.util.GeoUtils
@@ -269,6 +270,28 @@ class RestSiteCheckpoint3Test {
         assertTrue(map.contains("osmand.net/map/"))
         assertTrue(map.contains("profile=motorcycle"))
         assertTrue(map.contains("finish="))
+        val nav = NavigationLinks.osmAndNavigateUri(LatLon(52.2, 21.1), "Wiata test", TravelProfile.MOTORCYCLE)
+        assertTrue(nav.startsWith("osmand.api://navigate?"))
+        assertTrue(nav.contains("dest_lat=52.2"))
+        assertTrue(nav.contains("dest_lon=21.1"))
+        assertTrue(nav.contains("profile=motorcycle"))
+        val shortNav = NavigationLinks.osmAndNavigateUri(
+            LatLon(52.2, 21.1),
+            "Wiata test",
+            OsmAndMotoRouteStyle.SHORT.profileKey,
+        )
+        assertTrue(shortNav.contains("profile=brouter_trekking"))
+        val twistyNav = NavigationLinks.osmAndNavigateUri(
+            LatLon(52.2, 21.1),
+            "Wiata test",
+            OsmAndMotoRouteStyle.TWISTY.profileKey,
+        )
+        assertTrue(twistyNav.contains("profile=brouter_moped"))
+    }
+
+    @Test
+    fun gps_coordinates_text() {
+        assertEquals("52.200000, 21.100000", NavigationLinks.gpsCoordinatesText(LatLon(52.2, 21.1)))
     }
 
     @Test
@@ -277,6 +300,16 @@ class RestSiteCheckpoint3Test {
         assertTrue(gpx.contains("<wpt lat=\"52.200000\" lon=\"21.100000\">"))
         assertTrue(gpx.contains("<name>Pod Debem</name>"))
         assertTrue(gpx.contains("Wiata, Palenisko"))
+        assertTrue(gpx.contains("<rte>"))
+        assertTrue(gpx.contains("<rtept lat=\"52.200000\" lon=\"21.100000\">"))
+        assertTrue(gpx.contains("<type>Destination</type>"))
+    }
+
+    @Test
+    fun gpx_file_base_name_sanitizes() {
+        assertEquals("Pod_Debem", NavigationLinks.gpxFileBaseName("Pod Debem"))
+        assertEquals("destination", NavigationLinks.gpxFileBaseName("   "))
+        assertEquals("a_b", NavigationLinks.gpxFileBaseName("a/b"))
     }
 
     @Test

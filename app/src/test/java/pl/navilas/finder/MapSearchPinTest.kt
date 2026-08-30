@@ -77,6 +77,35 @@ class MapSearchPinTest {
     }
 
     @Test
+    fun nominatim_filters_by_locality_name_not_nominatim_rank() {
+        val json = """
+            [
+              {"lat":"52.10","lon":"18.47","display_name":"Władysławów, turecki",
+               "address":{"village":"Władysławów","county":"powiat turecki","state":"wielkopolskie"}},
+              {"lat":"51.97","lon":"19.49","display_name":"Władysławów, zgierski",
+               "address":{"village":"Władysławów","county":"powiat zgierski","state":"łódzkie"}},
+              {"lat":"51.04","lon":"19.57","display_name":"Dmenin, radomszczański",
+               "address":{"village":"Dmenin","county":"powiat radomszczański","state":"łódzkie"}}
+            ]
+        """.trimIndent()
+        val places = NominatimGeocoder.parseResults(json, localityQuery = "Władysławów")
+        assertEquals(2, places.size)
+        assertTrue(places.all { it.displayName.startsWith("Władysławów") })
+    }
+
+    @Test
+    fun nominatim_locality_filter_ignores_diacritics() {
+        val json = """
+            [
+              {"lat":"52.10","lon":"18.47","display_name":"Władysławów",
+               "address":{"village":"Władysławów","county":"powiat turecki"}}
+            ]
+        """.trimIndent()
+        val places = NominatimGeocoder.parseResults(json, localityQuery = "wladyslawow")
+        assertEquals(1, places.size)
+    }
+
+    @Test
     fun nominatim_dedupes_nearby_admin_duplicates() {
         val json = """
             [

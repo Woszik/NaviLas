@@ -1,0 +1,52 @@
+OsmAnd + BRouter — KINGKONG 8 (2026-08-30)
+============================================
+
+STAN
+----
+BRouter v1.7.10 zainstalowany.
+Segmenty routingowe (masz): E10_N45, E10_N50, E15_N45, E15_N50, E20_N45, E20_N50 (~646 MB)
+OsmAnd+ z mapą UMP-PL (~1.8 GB).
+
+BRAKUJĄCE SEGMENTY (północ + wschód PL)
+---------------------------------------
+Pobierz w BRouter → Download Manager (zaznacz kafle):
+
+  E10_N55   (~61 MB)  — północny zachód (Szczecin/Gdańsk pas)
+  E15_N55   (~27 MB)  — północ centralna (Warszawa północ)
+  E20_N55   (~sprawdź) — północny wschód
+  E25_N45   (~sprawdź) — południowy wschód (Lublin/Rzeszów)
+  E25_N50   (~sprawdź) — centralny wschód
+  E25_N55   (~sprawdź) — północny wschód (Białystok)
+
+URL: https://brouter.de/brouter/segments4/<TILE>.rd5
+
+SERVICE-MODE (motocykl)
+-----------------------
+Zaktualizowano serviceconfig.dat:
+  motorcar_fast  → moped
+  motorcar_short → trekking
+
+Po zmianie: uruchom BRouter → Server-Mode (potwierdź mapowanie).
+
+OSMAND — PROFILE MOTO (NaviLas)
+-------------------------------
+Pełna instrukcja + import .osf: docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt
+Plik importu na telefonie: Download/NaviLas_osmand_moto_profiles.osf
+Stan integracji w aplikacji: DO DOPRACOWANIA — docs/STATUS.md
+
+Profile docelowe:
+  • Brouter[moped]    — kręta (już może istnieć; import .osf ujednolici)
+  • Brouter[trekking] — krótka
+  • Motocykl          — wbudowany OsmAnd (włączany przez import)
+
+OSMAND — PROFIL MOTO BROUTER (ręcznie, fallback)
+----------------------------
+1. Uruchom BRouter (musi być w pamięci przed OsmAnd).
+2. OsmAnd → Menu ☰ → Ustawienia profilu → + Dodaj profil.
+3. Skopiuj profil „Motocykl”, nazwij: Brouter[moped]
+4. Typ nawigacji → Offline → External → BRouter (offline)
+5. Zapisz. Przy wyszukiwaniu wybierz profil Brouter[moped].
+
+Test: punkt na mapie → Nawiguj → trasa < 1 s (w obszarze pobranych kafli).
+
+UWAGA: car-cruiser.brf nie ma na serwerze brouter.de — użyj moped lub trekking.
