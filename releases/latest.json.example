@@ -1,8 +1,9 @@
 {
-  "_comment": "Manifest kanału Beta (latest.json). Nightly/Final — osobne pliki w przyszłości; docs/RELEASE_CHANNELS.md",
-  "versionCode": 38,
-  "versionName": "0.5.34",
-  "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.34/navilas-0.5.34.apk",
+  "_comment": "Manifest kanału Beta (latest.json). Nightly: nightly.json. Final: final.json.",
+  "versionCode": 39,
+  "versionName": "0.5.35",
+  "channel": "beta",
+  "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.35/navilas-0.5.35.apk",
   "sha256": "REPLACE_WITH_SHA256_FROM_CI",
   "releaseNotes": "Beta 0.5.34: szybszy i przewidywalny start, obiekty BDL, pełniejsze wyszukiwanie miejscowości, usprawniona nawigacja oraz nowe menu i motywy System/Czujnik/Dzień/Noc.",
   "minVersionCode": 1,

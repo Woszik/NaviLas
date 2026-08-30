@@ -85,5 +85,45 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/settings_keep_screen_on" />
+
+        <LinearLayout
+            android:id="@+id/updateChannelSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/settings_update_channel_label"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+            <RadioGroup
+                android:id="@+id/updateChannelGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp">
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/updateChannelNightly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_update_channel_nightly" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/updateChannelBeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_update_channel_beta" />
+
+                <com.google.android.material.radiobutton.MaterialRadioButton
+                    android:id="@+id/updateChannelFinal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_update_channel_final" />
+            </RadioGroup>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

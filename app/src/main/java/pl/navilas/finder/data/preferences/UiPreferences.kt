@@ -2,6 +2,7 @@ package pl.navilas.finder.data.preferences
 
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
+import pl.navilas.finder.update.UpdateTrack
 
 enum class AppThemeMode {
     SYSTEM,
@@ -16,11 +17,28 @@ enum class StartupMode {
     MAP_BROWSE,
 }
 
+/** GitHub in-app updates: chosen floor and everything more stable above it. */
+enum class UpdateChannelPreference {
+    NIGHTLY,
+    BETA,
+    FINAL,
+    ;
+
+    fun tracks(): List<UpdateTrack> = when (this) {
+        NIGHTLY -> listOf(UpdateTrack.NIGHTLY, UpdateTrack.BETA, UpdateTrack.FINAL)
+        BETA -> listOf(UpdateTrack.BETA, UpdateTrack.FINAL)
+        FINAL -> listOf(UpdateTrack.FINAL)
+    }
+}
+
 internal fun parseThemeMode(value: String?): AppThemeMode =
     AppThemeMode.entries.firstOrNull { it.name == value } ?: AppThemeMode.SYSTEM
 
 internal fun parseStartupMode(value: String?): StartupMode =
     StartupMode.entries.firstOrNull { it.name == value } ?: StartupMode.REMEMBER_LAST
+
+internal fun parseUpdateChannelPreference(value: String?): UpdateChannelPreference =
+    UpdateChannelPreference.entries.firstOrNull { it.name == value } ?: UpdateChannelPreference.BETA
 
 class UiPreferences(context: Context) {
     private val prefs =
@@ -46,6 +64,10 @@ class UiPreferences(context: Context) {
         get() = prefs.getLong(KEY_BDL_REFRESH_SNOOZE, 0L)
         set(value) = prefs.edit().putLong(KEY_BDL_REFRESH_SNOOZE, value).apply()
 
+    var updateChannel: UpdateChannelPreference
+        get() = parseUpdateChannelPreference(prefs.getString(KEY_UPDATE_CHANNEL, null))
+        set(value) = prefs.edit().putString(KEY_UPDATE_CHANNEL, value.name).apply()
+
     companion object {
         private const val PREFS_NAME = "navilas_ui"
         private const val KEY_THEME_MODE = "theme_mode"
@@ -53,6 +75,7 @@ class UiPreferences(context: Context) {
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on_tracking"
         private const val KEY_AMBIENT_LIGHT_NIGHT = "ambient_light_night"
         private const val KEY_BDL_REFRESH_SNOOZE = "bdl_refresh_snooze_until"
+        private const val KEY_UPDATE_CHANNEL = "update_channel"
     }
 }
 

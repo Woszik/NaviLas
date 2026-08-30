@@ -11,8 +11,8 @@ android {
         applicationId = "pl.navilas.finder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 39
-        versionName = "0.5.35"
+        versionCode = 41
+        versionName = "0.5.36-nightly"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -26,11 +26,23 @@ android {
                 "UPDATE_MANIFEST_URL",
                 "\"https://raw.githubusercontent.com/Woszik/NaviLas-releases/main/latest.json\"",
             )
+            buildConfigField(
+                "String",
+                "UPDATE_MANIFEST_NIGHTLY_URL",
+                "\"https://raw.githubusercontent.com/Woszik/NaviLas-releases/main/nightly.json\"",
+            )
+            buildConfigField(
+                "String",
+                "UPDATE_MANIFEST_FINAL_URL",
+                "\"https://raw.githubusercontent.com/Woszik/NaviLas-releases/main/final.json\"",
+            )
         }
         create("fdroid") {
             dimension = "distribution"
             buildConfigField("Boolean", "APP_UPDATE_ENABLED", "false")
             buildConfigField("String", "UPDATE_MANIFEST_URL", "\"\"")
+            buildConfigField("String", "UPDATE_MANIFEST_NIGHTLY_URL", "\"\"")
+            buildConfigField("String", "UPDATE_MANIFEST_FINAL_URL", "\"\"")
         }
     }
 

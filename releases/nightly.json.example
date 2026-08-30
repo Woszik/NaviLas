@@ -1,0 +1,12 @@
+{
+  "_comment": "Manifest kanału Nightly (nightly.json) w NaviLas-releases.",
+  "versionCode": 41,
+  "versionName": "0.5.36-nightly",
+  "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/nightly/navilas-0.5.36-nightly.apk",
+  "sha256": "REPLACE_WITH_SHA256_FROM_CI",
+  "releaseNotes": "Nightly: poprawka pustej mapy przeglądania oraz wybór kanału aktualizacji.",
+  "channel": "nightly",
+  "minVersionCode": 1,
+  "minAndroidSdk": 26,
+  "publishedAt": "2026-08-30T14:00:00Z"
+}

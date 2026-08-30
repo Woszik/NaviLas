@@ -2,6 +2,7 @@ package pl.navilas.finder.data.preferences
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import pl.navilas.finder.update.UpdateTrack
 
 class UiPreferencesTest {
     @Test
@@ -10,6 +11,8 @@ class UiPreferencesTest {
         assertEquals(AppThemeMode.SYSTEM, parseThemeMode("INVALID"))
         assertEquals(StartupMode.REMEMBER_LAST, parseStartupMode(null))
         assertEquals(StartupMode.REMEMBER_LAST, parseStartupMode("INVALID"))
+        assertEquals(UpdateChannelPreference.BETA, parseUpdateChannelPreference(null))
+        assertEquals(UpdateChannelPreference.BETA, parseUpdateChannelPreference("INVALID"))
     }
 
     @Test
@@ -17,5 +20,19 @@ class UiPreferencesTest {
         assertEquals(AppThemeMode.NIGHT, parseThemeMode("NIGHT"))
         assertEquals(AppThemeMode.AMBIENT_LIGHT, parseThemeMode("AMBIENT_LIGHT"))
         assertEquals(StartupMode.MAP_BROWSE, parseStartupMode("MAP_BROWSE"))
+        assertEquals(UpdateChannelPreference.NIGHTLY, parseUpdateChannelPreference("NIGHTLY"))
+    }
+
+    @Test
+    fun nightly_preference_includes_beta_and_final() {
+        assertEquals(
+            listOf(UpdateTrack.NIGHTLY, UpdateTrack.BETA, UpdateTrack.FINAL),
+            UpdateChannelPreference.NIGHTLY.tracks(),
+        )
+        assertEquals(
+            listOf(UpdateTrack.BETA, UpdateTrack.FINAL),
+            UpdateChannelPreference.BETA.tracks(),
+        )
+        assertEquals(listOf(UpdateTrack.FINAL), UpdateChannelPreference.FINAL.tracks())
     }
 }

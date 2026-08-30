@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.navilas.finder.update.AppUpdateLogic
 import pl.navilas.finder.update.AppUpdateManifest
+import pl.navilas.finder.update.UpdateTrack
 
 class AppUpdateManifestTest {
     private fun sampleJson(
@@ -65,6 +66,26 @@ class AppUpdateManifestTest {
         val offer = AppUpdateLogic.evaluateOffer(manifest, 2, dismissedVersionCode = 5)
         assertNotNull(offer)
         assertTrue(offer!!.mandatory)
+    }
+
+    @Test
+    fun evaluateBestOffer_picks_highest_eligible_version() {
+        val nightly = AppUpdateManifest.parse(sampleJson(versionCode = 41), UpdateTrack.NIGHTLY)
+        val beta = AppUpdateManifest.parse(sampleJson(versionCode = 39), UpdateTrack.BETA)
+        val offer = AppUpdateLogic.evaluateBestOffer(
+            manifests = listOf(nightly, beta),
+            currentVersionCode = 38,
+            dismissedVersionCode = null,
+        )
+        assertNotNull(offer)
+        assertEquals(41, offer!!.versionCode)
+        assertEquals(UpdateTrack.NIGHTLY, offer.track)
+    }
+
+    @Test
+    fun parse_channel_field_overrides_fallback() {
+        val json = JSONObject(sampleJson()).put("channel", "nightly")
+        assertEquals(UpdateTrack.NIGHTLY, AppUpdateManifest.parse(json, UpdateTrack.BETA).track)
     }
 
     @Test(expected = IllegalArgumentException::class)

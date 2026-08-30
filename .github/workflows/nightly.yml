@@ -1,0 +1,113 @@
+name: Nightly APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Read version metadata
+        id: appmeta
+        run: |
+          VERSION_CODE=$(grep -E 'versionCode\s*=' app/build.gradle.kts | head -1 | grep -Eo '[0-9]+')
+          VERSION_NAME=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_name=navilas-${VERSION_NAME}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Decode release keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > app/release.keystore
+          fi
+
+      - name: Build release APK
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -f app/release.keystore ]; then
+            export RELEASE_KEYSTORE_PATH=release.keystore
+          fi
+          chmod +x gradlew
+          ./gradlew :app:assembleGithubRelease --no-daemon
+
+      - name: Compute SHA-256
+        id: sha
+        run: |
+          APK="app/build/outputs/apk/github/release/app-github-release.apk"
+          SHA=$(sha256sum "$APK" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Build nightly.json
+        run: |
+          NOTES=$(git log -1 --pretty=%B | sed '/^Co-authored-by:/Id' | sed '/^$/q' | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/[[:space:]]*$//')
+          if [ -z "$NOTES" ]; then
+            NOTES="NaviLas Nightly ${{ steps.appmeta.outputs.version_name }}"
+          fi
+          cat > nightly.json <<EOF
+          {
+            "versionCode": ${{ steps.appmeta.outputs.version_code }},
+            "versionName": "${{ steps.appmeta.outputs.version_name }}",
+            "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/nightly/${{ steps.appmeta.outputs.apk_name }}",
+            "sha256": "${{ steps.sha.outputs.sha256 }}",
+            "releaseNotes": "${NOTES}",
+            "channel": "nightly",
+            "minVersionCode": 1,
+            "minAndroidSdk": 26,
+            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          cat nightly.json
+
+      - name: Publish Nightly APK
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          cp app/build/outputs/apk/github/release/app-github-release.apk "${{ steps.appmeta.outputs.apk_name }}"
+          if gh release view nightly --repo Woszik/NaviLas-releases >/dev/null 2>&1; then
+            gh release delete nightly --repo Woszik/NaviLas-releases --yes
+          fi
+          gh release create nightly \
+            "${{ steps.appmeta.outputs.apk_name }}" \
+            --repo Woszik/NaviLas-releases \
+            --prerelease \
+            --title "NaviLas Nightly ${{ steps.appmeta.outputs.version_name }}" \
+            --notes "Automatyczny Nightly z main (${{ github.sha }})"
+
+      - name: Publish nightly.json
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          CONTENT=$(base64 -w0 nightly.json)
+          SHA=$(gh api repos/Woszik/NaviLas-releases/contents/nightly.json --jq .sha 2>/dev/null || true)
+          if [ -n "$SHA" ]; then
+            gh api repos/Woszik/NaviLas-releases/contents/nightly.json \
+              -X PUT \
+              -f message="Update nightly.json for ${{ steps.appmeta.outputs.version_name }}" \
+              -f content="$CONTENT" \
+              -f sha="$SHA"
+          else
+            gh api repos/Woszik/NaviLas-releases/contents/nightly.json \
+              -X PUT \
+              -f message="Add nightly.json for ${{ steps.appmeta.outputs.version_name }}" \
+              -f content="$CONTENT"
+          fi

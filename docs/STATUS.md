@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-08-30**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | brak aktywnego po promocji | — | > 39 dla następnego buildu |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.36-nightly | 41 |
 | **Beta** | GitHub Releases | 0.5.35 | 39 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -59,7 +59,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 
 - Dolny pasek ma bezpośrednie zakładki **Szukaj / Mapa / Lista**; gesty i strzałki pozostają jako alternatywa.
 - Menu aplikacji porządkuje dostęp do **Ustawień**, danych BDL offline, aktualizacji (tylko flavor GitHub) i informacji o aplikacji.
-- Ustawienia zapisują motyw **System / Czujnik światła / Dzień / Noc**, zachowanie startowe **ostatni tryb / Wyszukiwanie / Przeglądanie mapy** oraz opcję niewygaszania ekranu podczas śledzenia. Tryb czujnika stosuje histerezę 30/150 lx i wymaga stabilnego odczytu przez 2 sekundy.
+- Ustawienia zapisują motyw **System / Czujnik światła / Dzień / Noc**, zachowanie startowe **ostatni tryb / Wyszukiwanie / Przeglądanie mapy**, niewygaszanie ekranu podczas śledzenia oraz (flavor GitHub) kanał aktualizacji **Nightly i nowsze / Beta i nowsze / Tylko Final**. Domyślnie Beta i nowsze. Tryb czujnika stosuje histerezę 30/150 lx i wymaga stabilnego odczytu przez 2 sekundy.
 - Motyw jest nakładany przed utworzeniem głównego ekranu; kolory tekstu, powierzchni, kart i kontrolek korzystają z palety DayNight zamiast stałych jasnych kolorów. Overflow menu w trybie dziennym ma czarny tekst.
 - Mapa wybiera styl OpenFreeMap **Liberty** albo **Dark** zgodnie z aktywnym motywem.
 - Jeśli baza BDL offline jest gotowa i ma **co najmniej 30 dni**, po starcie pojawia się przypomnienie „Aktualizacja danych BDL” (data pobrania + ostatni zakres). **Aktualizuj** pobiera ponownie zapisaną konfigurację; **Później** odkłada pytanie o 7 dni. Brak bazy albo trwające pobieranie nie pokazuje dialogu. W kanale GitHub dialog nie nachodzi na ofertę aktualizacji APK.
@@ -96,9 +96,9 @@ Tematy świadomie odłożone — kod lub setup może być częściowo gotowy, al
 
 Zamiast eksportu GPX — **kopiowanie współrzędnych** do schowka (obecne rozwiązanie). Pełna integracja Calimoto nie jest priorytetem.
 
-### 3. Rozdzielenie Nightly / Beta / Final w CI i aplikacji
+### 3. Final na GitHub
 
-Model kanałów ustalony w docs; implementacja (osobne manifesty, naming, wybór kanału) — [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) → sekcja TODO.
+Nightly i Beta są w aplikacji i CI. Final (`final.json`) jeszcze nie istnieje.
 
 ## Dokumentacja powiązana
 

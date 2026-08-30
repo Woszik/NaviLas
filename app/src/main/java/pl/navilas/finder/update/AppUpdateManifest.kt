@@ -2,6 +2,15 @@ package pl.navilas.finder.update
 
 import org.json.JSONObject
 
+enum class UpdateTrack {
+    NIGHTLY,
+    BETA,
+    FINAL,
+}
+
+internal fun parseUpdateTrack(value: String?, fallback: UpdateTrack): UpdateTrack =
+    UpdateTrack.entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: fallback
+
 data class AppUpdateManifest(
     val versionCode: Int,
     val versionName: String,
@@ -11,12 +20,13 @@ data class AppUpdateManifest(
     val minVersionCode: Int,
     val minAndroidSdk: Int,
     val publishedAt: String?,
+    val track: UpdateTrack = UpdateTrack.BETA,
 ) {
     fun isMandatory(currentVersionCode: Int): Boolean =
         currentVersionCode < minVersionCode
 
     companion object {
-        fun parse(json: JSONObject): AppUpdateManifest {
+        fun parse(json: JSONObject, fallbackTrack: UpdateTrack = UpdateTrack.BETA): AppUpdateManifest {
             val versionCode = json.getInt("versionCode")
             val versionName = json.getString("versionName")
             val apkUrl = json.getString("apkUrl")
@@ -33,10 +43,12 @@ data class AppUpdateManifest(
                 minVersionCode = json.optInt("minVersionCode", 0),
                 minAndroidSdk = json.optInt("minAndroidSdk", 0),
                 publishedAt = json.optString("publishedAt").takeIf { it.isNotBlank() },
+                track = parseUpdateTrack(json.optString("channel").takeIf { it.isNotBlank() }, fallbackTrack),
             )
         }
 
-        fun parse(jsonText: String): AppUpdateManifest = parse(JSONObject(jsonText))
+        fun parse(jsonText: String, fallbackTrack: UpdateTrack = UpdateTrack.BETA): AppUpdateManifest =
+            parse(JSONObject(jsonText), fallbackTrack)
     }
 }
 
@@ -47,6 +59,7 @@ data class AppUpdateOffer(
     val mandatory: Boolean,
     val apkUrl: String,
     val sha256: String,
+    val track: UpdateTrack = UpdateTrack.BETA,
 )
 
 object AppUpdateLogic {
@@ -65,6 +78,16 @@ object AppUpdateLogic {
             mandatory = mandatory,
             apkUrl = manifest.apkUrl,
             sha256 = manifest.sha256,
+            track = manifest.track,
         )
+    }
+
+    fun evaluateBestOffer(
+        manifests: List<AppUpdateManifest>,
+        currentVersionCode: Int,
+        dismissedVersionCode: Int?,
+    ): AppUpdateOffer? {
+        val best = manifests.maxByOrNull { it.versionCode } ?: return null
+        return evaluateOffer(best, currentVersionCode, dismissedVersionCode)
     }
 }

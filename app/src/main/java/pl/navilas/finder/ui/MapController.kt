@@ -13,6 +13,7 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.Layer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
@@ -223,7 +224,7 @@ class MapController {
             ).apply {
                 addStringProperty("id", result.site.id)
                 addStringProperty("name", result.site.name)
-                addNumberProperty(PROP_IS_CLUSTER, 0)
+                addStringProperty(PROP_IS_CLUSTER, CLUSTER_FLAG_SITE)
             }
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
@@ -262,7 +263,7 @@ class MapController {
             Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
                 addStringProperty("id", site.id)
                 addStringProperty("name", site.name)
-                addNumberProperty(PROP_IS_CLUSTER, 0)
+                addStringProperty(PROP_IS_CLUSTER, CLUSTER_FLAG_SITE)
                 addStringProperty(
                     PROP_ZANOCUJ,
                     when (site.zanocujStatus) {
@@ -280,7 +281,7 @@ class MapController {
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
-        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
+        restoreSiteLayerFilter(s)
     }
 
     fun setBrowseLayerMatchFlags(sites: List<RestSite>, matchingIds: Set<String>?) {
@@ -292,7 +293,7 @@ class MapController {
             Feature.fromGeometry(Point.fromLngLat(site.longitude, site.latitude)).apply {
                 addStringProperty("id", site.id)
                 addStringProperty("name", site.name)
-                addNumberProperty(PROP_IS_CLUSTER, 0)
+                addStringProperty(PROP_IS_CLUSTER, CLUSTER_FLAG_SITE)
                 addStringProperty(
                     PROP_ZANOCUJ,
                     when (site.zanocujStatus) {
@@ -310,7 +311,7 @@ class MapController {
         }
         s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
-        s.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
+        restoreSiteLayerFilter(s)
     }
 
     fun setBrowseZanocujPolygons(polygons: List<ZanocujPolygon>) {
@@ -347,7 +348,7 @@ class MapController {
         lastBrowseZanocujCount = -1
         lastBrowseZanocujIdsHash = 0
         lastOverlayIdsHash = 0
-        style?.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
+        style?.let { restoreSiteLayerFilter(it) }
         style?.getSourceAs<GeoJsonSource>(SOURCE_ZANOCUJ)
             ?.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         style?.getSourceAs<GeoJsonSource>(SOURCE_BDL_OVERLAY)
@@ -373,18 +374,19 @@ class MapController {
     }
 
     fun setBrowseClusters(clusters: List<BrowseMapCluster>, revision: Long) {
+        val s = style ?: return
         if (revision == lastBrowseRevision && browseModeActive) return
         lastBrowseRevision = revision
         browseModeActive = true
         val features = clusters.map { cluster ->
             Feature.fromGeometry(Point.fromLngLat(cluster.longitude, cluster.latitude)).apply {
                 addStringProperty(PROP_CLUSTER_COUNT_LABEL, cluster.count.toString())
-                addNumberProperty(PROP_IS_CLUSTER, 1)
+                addStringProperty(PROP_IS_CLUSTER, CLUSTER_FLAG_CLUSTER)
             }
         }
-        style?.getSourceAs<GeoJsonSource>(SOURCE_SITES)
+        s.getSourceAs<GeoJsonSource>(SOURCE_SITES)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
-        style?.getLayerAs<CircleLayer>(LAYER_SITES)?.setFilter(Expression.literal(true))
+        restoreSiteLayerFilter(s)
     }
 
     fun applyBrowseFilters(zanocujOnly: Boolean, parkingOnly: Boolean) {
@@ -398,10 +400,11 @@ class MapController {
         if (parkingOnly) {
             parts += Expression.eq(Expression.get(PROP_PARKING), Expression.literal(1))
         }
-        val filter = when (parts.size) {
-            0 -> Expression.literal(true)
-            1 -> parts[0]
-            else -> Expression.all(*parts.toTypedArray())
+        parts += clusterFlagExpression(isCluster = false)
+        val filter = if (parts.size == 1) {
+            parts[0]
+        } else {
+            Expression.all(*parts.toTypedArray())
         }
         layer.setFilter(filter)
     }
@@ -575,7 +578,7 @@ class MapController {
             LAYER_SITE_CLUSTERS,
             LAYER_SITES,
         ).firstOrNull {
-            it.getNumberProperty(PROP_IS_CLUSTER)?.toInt() == 1
+            it.getStringProperty(PROP_IS_CLUSTER) == CLUSTER_FLAG_CLUSTER
         } ?: return false
         val point = feature.geometry() as? Point ?: return false
         mapLibreMap.animateCamera(
@@ -586,6 +589,30 @@ class MapController {
         )
         lastCameraCommand = "zoomCluster"
         return true
+    }
+
+    private fun restoreSiteLayerFilter(style: Style) {
+        style.getLayerAs<CircleLayer>(LAYER_SITES)
+            ?.setFilter(clusterFlagExpression(isCluster = false))
+        style.getLayerAs<CircleLayer>(LAYER_SITE_CLUSTERS)
+            ?.setFilter(clusterFlagExpression(isCluster = true))
+        style.getLayerAs<SymbolLayer>(LAYER_SITE_CLUSTER_COUNT)
+            ?.setFilter(clusterFlagExpression(isCluster = true))
+    }
+
+    private fun clusterFlagExpression(isCluster: Boolean): Expression =
+        Expression.eq(
+            Expression.get(PROP_IS_CLUSTER),
+            Expression.literal(if (isCluster) CLUSTER_FLAG_CLUSTER else CLUSTER_FLAG_SITE),
+        )
+
+    private fun Style.addOnTop(layer: Layer) {
+        val topId = layers.lastOrNull()?.id
+        if (topId == null) {
+            addLayer(layer)
+        } else {
+            addLayerAbove(layer, topId)
+        }
     }
 
     private fun ensureSourcesAndLayers(style: Style) {
@@ -630,11 +657,19 @@ class MapController {
         }
         if (style.getSource(SOURCE_SITES) == null) {
             style.addSource(GeoJsonSource(SOURCE_SITES, FeatureCollection.fromFeatures(emptyList())))
-            style.addLayer(
+            style.addOnTop(
+                CircleLayer(LAYER_SITES, SOURCE_SITES)
+                    .withFilter(clusterFlagExpression(isCluster = false))
+                    .withProperties(
+                        circleRadius(7f),
+                        circleColor(Color.parseColor("#2E7D32")),
+                        circleStrokeColor(Color.WHITE),
+                        circleStrokeWidth(1.5f),
+                    ),
+            )
+            style.addOnTop(
                 CircleLayer(LAYER_SITE_CLUSTERS, SOURCE_SITES)
-                    .withFilter(
-                        Expression.eq(Expression.get(PROP_IS_CLUSTER), Expression.literal(1)),
-                    )
+                    .withFilter(clusterFlagExpression(isCluster = true))
                     .withProperties(
                         circleRadius(18f),
                         circleColor(Color.parseColor("#1B5E20")),
@@ -642,23 +677,15 @@ class MapController {
                         circleStrokeWidth(2f),
                     ),
             )
-            style.addLayer(
+            style.addOnTop(
                 SymbolLayer(LAYER_SITE_CLUSTER_COUNT, SOURCE_SITES)
+                    .withFilter(clusterFlagExpression(isCluster = true))
                     .withProperties(
                         textField(Expression.get(PROP_CLUSTER_COUNT_LABEL)),
                         textColor(Color.WHITE),
                         textSize(12f),
                         textIgnorePlacement(true),
                         textAllowOverlap(true),
-                    ),
-            )
-            style.addLayer(
-                CircleLayer(LAYER_SITES, SOURCE_SITES)
-                    .withProperties(
-                        circleRadius(7f),
-                        circleColor(Color.parseColor("#2E7D32")),
-                        circleStrokeColor(Color.WHITE),
-                        circleStrokeWidth(1.5f),
                     ),
             )
         }
@@ -811,5 +838,7 @@ class MapController {
         const val PROP_OVERLAY_GROUP = "overlay_group"
         private const val PROP_CLUSTER_COUNT_LABEL = "count"
         private const val PROP_IS_CLUSTER = "is_cluster"
+        private const val CLUSTER_FLAG_SITE = "0"
+        private const val CLUSTER_FLAG_CLUSTER = "1"
     }
 }

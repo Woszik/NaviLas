@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   release:
+    if: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -77,6 +78,7 @@ jobs:
             "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/v${{ steps.version.outputs.tag }}/${{ steps.version.outputs.apk_name }}",
             "sha256": "${{ steps.sha.outputs.sha256 }}",
             "releaseNotes": "${NOTES}",
+            "channel": "beta",
             "minVersionCode": 1,
             "minAndroidSdk": 26,
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

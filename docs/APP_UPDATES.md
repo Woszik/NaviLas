@@ -5,9 +5,9 @@ Flavor **`fdroid`** nie łączy się z GitHub — aktualizacje tylko przez klien
 
 **Kanały:** Nightly / Beta / Final — model: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
 
-**Dziś ten dokument opisuje updater kanału Beta.**
+**Dziś ten dokument opisuje updater GitHub z wyborem kanału.**
 
-Nightly jest lokalny (bez in-app). Final jeszcze nie istnieje (docelowo osobny manifest na GitHub). F-Droid jest niezależną dystrybucją flavoru `fdroid`.
+Nightly i Beta są na GitHub (`nightly.json` / `latest.json`). Final jeszcze nie istnieje (`final.json`). F-Droid jest niezależną dystrybucją flavoru `fdroid` i **nie** jest aktualizowany przy publikacji GitHub — tylko na wyraźne polecenie.
 
 NaviLas (Beta) pobiera informacje o nowej wersji z publicznego repozytorium **NaviLas-releases** (`latest.json`).
 
@@ -17,9 +17,9 @@ NaviLas (Beta) pobiera informacje o nowej wersji z publicznego repozytorium **Na
 |---------|-------------|
 | Kod aplikacji | `Woszik/NaviLas` (publiczne) |
 | APK + `latest.json` (Beta) | `Woszik/NaviLas-releases` (publiczne) |
-| URL manifestu | `BuildConfig.UPDATE_MANIFEST_URL` (flavor `github`) |
+| URL manifestów | `latest.json` (Beta), `nightly.json` (Nightly), `final.json` (Final, opcjonalny) |
 | Build CI | `./gradlew :app:assembleGithubRelease` |
-| Nightly / Final manifesty | jeszcze nie — patrz TODO w [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) |
+| Wybór kanału | Ustawienia: Nightly i nowsze / Beta i nowsze / Tylko Final |
 
 ## Pierwsze uruchomienie (jednorazowo)
 
@@ -67,9 +67,21 @@ sha256sum app/build/outputs/apk/github/release/app-github-release.apk
 3. Utwórz release w `NaviLas-releases` z assetem `navilas-X.Y.Z.apk`.
 4. Wrzuć `latest.json` (wzór: `releases/latest.json.example`) na gałąź `main`.
 
+## Publikacja Nightly (CI)
+
+Każdy push na `main` (oraz `workflow_dispatch`) uruchamia `.github/workflows/nightly.yml`:
+
+1. Buduje `assembleGithubRelease`.
+2. Nadpisuje prerelease `nightly` w NaviLas-releases (`navilas-<versionName>.apk`).
+3. Aktualizuje `nightly.json` (`channel: nightly`).
+
+`versionCode` musi rosnąć względem poprzedniego Nightly i zainstalowanej Bety.
+
+F-Droid **nie** jest przy tym ruszany.
+
 ## Publikacja kolejnej Beta (CI)
 
-Nightly nie wchodzi tu — lokalny debug albo przyszły osobny pipeline.
+Nightly nie nadpisuje `latest.json`. Beta tylko z czystego tagu `vX.Y.Z`.
 
 1. Zaktualizuj w `app/build.gradle.kts`:
    - `versionCode` — zawsze +1 względem poprzedniej Beta (i wyżej niż zainstalowany Nightly, jeśli ma ten sam podpis i ma się dać nadpisać)
@@ -111,7 +123,7 @@ Historia opublikowanych **Beta** i linki do APK: [`CHANGELOG.md`](../CHANGELOG.m
 
 ## Zachowanie aplikacji
 
-- **Start:** zawsze sprawdzenie manifestu po ~2 s. Brak update → cisza. Jest update → dialog.
+- **Start:** sprawdzenie manifestów wybranego kanału po ~2 s. Brak nowszej wersji → cisza. Jest nowsza → dialog z etykietą Nightly / Beta / Final.
 - **Ręcznie:** menu **⋮ → Sprawdź aktualizacje** albo przycisk na ekranie Wyszukiwanie (przy braku update: komunikat „masz najnowszą”).
 - **Nowa wersja:** dialog z release notes → „Aktualizuj” → pobieranie → weryfikacja SHA-256 → instalator systemowy.
 - **Później:** wersja zapisana jako odrzucona do czasu pojawienia się wyższego `versionCode`.

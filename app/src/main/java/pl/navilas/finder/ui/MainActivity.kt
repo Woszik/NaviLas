@@ -97,6 +97,8 @@ import pl.navilas.finder.data.preferences.AppThemeApplier
 import pl.navilas.finder.data.preferences.AppThemeMode
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
+import pl.navilas.finder.data.preferences.UpdateChannelPreference
+import pl.navilas.finder.update.UpdateTrack
 import pl.navilas.finder.nav.NavigationLinks
 import pl.navilas.finder.nav.OsmAndMotoRouteStyle
 import java.io.File
@@ -409,6 +411,8 @@ class MainActivity : AppCompatActivity() {
             dialogView.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
                 R.id.keepScreenOnTracking,
             )
+        val updateChannelSection = dialogView.findViewById<View>(R.id.updateChannelSection)
+        val updateChannelGroup = dialogView.findViewById<RadioGroup>(R.id.updateChannelGroup)
 
         ambientTheme.isEnabled = ambientLightThemeController.isAvailable
         if (!ambientTheme.isEnabled) {
@@ -434,6 +438,16 @@ class MainActivity : AppCompatActivity() {
             },
         )
         keepScreenOn.isChecked = uiPreferences.keepScreenOnWhileTracking
+        updateChannelSection.isVisible = BuildConfig.APP_UPDATE_ENABLED
+        if (BuildConfig.APP_UPDATE_ENABLED) {
+            updateChannelGroup.check(
+                when (uiPreferences.updateChannel) {
+                    UpdateChannelPreference.NIGHTLY -> R.id.updateChannelNightly
+                    UpdateChannelPreference.FINAL -> R.id.updateChannelFinal
+                    UpdateChannelPreference.BETA -> R.id.updateChannelBeta
+                },
+            )
+        }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.settings_title)
@@ -454,6 +468,18 @@ class MainActivity : AppCompatActivity() {
                     else -> StartupMode.REMEMBER_LAST
                 }
                 uiPreferences.keepScreenOnWhileTracking = keepScreenOn.isChecked
+                if (BuildConfig.APP_UPDATE_ENABLED) {
+                    val oldChannel = uiPreferences.updateChannel
+                    val newChannel = when (updateChannelGroup.checkedRadioButtonId) {
+                        R.id.updateChannelNightly -> UpdateChannelPreference.NIGHTLY
+                        R.id.updateChannelFinal -> UpdateChannelPreference.FINAL
+                        else -> UpdateChannelPreference.BETA
+                    }
+                    uiPreferences.updateChannel = newChannel
+                    if (newChannel != oldChannel) {
+                        viewModel.checkForAppUpdate(force = true)
+                    }
+                }
                 updateKeepScreenOn(viewModel.state.value)
                 if (newTheme == AppThemeMode.AMBIENT_LIGHT) {
                     ambientLightThemeController.start()
@@ -1573,8 +1599,13 @@ class MainActivity : AppCompatActivity() {
             }
             append(getString(R.string.app_update_current, BuildConfig.VERSION_NAME))
         }
+        val channelLabel = when (offer.track) {
+            UpdateTrack.NIGHTLY -> getString(R.string.app_update_channel_nightly)
+            UpdateTrack.BETA -> getString(R.string.app_update_channel_beta)
+            UpdateTrack.FINAL -> getString(R.string.app_update_channel_final)
+        }
         val builder = AlertDialog.Builder(this)
-            .setTitle(getString(R.string.app_update_title, offer.versionName))
+            .setTitle(getString(R.string.app_update_title_channel, offer.versionName, channelLabel))
             .setMessage(message)
             .setCancelable(!offer.mandatory)
             .setPositiveButton(R.string.app_update_action) { _, _ ->

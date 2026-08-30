@@ -41,6 +41,8 @@ import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BdlOverlayPoint
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseMapCluster
+import pl.navilas.finder.domain.isUsableBrowseViewport
+import pl.navilas.finder.domain.selectBrowseContent
 import pl.navilas.finder.domain.BrowseParkingProximityMode
 import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
@@ -81,6 +83,7 @@ import pl.navilas.finder.util.GeoUtils
 import pl.navilas.finder.BuildConfig
 import pl.navilas.finder.R
 import pl.navilas.finder.update.AppUpdateChecker
+import pl.navilas.finder.update.UpdateTrack
 import pl.navilas.finder.update.AppUpdateDownloader
 import pl.navilas.finder.update.AppUpdateInstaller
 import pl.navilas.finder.update.AppUpdateLogic
@@ -250,7 +253,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val savedPointsStore = SavedPointsStore.fromAppFilesDir(application.filesDir)
     private val appUpdatePrefs = AppUpdatePreferences(application)
-    private val appUpdateChecker = AppUpdateChecker(BuildConfig.UPDATE_MANIFEST_URL)
+    private val appUpdateChecker = AppUpdateChecker(
+        manifestsByTrack = mapOf(
+            UpdateTrack.NIGHTLY to BuildConfig.UPDATE_MANIFEST_NIGHTLY_URL,
+            UpdateTrack.BETA to BuildConfig.UPDATE_MANIFEST_URL,
+            UpdateTrack.FINAL to BuildConfig.UPDATE_MANIFEST_FINAL_URL,
+        ),
+    )
     private val appUpdateDownloader = AppUpdateDownloader()
     private val uiPreferences = UiPreferences(application)
     private val exploreModePrefs =
@@ -1221,6 +1230,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         zoom: Double,
     ) {
         if (!_state.value.isMapBrowse()) return
+        if (!isUsableBrowseViewport(west, south, east, north)) return
         val padLon = (east - west).coerceAtLeast(0.01) * 0.15
         val padLat = (north - south).coerceAtLeast(0.01) * 0.15
         val envelope = GeoUtils.Envelope(
@@ -1362,59 +1372,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
-    }
-
-    private fun selectBrowseContent(
-        sites: List<RestSite>,
-        envelope: GeoUtils.Envelope,
-        centerLat: Double,
-        centerLon: Double,
-        zoom: Double,
-        matchingIds: Set<String>?,
-    ): Pair<List<RestSite>, List<BrowseMapCluster>> {
-        val filteredSites = if (matchingIds == null) {
-            sites
-        } else {
-            sites.filter { it.id in matchingIds }
-        }
-        val candidates = if (zoom < BROWSE_SITE_VIEWPORT_MIN_ZOOM) {
-            filteredSites
-        } else {
-            filteredSites.asSequence()
-            .filter { site ->
-                site.latitude >= envelope.ymin &&
-                    site.latitude <= envelope.ymax &&
-                    site.longitude >= envelope.xmin &&
-                    site.longitude <= envelope.xmax
-            }
-            .sortedBy { site ->
-                val dLat = site.latitude - centerLat
-                val dLon = site.longitude - centerLon
-                dLat * dLat + dLon * dLon
-            }
-            .take(BROWSE_SITE_VIEWPORT_MAX_POINTS)
-            .toList()
-        }
-        if (zoom >= BROWSE_CLUSTER_MAX_ZOOM) return candidates to emptyList()
-        val cellDegrees = when {
-            zoom < 6.0 -> 1.0
-            zoom < 8.0 -> 0.35
-            else -> 0.12
-        }
-        val clusters = candidates
-            .groupBy { site ->
-                (site.latitude / cellDegrees).toInt() to
-                    (site.longitude / cellDegrees).toInt()
-            }
-            .map { (cell, grouped) ->
-                BrowseMapCluster(
-                    id = "${cell.first}:${cell.second}",
-                    latitude = grouped.map(RestSite::latitude).average(),
-                    longitude = grouped.map(RestSite::longitude).average(),
-                    count = grouped.size,
-                )
-            }
-        return emptyList<RestSite>() to clusters
     }
 
     private fun browseListOrigin(state: UiState): UserPosition? =
@@ -1738,9 +1695,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             appUpdatePrefs.lastCheckAtMs = System.currentTimeMillis()
             try {
-                val manifest = withContext(Dispatchers.IO) { appUpdateChecker.fetchManifest() }
-                val offer = AppUpdateLogic.evaluateOffer(
-                    manifest = manifest,
+                val manifests = withContext(Dispatchers.IO) {
+                    appUpdateChecker.fetchEligibleManifests(uiPreferences.updateChannel)
+                }
+                val offer = AppUpdateLogic.evaluateBestOffer(
+                    manifests = manifests,
                     currentVersionCode = BuildConfig.VERSION_CODE,
                     dismissedVersionCode = if (force) null else appUpdatePrefs.dismissedVersionCode,
                 )
@@ -2677,9 +2636,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         /** Below this zoom, browse skips Zanocuj fills (too many polygons). */
         private const val BROWSE_ZANOCUJ_MIN_ZOOM = 7.5
         private const val BROWSE_ZANOCUJ_MAX_POLYGONS = 50
-        private const val BROWSE_SITE_VIEWPORT_MIN_ZOOM = 7.0
-        private const val BROWSE_CLUSTER_MAX_ZOOM = 10.0
-        private const val BROWSE_SITE_VIEWPORT_MAX_POINTS = 1_500
         private const val BROWSE_INITIAL_VIEWPORT_RADIUS_KM = 75.0
         private const val BROWSE_INITIAL_USER_ZOOM = 8.5
         private val POLAND_BROWSE_ENVELOPE = GeoUtils.Envelope(
