@@ -113,7 +113,7 @@
     <string name="map_zoom_scale">z %1$.1f</string>
     <string name="map_my_location_cd">Wycentruj mapę na mojej lokalizacji GPS</string>
     <string name="map_filter_fab">Filtry</string>
-    <string name="map_filter_sheet_title">Filtry miejsc</string>
+    <string name="map_filter_sheet_title">Filtry</string>
     <string name="map_tracking_cd">Śledzenie pozycji na mapie</string>
     <string name="map_tracking_active">Śledzenie pozycji włączone.</string>
     <string name="map_tracking_paused">Śledzenie wstrzymane — naciśnij ▶, aby wznowić.</string>

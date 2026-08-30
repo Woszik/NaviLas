@@ -104,4 +104,22 @@ class BdlOverlayTest {
         )
         assertEquals("Ukryte", BdlOverlayFilter().summaryPl(false))
     }
+
+    @Test
+    fun filter_keeps_view_and_other_independent() {
+        val viewOnly = BdlOverlayFilter(enabled = true, groups = setOf(BdlOverlayGroup.VIEW))
+        assertEquals(setOf(BdlOverlayGroup.VIEW), viewOnly.effectiveGroups(fullAvailable = false))
+        assertEquals("Widok", viewOnly.summaryPl(false))
+
+        val otherOnly = BdlOverlayFilter(enabled = true, groups = setOf(BdlOverlayGroup.OTHER))
+        assertEquals(setOf(BdlOverlayGroup.OTHER), otherOnly.effectiveGroups(fullAvailable = false))
+        assertEquals("Inne / edukacja", otherOnly.summaryPl(false))
+    }
+
+    @Test
+    fun enabled_without_groups_draws_nothing() {
+        val empty = BdlOverlayFilter(enabled = true, groups = emptySet())
+        assertTrue(empty.effectiveGroups(fullAvailable = true).isEmpty())
+        assertEquals("Włączone — wybierz grupę", empty.summaryPl(true))
+    }
 }

@@ -623,11 +623,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupBdlOverlayListeners(controls: BdlOverlayControlsBinding) {
+    private fun setupBdlOverlayListeners(
+        controls: BdlOverlayControlsBinding,
+        onChanged: (() -> Unit)? = null,
+    ) {
         val listener = CompoundButton.OnCheckedChangeListener { _, _ ->
             if (!syncingBdlOverlayUi) {
                 viewModel.setBdlOverlayFilter(readBdlOverlayFilter(controls))
                 bindBdlOverlayUi(viewModel.state.value)
+                onChanged?.invoke()
             }
         }
         controls.overlayEnable.setOnCheckedChangeListener(listener)
@@ -648,7 +652,7 @@ class MainActivity : AppCompatActivity() {
         }
         return BdlOverlayFilter(
             enabled = controls.overlayEnable.isChecked,
-            groups = groups.ifEmpty { BdlOverlayGroup.CORE_GROUPS },
+            groups = groups,
         )
     }
 
@@ -868,26 +872,64 @@ class MainActivity : AppCompatActivity() {
         mapFilterBottomSheet?.dismiss()
         val sheetBinding = BottomSheetMapFiltersBinding.inflate(layoutInflater)
         val filter = viewModel.state.value.browseCarFilter
-        fun refreshSheetSummary() {
-            sheetBinding.mapFilterSheetSummary.text =
+        var placeExpanded = false
+        var overlayExpanded = false
+        val browse = viewModel.state.value.isMapBrowse()
+
+        fun refreshPlaceChrome() {
+            val chevron = if (placeExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetPlaceFilter.text =
+                getString(R.string.browse_car_filter_toggle) + chevron
+            sheetBinding.sheetPlaceFilterSummary.text =
                 readBrowseCarFilterFrom(sheetBinding.mapFilterControls).summaryPl()
+            sheetBinding.sheetPlaceFilterSummary.isVisible = !placeExpanded
+            sheetBinding.sheetPlaceFilterPanel.isVisible = placeExpanded
         }
+
+        fun refreshBdlChrome() {
+            val state = viewModel.state.value
+            val chevron = if (overlayExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetBdlOverlay.text =
+                getString(R.string.bdl_overlay_toggle) + chevron
+            sheetBinding.sheetBdlOverlaySummary.text =
+                state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
+            sheetBinding.sheetBdlOverlayPanel.isVisible = overlayExpanded
+            if (overlayExpanded) {
+                syncBdlOverlayDraftTo(
+                    sheetBinding.bdlOverlaySheetControls,
+                    state.bdlOverlayFilter,
+                    state.bdlOverlayFullAvailable,
+                )
+            }
+        }
+
         syncBrowseCarFilterDraftTo(sheetBinding.mapFilterControls, filter)
-        refreshSheetSummary()
+        refreshPlaceChrome()
         setupFilterControlsListeners(
             sheetBinding.mapFilterControls,
-            onDraftChanged = { refreshSheetSummary() },
+            onDraftChanged = { refreshPlaceChrome() },
         )
-        val browse = viewModel.state.value.isMapBrowse()
-        sheetBinding.bdlOverlaySheetLabel.isVisible = browse
-        sheetBinding.bdlOverlaySheetControls.root.isVisible = browse
+        sheetBinding.btnToggleSheetPlaceFilter.setOnClickListener {
+            placeExpanded = !placeExpanded
+            if (placeExpanded) {
+                syncBrowseCarFilterDraftTo(
+                    sheetBinding.mapFilterControls,
+                    viewModel.state.value.browseCarFilter,
+                )
+            }
+            refreshPlaceChrome()
+        }
+        sheetBinding.sheetBdlOverlaySection.isVisible = browse
         if (browse) {
-            syncBdlOverlayDraftTo(
+            refreshBdlChrome()
+            setupBdlOverlayListeners(
                 sheetBinding.bdlOverlaySheetControls,
-                viewModel.state.value.bdlOverlayFilter,
-                viewModel.state.value.bdlOverlayFullAvailable,
+                onChanged = { refreshBdlChrome() },
             )
-            setupBdlOverlayListeners(sheetBinding.bdlOverlaySheetControls)
+            sheetBinding.btnToggleSheetBdlOverlay.setOnClickListener {
+                overlayExpanded = !overlayExpanded
+                refreshBdlChrome()
+            }
         }
         sheetBinding.btnApplyMapFilter.setOnClickListener {
             applyBrowseCarFilterFrom(sheetBinding.mapFilterControls)

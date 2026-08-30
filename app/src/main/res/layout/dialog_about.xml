@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            tools:text="Wersja: 0.5.36\nKompilacja: 42" />
+            tools:text="Wersja: 0.5.37-nightly\nKompilacja: 43" />
 
         <TextView
             android:id="@+id/aboutDistribution"

@@ -37,7 +37,6 @@ import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
 import pl.navilas.finder.domain.BdlOverlayFilter
-import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BdlOverlayPoint
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseMapCluster
@@ -1259,13 +1258,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setBdlOverlayFilter(filter: BdlOverlayFilter) {
-        val normalized = if (filter.enabled && filter.groups.isEmpty()) {
-            filter.copy(groups = BdlOverlayGroup.CORE_GROUPS)
-        } else {
-            filter
-        }
         lastBrowseViewportKey = null
-        _state.update { it.copy(bdlOverlayFilter = normalized) }
+        _state.update { it.copy(bdlOverlayFilter = filter) }
         val bounds = lastBrowseBounds
         if (bounds != null) {
             scheduleBrowseViewportRefresh(
@@ -1274,7 +1268,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 lastBrowseCenterLon,
                 lastBrowseZoom,
             )
-        } else if (!normalized.isActive) {
+        } else if (!filter.isActive) {
             _state.update { it.copy(bdlOverlayViewport = emptyList()) }
         }
     }

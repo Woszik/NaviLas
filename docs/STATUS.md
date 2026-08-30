@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-08-30**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.36 | 42 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.37-nightly | 43 |
 | **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,11 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.37
+
+Kategorie overlay **Obiekty BDL** zaznacza się niezależnie (Widok i Inne nie wracają razem po odznaczeniu). Na mapie arkusz **Filtry** ma belki **Filtry miejsc** i **Obiekty BDL** — ten sam wybór grup co na ekranie wyszukiwania.
 
 ## Zakres Beta 0.5.36
 
