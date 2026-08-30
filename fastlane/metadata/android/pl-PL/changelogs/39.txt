@@ -1,0 +1,1 @@
+Przypomnienie o odświeżeniu bazy BDL offline po 30 dniach. Można pobrać ponownie zapisaną konfigurację albo odłożyć pytanie o 7 dni.

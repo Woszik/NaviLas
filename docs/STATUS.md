@@ -6,8 +6,8 @@ Ostatnia aktualizacja dokumentacji: **2026-08-30**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | brak aktywnego po promocji | — | > 38 dla następnego buildu |
-| **Beta** | GitHub Releases | 0.5.34 | 38 |
+| **Nightly** | brak aktywnego po promocji | — | > 39 dla następnego buildu |
+| **Beta** | GitHub Releases | 0.5.35 | 39 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,9 +20,9 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.34** na urządzeniu testowym: APK z [NaviLas-releases v0.5.34](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.34). Propozycja F-Droid: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.35** na urządzeniu testowym: APK z [NaviLas-releases v0.5.35](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.35). Propozycja F-Droid: [`FDROID.md`](FDROID.md) / MR !46612.
 
-## Zakres Beta 0.5.34
+## Zakres Beta 0.5.35
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:
 
@@ -62,6 +62,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 - Ustawienia zapisują motyw **System / Czujnik światła / Dzień / Noc**, zachowanie startowe **ostatni tryb / Wyszukiwanie / Przeglądanie mapy** oraz opcję niewygaszania ekranu podczas śledzenia. Tryb czujnika stosuje histerezę 30/150 lx i wymaga stabilnego odczytu przez 2 sekundy.
 - Motyw jest nakładany przed utworzeniem głównego ekranu; kolory tekstu, powierzchni, kart i kontrolek korzystają z palety DayNight zamiast stałych jasnych kolorów. Overflow menu w trybie dziennym ma czarny tekst.
 - Mapa wybiera styl OpenFreeMap **Liberty** albo **Dark** zgodnie z aktywnym motywem.
+- Jeśli baza BDL offline jest gotowa i ma **co najmniej 30 dni**, po starcie pojawia się przypomnienie „Aktualizacja danych BDL” (data pobrania + ostatni zakres). **Aktualizuj** pobiera ponownie zapisaną konfigurację; **Później** odkłada pytanie o 7 dni. Brak bazy albo trwające pobieranie nie pokazuje dialogu. W kanale GitHub dialog nie nachodzi na ofertę aktualizacji APK.
 
 ### Weryfikacja KINGKONG 8
 

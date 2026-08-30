@@ -147,6 +147,14 @@
     <string name="offline_status_error">Błąd pobierania: %1$s</string>
     <string name="offline_hint">Zmiana zakresu lub jakości stref wymaga ponownego pobrania. Dotychczasowa baza działa do skutku aktualizacji. Wyszukiwanie LP działa offline; analiza dróg OSM wymaga internetu.</string>
     <string name="offline_pending_mismatch">Wybrane ustawienia różnią się od pobranej bazy — naciśnij „Pobierz ponownie”, aby zastosować.</string>
+    <string name="offline_refresh_title">Aktualizacja danych BDL</string>
+    <string name="offline_refresh_body">Baza offline jest starsza niż 30 dni.\n\nOstatnie pobranie: %1$s\nZakres: %2$s\nStrefy: %3$s</string>
+    <string name="offline_refresh_scope_navilas">NaviLas</string>
+    <string name="offline_refresh_scope_full">pełna baza</string>
+    <string name="offline_refresh_quality_precise">dokładne</string>
+    <string name="offline_refresh_quality_simplified">uproszczone</string>
+    <string name="offline_refresh_update">Aktualizuj</string>
+    <string name="offline_refresh_later">Później</string>
 
     <string name="saved_empty">Brak zapisanych miejsc. Użyj ZAPISZ przy wyniku wyszukiwania.</string>
     <string name="saved_manage_categories">Kategorie…</string>

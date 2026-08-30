@@ -1,0 +1,1 @@
+Reminder to refresh the offline BDL database after 30 days. You can re-download the stored configuration or snooze the prompt for 7 days.

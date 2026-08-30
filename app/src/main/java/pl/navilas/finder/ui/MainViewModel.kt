@@ -50,7 +50,10 @@ import pl.navilas.finder.domain.CorridorVertexAction
 import pl.navilas.finder.domain.OfflineBdlConfig
 import pl.navilas.finder.domain.estimatedSizeLabel
 import pl.navilas.finder.domain.OfflineBdlState
+import pl.navilas.finder.domain.BdlRefreshOffer
+import pl.navilas.finder.domain.BDL_REFRESH_SNOOZE_MS
 import pl.navilas.finder.domain.OfflineBdlStatus
+import pl.navilas.finder.domain.shouldOfferBdlRefresh
 import pl.navilas.finder.domain.ZanocujPolygonQuality
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.LocalityPickPurpose
@@ -162,6 +165,7 @@ data class UiState(
     val savedCategoryFilterId: String? = null,
     val savedListResults: List<RestSiteResult> = emptyList(),
     val appUpdateOffer: AppUpdateOffer? = null,
+    val bdlRefreshOffer: BdlRefreshOffer? = null,
     val appUpdateDownloading: Boolean = false,
     val appUpdateDownloadPercent: Int? = null,
     val appUpdateInstallFile: File? = null,
@@ -273,6 +277,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var browseViewportJob: Job? = null
     private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
+    private var bdlRefreshCheckedThisSession = false
     private var lastFollowAppliedLat: Double? = null
     private var lastFollowAppliedLon: Double? = null
     /** True while user pans/zooms/rotates — camera follow suspended until idle. */
@@ -346,6 +351,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 delay(2_000)
                 checkForAppUpdate(force = false)
             }
+        }
+        viewModelScope.launch {
+            delay(2_000)
+            maybeOfferBdlRefresh()
         }
     }
 
@@ -432,9 +441,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
+                uiPreferences.bdlRefreshSnoozeUntilMs = 0L
                 _state.update {
                     it.copy(
                         offlineBdl = loadOfflineState().copy(pendingConfig = config),
+                        bdlRefreshOffer = null,
                         message = AppMessage.Info(
                             if (_state.value.isMapBrowse()) {
                                 "Dane BDL pobrane (${config.estimatedSizeLabel()}). Ładuję punkty na mapę…"
@@ -499,9 +510,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         offlineStore.deleteAll()
         invalidateBdlSessionCache()
         val pending = _state.value.offlineBdl.pendingConfig
+        uiPreferences.bdlRefreshSnoozeUntilMs = 0L
         _state.update {
             it.copy(
                 offlineBdl = OfflineBdlState(pendingConfig = pending),
+                bdlRefreshOffer = null,
                 allSites = if (it.isMapBrowse()) emptyList() else it.allSites,
                 results = if (it.isMapBrowse()) emptyList() else it.results,
                 zanocujPolygons = if (it.isMapBrowse()) emptyList() else it.zanocujPolygons,
@@ -1756,6 +1769,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    private fun maybeOfferBdlRefresh() {
+        if (bdlRefreshCheckedThisSession) return
+        bdlRefreshCheckedThisSession = true
+        val offline = _state.value.offlineBdl
+        val stored = offline.storedConfig ?: return
+        val downloadedAt = offline.downloadedAt ?: return
+        if (!shouldOfferBdlRefresh(
+                isReady = offline.isReady,
+                downloadedAt = downloadedAt,
+                nowMs = System.currentTimeMillis(),
+                snoozeUntilMs = uiPreferences.bdlRefreshSnoozeUntilMs,
+            )
+        ) {
+            return
+        }
+        _state.update {
+            it.copy(bdlRefreshOffer = BdlRefreshOffer(downloadedAt = downloadedAt, config = stored))
+        }
+    }
+
+    fun acceptBdlRefresh() {
+        val offer = _state.value.bdlRefreshOffer ?: return
+        _state.update {
+            it.copy(
+                bdlRefreshOffer = null,
+                offlineBdl = it.offlineBdl.copy(pendingConfig = offer.config),
+            )
+        }
+        downloadOfflineData()
+    }
+
+    fun snoozeBdlRefresh() {
+        uiPreferences.bdlRefreshSnoozeUntilMs = System.currentTimeMillis() + BDL_REFRESH_SNOOZE_MS
+        _state.update { it.copy(bdlRefreshOffer = null) }
     }
 
     fun dismissAppUpdate() {

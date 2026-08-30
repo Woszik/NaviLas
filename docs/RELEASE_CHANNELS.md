@@ -8,7 +8,7 @@ Ostatnia aktualizacja: **2026-08-30**.
 Nightly  →  (stabilizacja)  →  Beta  →  (dopracowanie)  →  Final
    ↑ lokal / CI (docelowo)         ↑ GitHub dziś              ↑ osobny track GitHub (później)
 
-F-Droid: niezależna dystrybucja flavoru `fdroid`; kandydat 0.5.34 jest w otwartym MR.
+F-Droid: niezależna dystrybucja flavoru `fdroid`; kandydat 0.5.35 jest w otwartym MR.
 ```
 
 | Kanał | Status | Destynacja | Dla kogo |
@@ -17,7 +17,7 @@ F-Droid: niezależna dystrybucja flavoru `fdroid`; kandydat 0.5.34 jest w otwart
 | **Beta** | aktywny | [NaviLas-releases](https://github.com/Woszik/NaviLas-releases) | szersze testy |
 | **Final** | **jeszcze nie istnieje** | osobny track GitHub + F-Droid | zwykli użytkownicy (docelowo) |
 
-**F-Droid** to osobna dystrybucja (flavor `fdroid`, inny podpis). Beta 0.5.34 jest aktualnym kandydatem w otwartym MR; nazwy kanałów GitHub nie są osobnymi kanałami F-Droid.
+**F-Droid** to osobna dystrybucja (flavor `fdroid`, inny podpis). Beta 0.5.35 jest aktualnym kandydatem w otwartym MR; nazwy kanałów GitHub nie są osobnymi kanałami F-Droid.
 
 **Ważne:** APK GitHub i F-Droid mają **różne podpisy** — zmiana kanału dystrybucji wymaga reinstalacji (najpierw eksport zapisanych miejsc).
 
@@ -51,7 +51,7 @@ Nightly `0.5.34-calimoto-gpx` został 2026-08-30 ustabilizowany i promowany do B
 | versionName | czysta, np. `0.5.33` (opcjonalnie jawny `-beta` w UI później) |
 | Podpis | release keystore |
 
-Przykład bieżącej Beta: **0.5.34** (versionCode 38), tag `v0.5.34`.
+Przykład bieżącej Beta: **0.5.35** (versionCode 39), tag `v0.5.35`.
 
 Procedura publikacji Beta: [`APP_UPDATES.md`](APP_UPDATES.md).
 
@@ -73,7 +73,7 @@ Do czasu powstania Final:
 
 - GitHub in-app = **Beta** (`latest.json`)
 - Nightly = lokal / później CI
-- F-Droid = niezależny pipeline; 0.5.34 jest kandydatem do otwartego MR
+- F-Droid = niezależny pipeline; 0.5.35 jest kandydatem do otwartego MR
 
 ---
 
@@ -81,9 +81,9 @@ Do czasu powstania Final:
 
 | Co masz | Kanał |
 |---------|-------|
-| 0.5.34 na NaviLas-releases | **Beta** |
-| kolejny lokalny build z numerem wyższym niż 38 | **Nightly** |
-| F-Droid MR / przyszłe buildy F-Droid | dystrybucja osobna; kandydat 0.5.34 |
+| 0.5.35 na NaviLas-releases | **Beta** |
+| kolejny lokalny build z numerem wyższym niż 39 | **Nightly** |
+| F-Droid MR / przyszłe buildy F-Droid | dystrybucja osobna; kandydat 0.5.35 |
 | Final na GitHub | **jeszcze nie** |
 
 ---

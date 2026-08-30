@@ -80,6 +80,7 @@ import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.domain.BdlDataScope
+import pl.navilas.finder.domain.BdlRefreshOffer
 import pl.navilas.finder.domain.ListViewMode
 import pl.navilas.finder.domain.OfflineBdlStatus
 import pl.navilas.finder.domain.SavedPointCategory
@@ -132,6 +133,7 @@ class MainActivity : AppCompatActivity() {
     private var lastAppliedCameraToken: Long = -1L
     private var lastAppliedFollowRevision: Long = -1L
     private var updateOfferDialog: AlertDialog? = null
+    private var bdlRefreshDialog: AlertDialog? = null
     private var updateProgressDialog: AlertDialog? = null
     private var updateProgressBar: ProgressBar? = null
     private var updateProgressText: TextView? = null
@@ -1503,6 +1505,7 @@ class MainActivity : AppCompatActivity() {
 
         state.message?.let { showMessage(it) }
         handleAppUpdateState(state)
+        handleBdlRefreshOffer(state)
     }
 
     private fun handleAppUpdateState(state: UiState) {
@@ -1587,6 +1590,63 @@ class MainActivity : AppCompatActivity() {
             }
         }
         updateOfferDialog = builder.show()
+    }
+
+    private fun handleBdlRefreshOffer(state: UiState) {
+        val blockedByAppUpdate = state.appUpdateOffer != null ||
+            state.appUpdateDownloading ||
+            state.appUpdateInstallFile != null ||
+            updateOfferDialog?.isShowing == true ||
+            updateProgressDialog?.isShowing == true
+        val offer = state.bdlRefreshOffer
+        if (offer == null || blockedByAppUpdate) {
+            dismissBdlRefreshDialog()
+            return
+        }
+        if (bdlRefreshDialog?.isShowing == true) return
+        showBdlRefreshDialog(offer)
+    }
+
+    private fun showBdlRefreshDialog(offer: BdlRefreshOffer) {
+        dismissBdlRefreshDialog()
+        val scopeLabel = when (offer.config.scope) {
+            BdlDataScope.FULL_BDL -> getString(R.string.offline_refresh_scope_full)
+            BdlDataScope.NAVILAS_CORE -> getString(R.string.offline_refresh_scope_navilas)
+        }
+        val qualityLabel = when (offer.config.zanocujQuality) {
+            ZanocujPolygonQuality.PRECISE -> getString(R.string.offline_refresh_quality_precise)
+            ZanocujPolygonQuality.SIMPLIFIED -> getString(R.string.offline_refresh_quality_simplified)
+        }
+        val message = getString(
+            R.string.offline_refresh_body,
+            formatOfflineUpdatedAt(offer.downloadedAt),
+            scopeLabel,
+            qualityLabel,
+        )
+        bdlRefreshDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.offline_refresh_title)
+            .setMessage(message)
+            .setCancelable(true)
+            .setPositiveButton(R.string.offline_refresh_update) { _, _ ->
+                viewModel.acceptBdlRefresh()
+            }
+            .setNegativeButton(R.string.offline_refresh_later) { _, _ ->
+                viewModel.snoozeBdlRefresh()
+            }
+            .setOnCancelListener {
+                viewModel.snoozeBdlRefresh()
+            }
+            .setOnDismissListener {
+                bdlRefreshDialog = null
+            }
+            .show()
+    }
+
+    private fun dismissBdlRefreshDialog() {
+        if (bdlRefreshDialog?.isShowing == true) {
+            bdlRefreshDialog?.dismiss()
+        }
+        bdlRefreshDialog = null
     }
 
     private fun onUpdateActionClicked() {

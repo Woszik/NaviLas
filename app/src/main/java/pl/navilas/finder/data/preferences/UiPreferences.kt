@@ -42,12 +42,17 @@ class UiPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AMBIENT_LIGHT_NIGHT, false)
         set(value) = prefs.edit().putBoolean(KEY_AMBIENT_LIGHT_NIGHT, value).apply()
 
+    var bdlRefreshSnoozeUntilMs: Long
+        get() = prefs.getLong(KEY_BDL_REFRESH_SNOOZE, 0L)
+        set(value) = prefs.edit().putLong(KEY_BDL_REFRESH_SNOOZE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "navilas_ui"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_STARTUP_MODE = "startup_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on_tracking"
         private const val KEY_AMBIENT_LIGHT_NIGHT = "ambient_light_night"
+        private const val KEY_BDL_REFRESH_SNOOZE = "bdl_refresh_snooze_until"
     }
 }
 

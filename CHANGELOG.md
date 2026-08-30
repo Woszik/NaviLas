@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.35 (39) — 2026-08-30
+
+**APK:** [navilas-0.5.35.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.35/navilas-0.5.35.apk)
+
+Przypomnienie o aktualizacji danych BDL offline, gdy baza ma co najmniej 30 dni. Dialog pokazuje datę pobrania i ostatni zakres; **Aktualizuj** pobiera zapisaną konfigurację, **Później** odkłada pytanie o 7 dni.
+
+**Poprzednia wersja:** [0.5.34](#0534-38--2026-08-30)
+
+---
+
 ## 0.5.34 (38) — 2026-08-30
 
 **APK:** [navilas-0.5.34.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.34/navilas-0.5.34.apk)
