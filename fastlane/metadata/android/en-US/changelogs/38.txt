@@ -1,1 +1,1 @@
-Faster and predictable startup, progressive BDL map browsing, additional BDL object layers, improved locality search and navigation export. Added an app menu, persistent startup settings, and System/Ambient sensor/Day/Night themes with a matching dark map.
+Faster and predictable startup, progressive BDL map browsing, additional BDL object layers, improved locality search and navigation export. Added an app menu, persistent startup settings, and System/Ambient sensor/Day/Night themes with a matching dark map. Day-mode overflow menu text is black.

@@ -60,7 +60,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 - Dolny pasek ma bezpośrednie zakładki **Szukaj / Mapa / Lista**; gesty i strzałki pozostają jako alternatywa.
 - Menu aplikacji porządkuje dostęp do **Ustawień**, danych BDL offline, aktualizacji (tylko flavor GitHub) i informacji o aplikacji.
 - Ustawienia zapisują motyw **System / Czujnik światła / Dzień / Noc**, zachowanie startowe **ostatni tryb / Wyszukiwanie / Przeglądanie mapy** oraz opcję niewygaszania ekranu podczas śledzenia. Tryb czujnika stosuje histerezę 30/150 lx i wymaga stabilnego odczytu przez 2 sekundy.
-- Motyw jest nakładany przed utworzeniem głównego ekranu; kolory tekstu, powierzchni, kart i kontrolek korzystają z palety DayNight zamiast stałych jasnych kolorów.
+- Motyw jest nakładany przed utworzeniem głównego ekranu; kolory tekstu, powierzchni, kart i kontrolek korzystają z palety DayNight zamiast stałych jasnych kolorów. Overflow menu w trybie dziennym ma czarny tekst.
 - Mapa wybiera styl OpenFreeMap **Liberty** albo **Dark** zgodnie z aktywnym motywem.
 
 ### Weryfikacja KINGKONG 8
@@ -72,7 +72,8 @@ Test ręczny 2026-08-30 na fizycznym urządzeniu:
 - zmiana motywu odświeża aktywność i zachowuje wybór,
 - tryb czujnika światła poprawnie przełącza Dzień ↔ Noc na fizycznym czujniku KINGKONG,
 - bezpośrednie zakładki mieszczą się i pozostają dostępne w obu orientacjach,
-- kontrast zielonych przycisków i tekstu statusu sprawdzony w trybie nocnym.
+- kontrast zielonych przycisków i tekstu statusu sprawdzony w trybie nocnym,
+- w trybie dziennym tekst overflow menu jest czarny.
 
 ## Do dopracowania
 

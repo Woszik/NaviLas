@@ -15,7 +15,7 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 Przewidywalny i szybszy start: domyślne Wyszukiwanie, bez wyścigu z trybem Przeglądania, obliczenia filtrów poza wątkiem interfejsu, etapowa analiza dróg OSM oraz grupowanie punktów BDL na mapie. Rozszerzone obiekty BDL, pełniejsze wyszukiwanie miejscowości, poprawiony eksport do nawigacji i czytelne komunikaty postępu.
 
-Nowe menu i ustawienia obejmują tryb startowy, niewygaszanie ekranu oraz motyw System / Czujnik światła / Dzień / Noc. Motyw nocny ma własną paletę i ciemny styl mapy; układ zweryfikowano na KINGKONG 8 w pionie i poziomie.
+Nowe menu i ustawienia obejmują tryb startowy, niewygaszanie ekranu oraz motyw System / Czujnik światła / Dzień / Noc. Motyw nocny ma własną paletę i ciemny styl mapy; w trybie dziennym tekst overflow menu jest czarny. Układ zweryfikowano na KINGKONG 8 w pionie i poziomie.
 
 **Poprzednia wersja:** [0.5.33](#0533-37--2026-08-28)
 
