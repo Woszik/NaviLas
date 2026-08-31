@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-08-30**.
+Ostatnia aktualizacja dokumentacji: **2026-08-31**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.39-nightly | 45 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.40-nightly | 46 |
 | **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.40
+
+**Zakazy wstępu:** osobna baza offline (cała Polska), mapa bez sieci gdy paczka jest na urządzeniu. Po **7 dniach** monit o aktualizację; **Później** odkłada pytanie o **24 godziny**. Bez paczki nadal zapytanie live. Dialog nie nachodzi na BDL ani aktualizację APK.
 
 ## Zakres Nightly 0.5.39
 

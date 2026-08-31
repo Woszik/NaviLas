@@ -6,7 +6,8 @@ import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.util.GeoUtils
 
 /**
- * Live viewport query of BDL forest-entry bans. Not part of the 30-day offline BDL pack.
+ * BDL forest-entry bans: live viewport query, or nationwide dump for the separate 7-day pack.
+ * Not part of the 30-day offline BDL places bundle.
  */
 class ForestEntryBanLoader(
     private val client: BdlArcGisClient = BdlArcGisClient(baseUrl = ForestEntryBanCatalog.BASE_URL),
@@ -19,7 +20,7 @@ class ForestEntryBanLoader(
     ): List<ForestEntryBan> {
         val collected = LinkedHashMap<String, ForestEntryBan>()
         for (layerId in ForestEntryBanCatalog.QUERY_LAYER_IDS) {
-            queryLayer(layerId, envelope).forEach { ban ->
+            queryLayer(layerId, envelope, VIEWPORT_HARD_FETCH_CAP).forEach { ban ->
                 collected.putIfAbsent(ban.id, ban)
             }
         }
@@ -35,24 +36,50 @@ class ForestEntryBanLoader(
             .toList()
     }
 
-    private fun queryLayer(layerId: Int, envelope: GeoUtils.Envelope): List<ForestEntryBan> {
+    /** Nationwide simplified dump for the offline pack. */
+    fun downloadAll(): List<ForestEntryBan> {
+        val collected = LinkedHashMap<String, ForestEntryBan>()
+        for (layerId in ForestEntryBanCatalog.QUERY_LAYER_IDS) {
+            queryLayer(layerId, envelope = null, hardCap = DOWNLOAD_HARD_FETCH_CAP).forEach { ban ->
+                collected.putIfAbsent(ban.id, ban)
+            }
+        }
+        return collected.values.toList()
+    }
+
+    private fun queryLayer(
+        layerId: Int,
+        envelope: GeoUtils.Envelope?,
+        hardCap: Int,
+    ): List<ForestEntryBan> {
         val results = mutableListOf<ForestEntryBan>()
         var offset = 0
         while (true) {
-            val body = client.queryEnvelope(
-                layerId = layerId,
-                envelope = envelope,
-                outFields = ForestEntryBanCatalog.OUT_FIELDS,
-                returnGeometry = true,
-                maxAllowableOffset = SIMPLIFIED_OFFSET,
-                resultOffset = offset,
-                resultRecordCount = PAGE_SIZE,
-            )
+            val body = if (envelope != null) {
+                client.queryEnvelope(
+                    layerId = layerId,
+                    envelope = envelope,
+                    outFields = ForestEntryBanCatalog.OUT_FIELDS,
+                    returnGeometry = true,
+                    maxAllowableOffset = SIMPLIFIED_OFFSET,
+                    resultOffset = offset,
+                    resultRecordCount = PAGE_SIZE,
+                )
+            } else {
+                client.queryAllFeaturesPage(
+                    layerId = layerId,
+                    outFields = ForestEntryBanCatalog.OUT_FIELDS,
+                    returnGeometry = true,
+                    maxAllowableOffset = SIMPLIFIED_OFFSET,
+                    resultOffset = offset,
+                    resultRecordCount = PAGE_SIZE,
+                )
+            }
             val features = BdlMapper.parseFeatures(body)
             features.mapNotNull { mapFeature(it, layerId) }.forEach { results += it }
             if (features.size < PAGE_SIZE) break
             offset += PAGE_SIZE
-            if (offset >= HARD_FETCH_CAP) break
+            if (offset >= hardCap) break
         }
         return results
     }
@@ -79,7 +106,8 @@ class ForestEntryBanLoader(
         const val DEFAULT_LIMIT = 80
         const val SIMPLIFIED_OFFSET = "0.0003"
         private const val PAGE_SIZE = 200
-        private const val HARD_FETCH_CAP = 400
+        private const val VIEWPORT_HARD_FETCH_CAP = 400
+        private const val DOWNLOAD_HARD_FETCH_CAP = 3000
 
         fun clean(raw: String?): String? {
             val value = raw?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null

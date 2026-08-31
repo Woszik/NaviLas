@@ -84,6 +84,8 @@ import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.domain.BdlDataScope
 import pl.navilas.finder.domain.BdlRefreshOffer
+import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_STALE_MS
+import pl.navilas.finder.domain.EntryBanRefreshOffer
 import pl.navilas.finder.domain.ListViewMode
 import pl.navilas.finder.domain.OfflineBdlStatus
 import pl.navilas.finder.domain.SavedPointCategory
@@ -130,6 +132,7 @@ class MainActivity : AppCompatActivity() {
     private var syncingBdlOverlayUi = false
     private var syncingExploreModeUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
+    private var openMapFilterBdlControls: BdlOverlayControlsBinding? = null
     private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
     private var syncingListUi = false
@@ -139,6 +142,7 @@ class MainActivity : AppCompatActivity() {
     private var lastAppliedFollowRevision: Long = -1L
     private var updateOfferDialog: AlertDialog? = null
     private var bdlRefreshDialog: AlertDialog? = null
+    private var entryBanRefreshDialog: AlertDialog? = null
     private var updateProgressDialog: AlertDialog? = null
     private var updateProgressBar: ProgressBar? = null
     private var updateProgressText: TextView? = null
@@ -660,6 +664,11 @@ class MainActivity : AppCompatActivity() {
                 onChanged?.invoke()
             }
         }
+        controls.btnDownloadEntryBans.setOnClickListener {
+            viewModel.downloadEntryBans()
+            bindEntryBanPackUi(controls, viewModel.state.value)
+            onChanged?.invoke()
+        }
     }
 
     private fun readBdlOverlayFilter(controls: BdlOverlayControlsBinding): BdlOverlayFilter {
@@ -693,7 +702,34 @@ class MainActivity : AppCompatActivity() {
         controls.overlayGroupLodging.isEnabled = fullAvailable
         controls.overlayFullHint.isVisible = !fullAvailable
         controls.overlayEntryBans.isChecked = viewModel.state.value.entryBansEnabled
+        bindEntryBanPackUi(controls, viewModel.state.value)
         syncingBdlOverlayUi = false
+    }
+
+    private fun bindEntryBanPackUi(controls: BdlOverlayControlsBinding, state: UiState) {
+        val downloadedAt = state.entryBanPackDownloadedAt
+        val status = when {
+            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
+            downloadedAt == null -> getString(R.string.entry_ban_pack_none)
+            System.currentTimeMillis() - downloadedAt >= ENTRY_BAN_REFRESH_STALE_MS ->
+                getString(
+                    R.string.entry_ban_pack_stale,
+                    formatOfflineUpdatedAt(downloadedAt),
+                    state.entryBanPackCount,
+                )
+            else -> getString(
+                R.string.entry_ban_pack_ready,
+                formatOfflineUpdatedAt(downloadedAt),
+                state.entryBanPackCount,
+            )
+        }
+        controls.overlayEntryBanPackStatus.text = status
+        controls.btnDownloadEntryBans.isEnabled = !state.entryBanDownloading
+        controls.btnDownloadEntryBans.text = when {
+            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
+            downloadedAt != null -> getString(R.string.entry_ban_update)
+            else -> getString(R.string.entry_ban_download)
+        }
     }
 
     private fun bindBdlOverlayUi(state: UiState) {
@@ -708,6 +744,7 @@ class MainActivity : AppCompatActivity() {
                 state.bdlOverlayFullAvailable,
             )
         }
+        openMapFilterBdlControls?.let { bindEntryBanPackUi(it, state) }
     }
 
     private fun overlaySectionSummary(state: UiState): String {
@@ -968,6 +1005,13 @@ class MainActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(sheetBinding.root)
         mapFilterBottomSheet = dialog
+        openMapFilterBdlControls = sheetBinding.bdlOverlaySheetControls
+        dialog.setOnDismissListener {
+            if (mapFilterBottomSheet === dialog) {
+                mapFilterBottomSheet = null
+                openMapFilterBdlControls = null
+            }
+        }
         dialog.show()
     }
 
@@ -1614,6 +1658,7 @@ class MainActivity : AppCompatActivity() {
         state.message?.let { showMessage(it) }
         handleAppUpdateState(state)
         handleBdlRefreshOffer(state)
+        handleEntryBanRefreshOffer(state)
     }
 
     private fun handleAppUpdateState(state: UiState) {
@@ -1760,6 +1805,56 @@ class MainActivity : AppCompatActivity() {
             bdlRefreshDialog?.dismiss()
         }
         bdlRefreshDialog = null
+    }
+
+    private fun handleEntryBanRefreshOffer(state: UiState) {
+        val blockedByAppUpdate = state.appUpdateOffer != null ||
+            state.appUpdateDownloading ||
+            state.appUpdateInstallFile != null ||
+            updateOfferDialog?.isShowing == true ||
+            updateProgressDialog?.isShowing == true
+        val blockedByBdl = state.bdlRefreshOffer != null ||
+            bdlRefreshDialog?.isShowing == true
+        val offer = state.entryBanRefreshOffer
+        if (offer == null || blockedByAppUpdate || blockedByBdl || state.entryBanDownloading) {
+            dismissEntryBanRefreshDialog()
+            return
+        }
+        if (entryBanRefreshDialog?.isShowing == true) return
+        showEntryBanRefreshDialog(offer)
+    }
+
+    private fun showEntryBanRefreshDialog(offer: EntryBanRefreshOffer) {
+        dismissEntryBanRefreshDialog()
+        val message = getString(
+            R.string.entry_ban_refresh_body,
+            formatOfflineUpdatedAt(offer.downloadedAt),
+            offer.count,
+        )
+        entryBanRefreshDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.entry_ban_refresh_title)
+            .setMessage(message)
+            .setCancelable(true)
+            .setPositiveButton(R.string.entry_ban_update) { _, _ ->
+                viewModel.acceptEntryBanRefresh()
+            }
+            .setNegativeButton(R.string.offline_refresh_later) { _, _ ->
+                viewModel.snoozeEntryBanRefresh()
+            }
+            .setOnCancelListener {
+                viewModel.snoozeEntryBanRefresh()
+            }
+            .setOnDismissListener {
+                entryBanRefreshDialog = null
+            }
+            .show()
+    }
+
+    private fun dismissEntryBanRefreshDialog() {
+        if (entryBanRefreshDialog?.isShowing == true) {
+            entryBanRefreshDialog?.dismiss()
+        }
+        entryBanRefreshDialog = null
     }
 
     private fun onUpdateActionClicked() {

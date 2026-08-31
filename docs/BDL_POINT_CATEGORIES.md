@@ -84,9 +84,11 @@ Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie du
 
 Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników zostaje przy zaznaczeniu. Overlay rysowany tylko w bbox widoku (min. zoom ~8.5, cap 400). Poligony/szlaki — poza zakresem.
 
-### Overlay „Zakazy wstępu” (Nightly 0.5.39)
+### Overlay „Zakazy wstępu” (Nightly 0.5.40)
 
-**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu`, zapytanie **bbox widoku** (HTTPS). Domyślnie wyłączone; checkbox przy Obiektach BDL / Filtrach. **Nie** wchodzi do paczki BDL offline (zakazy są bieżące).
+**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu`. Domyślnie wyłączone; checkbox przy Obiektach BDL / Filtrach. **Osobna baza offline** (nie paczka BDL miejsc): przycisk „Pobierz zakazy offline” zapisuje uproszczone poligony całej Polski w `filesDir/entry_bans/bans.json`. Gdy baza jest na urządzeniu, mapa filtruje lokalny indeks (działa bez sieci). Bez bazy — jak wcześniej, zapytanie **bbox widoku** (HTTPS).
+
+Aktualność jest **krótsza niż BDL miejsc**: po **7 dniach** monit „Aktualizacja zakazów wstępu”; **Później** / zamknięcie odkłada pytanie o **24 godziny**. Monit tylko gdy baza już istnieje i jest przeterminowana; nie nachodzi na dialog BDL ani aktualizacji APK.
 
 | UI | Źródło | Rysunek |
 |----|--------|---------|
@@ -187,6 +189,7 @@ Szczegóły: [POI_IDENTITY.md](./POI_IDENTITY.md).
 | `domain/RestSiteModels.kt` | `SiteFeature`, `RestSite`, `ZanocujStatus` |
 | `data/bdl/RestSiteRepository.kt` | Stałe warstw i nazwy BDL |
 | `data/bdl/ForestEntryBanLoader.kt` | Overlay zakazów wstępu (osobny MapServer) |
+| `data/bdl/ForestEntryBanStore.kt` | Osobna baza offline zakazów (`entry_bans/bans.json`) |
 
 ---
 

@@ -44,8 +44,13 @@ import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.isUsableBrowseViewport
 import pl.navilas.finder.domain.selectBrowseContent
 import pl.navilas.finder.domain.BrowseParkingProximityMode
+import pl.navilas.finder.data.bdl.ForestEntryBanBounds
 import pl.navilas.finder.data.bdl.ForestEntryBanClassifier
 import pl.navilas.finder.data.bdl.ForestEntryBanLoader
+import pl.navilas.finder.data.bdl.ForestEntryBanStore
+import pl.navilas.finder.domain.EntryBanRefreshOffer
+import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_SNOOZE_MS
+import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_STALE_MS
 import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
@@ -190,10 +195,14 @@ data class UiState(
     val bdlOverlayFilter: BdlOverlayFilter = BdlOverlayFilter(),
     val bdlOverlayViewport: List<BdlOverlayPoint> = emptyList(),
     val bdlOverlayFullAvailable: Boolean = false,
-    /** Periodic BDL forest-entry bans overlay. Off by default; live query, not offline pack. */
+    /** Periodic BDL forest-entry bans overlay. Off by default; local pack if downloaded, else live. */
     val entryBansEnabled: Boolean = false,
     val entryBanViewport: List<ForestEntryBan> = emptyList(),
     val entryBanStatus: String? = null,
+    val entryBanPackDownloadedAt: Long? = null,
+    val entryBanPackCount: Int = 0,
+    val entryBanDownloading: Boolean = false,
+    val entryBanRefreshOffer: EntryBanRefreshOffer? = null,
 ) {
     fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
         ListViewMode.SEARCH -> results
@@ -260,6 +269,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         config = SearchConfig.DEFAULT,
     )
     private val forestEntryBanLoader = ForestEntryBanLoader()
+    private val forestEntryBanStore = ForestEntryBanStore.fromAppFilesDir(application.filesDir)
     private val roadAnalyzer = RoadProximityAnalyzer(
         overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
         assessmentCache = roadAssessmentCache,
@@ -301,7 +311,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastBrowseCenterLon: Double = 0.0
     private var mapBrowseLoadJob: Job? = null
     private var browseViewportJob: Job? = null
+    @Volatile
+    private var entryBanIndex: List<ForestEntryBanBounds> = emptyList()
     private var overlayLoadJob: Job? = null
+    private var entryBanDownloadJob: Job? = null
     private var selectedRoadsJob: Job? = null
     private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
@@ -356,7 +369,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             savedCategories = categories,
             userPosition = user,
             mapCameraRequest = camera,
+            entryBanPackDownloadedAt = forestEntryBanStore.downloadedAt(),
+            entryBanPackCount = forestEntryBanStore.count(),
         )
+        loadEntryBanIndexFromDisk()
         return base.copy(savedListResults = buildSavedListResults(base))
     }
 
@@ -383,6 +399,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             delay(2_000)
             maybeOfferBdlRefresh()
+            maybeOfferEntryBanRefresh()
         }
     }
 
@@ -1447,6 +1464,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (zoom < ENTRY_BAN_MIN_ZOOM) {
             return emptyList<ForestEntryBan>() to app.getString(R.string.entry_ban_zoom_hint)
         }
+        val packIndex = entryBanIndex
+        if (_state.value.entryBanPackDownloadedAt != null) {
+            val bans = withContext(Dispatchers.Default) {
+                ForestEntryBanClassifier.inEnvelope(
+                    index = packIndex,
+                    envelope = envelope,
+                    centerLat = centerLat,
+                    centerLon = centerLon,
+                    limit = ENTRY_BAN_MAX_POLYGONS,
+                )
+            }
+            val downloadedAt = _state.value.entryBanPackDownloadedAt
+            val dateLabel = downloadedAt?.let { formatEntryBanPackDate(it) }
+            val stale = downloadedAt != null &&
+                System.currentTimeMillis() - downloadedAt >= ENTRY_BAN_REFRESH_STALE_MS
+            val status = when {
+                bans.isEmpty() && stale ->
+                    app.getString(R.string.entry_ban_empty_pack_stale, dateLabel.orEmpty())
+                bans.isEmpty() ->
+                    app.getString(R.string.entry_ban_empty_pack, dateLabel.orEmpty())
+                stale ->
+                    app.getString(R.string.entry_ban_count_pack_stale, bans.size, dateLabel.orEmpty())
+                else ->
+                    app.getString(R.string.entry_ban_count_pack, bans.size, dateLabel.orEmpty())
+            }
+            return bans to status
+        }
         return try {
             val bans = withContext(Dispatchers.IO) {
                 forestEntryBanLoader.queryViewport(
@@ -1465,6 +1509,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {
             emptyList<ForestEntryBan>() to app.getString(R.string.entry_ban_offline)
         }
+    }
+
+    private fun formatEntryBanPackDate(epochMs: Long): String {
+        val formatter = java.text.DateFormat.getDateInstance(
+            java.text.DateFormat.MEDIUM,
+            java.util.Locale.forLanguageTag("pl-PL"),
+        )
+        return formatter.format(java.util.Date(epochMs))
     }
 
     private fun browseListOrigin(state: UiState): UserPosition? =
@@ -2002,11 +2054,120 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         downloadOfflineData()
+        maybeOfferEntryBanRefresh()
     }
 
     fun snoozeBdlRefresh() {
         uiPreferences.bdlRefreshSnoozeUntilMs = System.currentTimeMillis() + BDL_REFRESH_SNOOZE_MS
         _state.update { it.copy(bdlRefreshOffer = null) }
+        maybeOfferEntryBanRefresh()
+    }
+
+    private fun loadEntryBanIndexFromDisk() {
+        if (!forestEntryBanStore.isReady()) {
+            entryBanIndex = emptyList()
+            return
+        }
+        entryBanIndex = forestEntryBanStore.loadAll().mapNotNull { ForestEntryBanBounds.from(it) }
+    }
+
+    fun downloadEntryBans() {
+        if (entryBanDownloadJob?.isActive == true) return
+        entryBanDownloadJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    entryBanDownloading = true,
+                    entryBanRefreshOffer = null,
+                    message = AppMessage.Info(
+                        getApplication<Application>().getString(R.string.entry_ban_downloading),
+                    ),
+                )
+            }
+            try {
+                val bans = withContext(Dispatchers.IO) {
+                    val downloaded = forestEntryBanLoader.downloadAll()
+                    forestEntryBanStore.saveAll(downloaded, System.currentTimeMillis())
+                    downloaded
+                }
+                entryBanIndex = bans.mapNotNull { ForestEntryBanBounds.from(it) }
+                uiPreferences.entryBanRefreshSnoozeUntilMs = 0L
+                val downloadedAt = forestEntryBanStore.downloadedAt()
+                _state.update {
+                    it.copy(
+                        entryBanDownloading = false,
+                        entryBanPackDownloadedAt = downloadedAt,
+                        entryBanPackCount = bans.size,
+                        message = AppMessage.Info(
+                            getApplication<Application>().getString(
+                                R.string.entry_ban_download_ok,
+                                bans.size,
+                            ),
+                        ),
+                    )
+                }
+                lastBrowseViewportKey = null
+                val bounds = lastBrowseBounds
+                if (bounds != null && _state.value.entryBansEnabled) {
+                    scheduleBrowseViewportRefresh(
+                        bounds,
+                        lastBrowseCenterLat,
+                        lastBrowseCenterLon,
+                        lastBrowseZoom,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        entryBanDownloading = false,
+                        message = AppMessage.Error(
+                            getApplication<Application>().getString(
+                                R.string.entry_ban_download_error,
+                                e.message ?: "błąd",
+                            ),
+                        ),
+                    )
+                }
+            } finally {
+                entryBanDownloadJob = null
+            }
+        }
+    }
+
+    fun acceptEntryBanRefresh() {
+        _state.update { it.copy(entryBanRefreshOffer = null) }
+        downloadEntryBans()
+    }
+
+    fun snoozeEntryBanRefresh() {
+        uiPreferences.entryBanRefreshSnoozeUntilMs =
+            System.currentTimeMillis() + ENTRY_BAN_REFRESH_SNOOZE_MS
+        _state.update { it.copy(entryBanRefreshOffer = null) }
+    }
+
+    private fun maybeOfferEntryBanRefresh() {
+        if (_state.value.entryBanRefreshOffer != null) return
+        if (_state.value.bdlRefreshOffer != null) return
+        if (_state.value.appUpdateOffer != null) return
+        if (_state.value.entryBanDownloading) return
+        val downloadedAt = forestEntryBanStore.downloadedAt() ?: return
+        if (!shouldOfferBdlRefresh(
+                isReady = forestEntryBanStore.isReady(),
+                downloadedAt = downloadedAt,
+                nowMs = System.currentTimeMillis(),
+                snoozeUntilMs = uiPreferences.entryBanRefreshSnoozeUntilMs,
+                staleAfterMs = ENTRY_BAN_REFRESH_STALE_MS,
+            )
+        ) {
+            return
+        }
+        _state.update {
+            it.copy(
+                entryBanRefreshOffer = EntryBanRefreshOffer(
+                    downloadedAt = downloadedAt,
+                    count = forestEntryBanStore.count(),
+                ),
+            )
+        }
     }
 
     fun dismissAppUpdate() {
@@ -2014,6 +2175,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (offer.mandatory) return
         appUpdatePrefs.dismissedVersionCode = offer.versionCode
         _state.update { it.copy(appUpdateOffer = null) }
+        maybeOfferEntryBanRefresh()
     }
 
     fun startAppUpdateDownload() {

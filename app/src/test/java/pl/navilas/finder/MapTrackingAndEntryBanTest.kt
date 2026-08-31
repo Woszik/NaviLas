@@ -6,14 +6,17 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.navilas.finder.data.bdl.ForestEntryBanBounds
 import pl.navilas.finder.data.bdl.ForestEntryBanCatalog
 import pl.navilas.finder.data.bdl.ForestEntryBanClassifier
 import pl.navilas.finder.data.bdl.ForestEntryBanLoader
+import pl.navilas.finder.data.bdl.ForestEntryBanStore
 import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.ForestEntryBanReason
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.MapTrackingCamera
 import pl.navilas.finder.domain.MapTrackingMode
+import pl.navilas.finder.util.GeoUtils
 
 class MapTrackingAndEntryBanTest {
     @Test
@@ -105,6 +108,68 @@ class MapTrackingAndEntryBanTest {
         assertNull(ForestEntryBanLoader.clean("null"))
         assertNull(ForestEntryBanLoader.clean("  "))
     }
+
+    @Test
+    fun store_roundtrip_and_delete() {
+        val dir = createTempDir(prefix = "navilas-entry-bans")
+        val store = ForestEntryBanStore(dir)
+        val ban = sampleBan("ban:6:1", 52.70, 23.80)
+        store.saveAll(listOf(ban), downloadedAt = 1_700_000_000_000L)
+
+        assertTrue(store.isReady())
+        assertEquals(1_700_000_000_000L, store.downloadedAt())
+        assertEquals(1, store.count())
+        val loaded = store.loadAll()
+        assertEquals(1, loaded.size)
+        assertEquals(ban.id, loaded[0].id)
+        assertEquals(ban.forestDistrict, loaded[0].forestDistrict)
+        assertEquals(ban.rings[0].size, loaded[0].rings[0].size)
+
+        store.deleteAll()
+        assertFalse(store.isReady())
+        assertEquals(0, store.count())
+        assertTrue(store.loadAll().isEmpty())
+    }
+
+    @Test
+    fun classifier_filters_index_by_envelope() {
+        val near = sampleBan("ban:6:near", 52.70, 23.80)
+        val far = sampleBan("ban:6:far", 50.0, 19.0)
+        val index = listOf(near, far).map { ForestEntryBanBounds.from(it)!! }
+        val hits = ForestEntryBanClassifier.inEnvelope(
+            index = index,
+            envelope = GeoUtils.Envelope(
+                xmin = 23.79,
+                ymin = 52.69,
+                xmax = 23.82,
+                ymax = 52.72,
+            ),
+            centerLat = 52.705,
+            centerLon = 23.805,
+            limit = 80,
+        )
+        assertEquals(listOf(near.id), hits.map { it.id })
+    }
+}
+
+private fun sampleBan(id: String, lat: Double, lon: Double): ForestEntryBan {
+    val square = listOf(
+        LatLon(lat, lon),
+        LatLon(lat, lon + 0.01),
+        LatLon(lat + 0.01, lon + 0.01),
+        LatLon(lat + 0.01, lon),
+        LatLon(lat, lon),
+    )
+    return ForestEntryBan(
+        id = id,
+        reason = ForestEntryBanReason.OTHER,
+        forestDistrict = "Test",
+        forestry = "Stoczek",
+        compartment = "1",
+        validFrom = "13.03.2025",
+        validUntil = "31.12.2026",
+        rings = listOf(square),
+    )
 }
 
 /** Constructor requires a client; mapping tests never call the network. */

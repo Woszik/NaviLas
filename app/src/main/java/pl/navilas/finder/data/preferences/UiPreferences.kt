@@ -64,6 +64,10 @@ class UiPreferences(context: Context) {
         get() = prefs.getLong(KEY_BDL_REFRESH_SNOOZE, 0L)
         set(value) = prefs.edit().putLong(KEY_BDL_REFRESH_SNOOZE, value).apply()
 
+    var entryBanRefreshSnoozeUntilMs: Long
+        get() = prefs.getLong(KEY_ENTRY_BAN_REFRESH_SNOOZE, 0L)
+        set(value) = prefs.edit().putLong(KEY_ENTRY_BAN_REFRESH_SNOOZE, value).apply()
+
     var updateChannel: UpdateChannelPreference
         get() = parseUpdateChannelPreference(prefs.getString(KEY_UPDATE_CHANNEL, null))
         set(value) = prefs.edit().putString(KEY_UPDATE_CHANNEL, value.name).apply()
@@ -75,6 +79,7 @@ class UiPreferences(context: Context) {
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on_tracking"
         private const val KEY_AMBIENT_LIGHT_NIGHT = "ambient_light_night"
         private const val KEY_BDL_REFRESH_SNOOZE = "bdl_refresh_snooze_until"
+        private const val KEY_ENTRY_BAN_REFRESH_SNOOZE = "entry_ban_refresh_snooze_until"
         private const val KEY_UPDATE_CHANNEL = "update_channel"
     }
 }

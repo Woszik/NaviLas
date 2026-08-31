@@ -5,6 +5,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.navilas.finder.domain.BDL_REFRESH_SNOOZE_MS
 import pl.navilas.finder.domain.BDL_REFRESH_STALE_MS
+import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_SNOOZE_MS
+import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_STALE_MS
 import pl.navilas.finder.domain.shouldOfferBdlRefresh
 
 class BdlRefreshPolicyTest {
@@ -78,6 +80,50 @@ class BdlRefreshPolicyTest {
                 downloadedAt = now - BDL_REFRESH_STALE_MS * 2,
                 nowMs = now,
                 snoozeUntilMs = now,
+            ),
+        )
+    }
+
+    @Test
+    fun entry_ban_pack_is_stale_after_7_days() {
+        assertTrue(
+            shouldOfferBdlRefresh(
+                isReady = true,
+                downloadedAt = now - ENTRY_BAN_REFRESH_STALE_MS,
+                nowMs = now,
+                snoozeUntilMs = 0L,
+                staleAfterMs = ENTRY_BAN_REFRESH_STALE_MS,
+            ),
+        )
+        assertFalse(
+            shouldOfferBdlRefresh(
+                isReady = true,
+                downloadedAt = now - ENTRY_BAN_REFRESH_STALE_MS + 1,
+                nowMs = now,
+                snoozeUntilMs = 0L,
+                staleAfterMs = ENTRY_BAN_REFRESH_STALE_MS,
+            ),
+        )
+    }
+
+    @Test
+    fun entry_ban_snooze_hides_offer_for_24_hours() {
+        assertFalse(
+            shouldOfferBdlRefresh(
+                isReady = true,
+                downloadedAt = now - ENTRY_BAN_REFRESH_STALE_MS * 2,
+                nowMs = now,
+                snoozeUntilMs = now + ENTRY_BAN_REFRESH_SNOOZE_MS,
+                staleAfterMs = ENTRY_BAN_REFRESH_STALE_MS,
+            ),
+        )
+        assertTrue(
+            shouldOfferBdlRefresh(
+                isReady = true,
+                downloadedAt = now - ENTRY_BAN_REFRESH_STALE_MS * 2,
+                nowMs = now,
+                snoozeUntilMs = now,
+                staleAfterMs = ENTRY_BAN_REFRESH_STALE_MS,
             ),
         )
     }
