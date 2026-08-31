@@ -40,6 +40,7 @@ import org.maplibre.geojson.Polygon
 import pl.navilas.finder.data.bdl.ZanocujPolygon
 import pl.navilas.finder.domain.BdlOverlayPoint
 import pl.navilas.finder.domain.BrowseMapCluster
+import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
@@ -58,6 +59,7 @@ class MapController {
     private var style: Style? = null
     private var onSiteClick: ((String) -> Unit)? = null
     private var onEmptyMapClick: ((Double, Double) -> Unit)? = null
+    private var onEntryBanClick: ((String) -> Unit)? = null
     private var onCorridorVertexClick: ((Int) -> Unit)? = null
     private var onCameraIdle: ((Double, Double, Double, Double, Double, Double) -> Unit)? = null
     private var onGestureCameraMoveStarted: (() -> Unit)? = null
@@ -70,6 +72,7 @@ class MapController {
     private var lastBrowseZanocujCount: Int = -1
     private var lastBrowseZanocujIdsHash: Int = 0
     private var lastOverlayIdsHash: Int = 0
+    private var lastEntryBanIdsHash: Int = 0
 
     /** Diagnostics: last camera command applied (not fitBounds from selection). */
     var lastCameraCommand: String? = null
@@ -84,6 +87,9 @@ class MapController {
         mapLibreMap.setMaxZoomPreference(MAX_ZOOM)
         mapLibreMap.setStyle(Style.Builder().fromUri(MapConfig.styleUrl(darkMode))) { loaded ->
             style = loaded
+            lastEntryBanIdsHash = 0
+            lastOverlayIdsHash = 0
+            lastBrowseZanocujCount = -1
             ensureSourcesAndLayers(loaded)
             ensureClickListener(mapLibreMap)
             ensureCameraIdleListener(mapLibreMap)
@@ -98,6 +104,10 @@ class MapController {
 
     fun setOnEmptyMapClickListener(listener: ((latitude: Double, longitude: Double) -> Unit)?) {
         onEmptyMapClick = listener
+    }
+
+    fun setOnEntryBanClickListener(listener: ((String) -> Unit)?) {
+        onEntryBanClick = listener
     }
 
     fun setOnCorridorVertexClickListener(listener: ((index: Int) -> Unit)?) {
@@ -370,6 +380,25 @@ class MapController {
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 
+    fun setEntryBanPolygons(bans: List<ForestEntryBan>) {
+        val s = style ?: return
+        val idsHash = bans.fold(0) { acc, ban -> acc * 31 + ban.id.hashCode() }
+        if (idsHash == lastEntryBanIdsHash) return
+        lastEntryBanIdsHash = idsHash
+        val features = bans.mapNotNull { ban ->
+            val rings = ban.rings.map { ring ->
+                ring.map { Point.fromLngLat(it.longitude, it.latitude) }
+            }
+            runCatching { Polygon.fromLngLats(rings) }.getOrNull()?.let { geometry ->
+                Feature.fromGeometry(geometry).apply {
+                    addStringProperty("id", ban.id)
+                }
+            }
+        }
+        s.getSourceAs<GeoJsonSource>(SOURCE_ENTRY_BAN)
+            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
     fun setBrowseClusters(clusters: List<BrowseMapCluster>, revision: Long) {
         val s = style ?: return
         if (revision == lastBrowseRevision && browseModeActive) return
@@ -507,8 +536,14 @@ class MapController {
                     onSiteClick?.invoke(hit)
                     true
                 } else {
-                    onEmptyMapClick?.invoke(latLng.latitude, latLng.longitude)
-                    true
+                    val banId = queryEntryBanId(PointF(screen.x, screen.y))
+                    if (banId != null) {
+                        onEntryBanClick?.invoke(banId)
+                        true
+                    } else {
+                        onEmptyMapClick?.invoke(latLng.latitude, latLng.longitude)
+                        true
+                    }
                 }
             }
         }
@@ -570,6 +605,16 @@ class MapController {
             .firstOrNull()
     }
 
+    private fun queryEntryBanId(screen: PointF): String? {
+        val mapLibreMap = map ?: return null
+        val pad = HIT_PAD_PX
+        val box = RectF(screen.x - pad, screen.y - pad, screen.x + pad, screen.y + pad)
+        return mapLibreMap.queryRenderedFeatures(box, LAYER_ENTRY_BAN_FILL)
+            .asSequence()
+            .mapNotNull { feature -> feature.getStringProperty("id")?.takeIf { it.isNotBlank() } }
+            .firstOrNull()
+    }
+
     private fun zoomIntoCluster(screen: PointF): Boolean {
         val mapLibreMap = map ?: return false
         val feature = mapLibreMap.queryRenderedFeatures(
@@ -628,6 +673,21 @@ class MapController {
                 LineLayer(LAYER_ZANOCUJ_LINE, SOURCE_ZANOCUJ).withProperties(
                     lineColor(Color.parseColor("#2E7D32")),
                     lineWidth(1.5f),
+                ),
+            )
+        }
+        if (style.getSource(SOURCE_ENTRY_BAN) == null) {
+            style.addSource(GeoJsonSource(SOURCE_ENTRY_BAN, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                FillLayer(LAYER_ENTRY_BAN_FILL, SOURCE_ENTRY_BAN).withProperties(
+                    fillColor(Color.parseColor("#C62828")),
+                    fillOpacity(0.22f),
+                ),
+            )
+            style.addLayer(
+                LineLayer(LAYER_ENTRY_BAN_LINE, SOURCE_ENTRY_BAN).withProperties(
+                    lineColor(Color.parseColor("#B71C1C")),
+                    lineWidth(1.8f),
                 ),
             )
         }
@@ -815,6 +875,7 @@ class MapController {
         const val SOURCE_BDL_OVERLAY = "navilas-bdl-overlay"
         const val SOURCE_SELECTED = "navilas-selected"
         const val SOURCE_ZANOCUJ = "navilas-zanocuj"
+        const val SOURCE_ENTRY_BAN = "navilas-entry-ban"
         const val SOURCE_ROAD_TARGET = "navilas-road-target"
         const val SOURCE_HELPER_LINE = "navilas-helper-line"
         const val SOURCE_CORRIDOR = "navilas-corridor"
@@ -828,6 +889,8 @@ class MapController {
         const val LAYER_SELECTED = "navilas-selected-layer"
         const val LAYER_ZANOCUJ_FILL = "navilas-zanocuj-fill"
         const val LAYER_ZANOCUJ_LINE = "navilas-zanocuj-line"
+        const val LAYER_ENTRY_BAN_FILL = "navilas-entry-ban-fill"
+        const val LAYER_ENTRY_BAN_LINE = "navilas-entry-ban-line"
         const val LAYER_ROAD_TARGET = "navilas-road-target-layer"
         const val LAYER_HELPER_LINE = "navilas-helper-line-layer"
         const val LAYER_CORRIDOR = "navilas-corridor-layer"

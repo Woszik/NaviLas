@@ -84,6 +84,16 @@ Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie du
 
 Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników zostaje przy zaznaczeniu. Overlay rysowany tylko w bbox widoku (min. zoom ~8.5, cap 400). Poligony/szlaki — poza zakresem.
 
+### Overlay „Zakazy wstępu” (Nightly 0.5.39)
+
+**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu`, zapytanie **bbox widoku** (HTTPS). Domyślnie wyłączone; checkbox przy Obiektach BDL / Filtrach. **Nie** wchodzi do paczki BDL offline (zakazy są bieżące).
+
+| UI | Źródło | Rysunek |
+|----|--------|---------|
+| Zakazy wstępu BDL | warstwy 6 / 7 / 2 (inne przyczyny, zabiegi SOR, pożar — LOD szczegółowy) | czerwona plama + obrys |
+
+Klik obszaru → dialog (przyczyna, nadleśnictwo, leśnictwo, oddział, data od/do). Miejsce w poligonie: znacznik na karcie i liście. Warstwa 0 (wilgotność ściółki) **nie** jest zakazem. Informacja pomocnicza — obowiązują oficjalne źródła LP / BDL.
+
 ---
 
 ## 3. Cechy punktowe BDL (`SiteFeature`) — flagi T/N na rekordzie
@@ -176,6 +186,7 @@ Szczegóły: [POI_IDENTITY.md](./POI_IDENTITY.md).
 | [POI_IDENTITY.md](./POI_IDENTITY.md) | Klucze `BdlIdentity` |
 | `domain/RestSiteModels.kt` | `SiteFeature`, `RestSite`, `ZanocujStatus` |
 | `data/bdl/RestSiteRepository.kt` | Stałe warstw i nazwy BDL |
+| `data/bdl/ForestEntryBanLoader.kt` | Overlay zakazów wstępu (osobny MapServer) |
 
 ---
 

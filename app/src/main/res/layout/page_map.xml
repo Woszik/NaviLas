@@ -173,6 +173,16 @@
                         tools:text="🌲 W strefie „Zanocuj w lesie”" />
 
                     <TextView
+                        android:id="@+id/cardEntryBan"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="#B71C1C"
+                        android:visibility="gone"
+                        tools:text="⛔ Zakaz wstępu · Nadleśnictwo Białowieża"
+                        tools:visibility="visible" />
+
+                    <TextView
                         android:id="@+id/cardSavedMeta"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

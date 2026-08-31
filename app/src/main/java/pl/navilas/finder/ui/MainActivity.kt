@@ -66,6 +66,8 @@ import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
 import pl.navilas.finder.data.bdl.BdlOverlayCatalog
 import pl.navilas.finder.domain.BdlOverlayFilter
+import pl.navilas.finder.domain.ForestEntryBan
+import pl.navilas.finder.domain.MapTrackingCamera
 import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseParkingProximityMode
@@ -283,6 +285,11 @@ class MainActivity : AppCompatActivity() {
             distanceLabelProvider = { item ->
                 formatPoiDistance(viewModel.state.value, item.distanceKm)
             },
+            entryBanLabelProvider = { site ->
+                viewModel.state.value.entryBanAt(site.latitude, site.longitude)?.let { ban ->
+                    getString(R.string.entry_ban_on_site, ban.summaryPl())
+                }
+            },
         )
         listBinding.resultsList.layoutManager = LinearLayoutManager(this)
         listBinding.resultsList.adapter = resultsAdapter
@@ -305,6 +312,10 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         viewModel.setMapSearchPin(lat, lon)
                     }
+                }
+                mapController.setOnEntryBanClickListener { banId ->
+                    val ban = viewModel.state.value.entryBanViewport.firstOrNull { it.id == banId }
+                    if (ban != null) showEntryBanDialog(ban)
                 }
                 mapController.setOnCorridorVertexClickListener { index ->
                     showCorridorVertexMenu(index)
@@ -642,6 +653,13 @@ class MainActivity : AppCompatActivity() {
         controls.overlayGroupWater.setOnCheckedChangeListener(listener)
         controls.overlayGroupPlay.setOnCheckedChangeListener(listener)
         controls.overlayGroupLodging.setOnCheckedChangeListener(listener)
+        controls.overlayEntryBans.setOnCheckedChangeListener { _, checked ->
+            if (!syncingBdlOverlayUi) {
+                viewModel.setEntryBansEnabled(checked)
+                bindBdlOverlayUi(viewModel.state.value)
+                onChanged?.invoke()
+            }
+        }
     }
 
     private fun readBdlOverlayFilter(controls: BdlOverlayControlsBinding): BdlOverlayFilter {
@@ -674,13 +692,14 @@ class MainActivity : AppCompatActivity() {
         controls.overlayGroupPlay.isEnabled = fullAvailable
         controls.overlayGroupLodging.isEnabled = fullAvailable
         controls.overlayFullHint.isVisible = !fullAvailable
+        controls.overlayEntryBans.isChecked = viewModel.state.value.entryBansEnabled
         syncingBdlOverlayUi = false
     }
 
     private fun bindBdlOverlayUi(state: UiState) {
         val chevron = if (browseOverlayExpanded) " ▲" else " ▼"
         searchBinding.btnToggleBdlOverlay.text = getString(R.string.bdl_overlay_toggle) + chevron
-        searchBinding.bdlOverlaySummary.text = state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
+        searchBinding.bdlOverlaySummary.text = overlaySectionSummary(state)
         searchBinding.bdlOverlayPanel.isVisible = browseOverlayExpanded
         if (browseOverlayExpanded) {
             syncBdlOverlayDraftTo(
@@ -689,6 +708,16 @@ class MainActivity : AppCompatActivity() {
                 state.bdlOverlayFullAvailable,
             )
         }
+    }
+
+    private fun overlaySectionSummary(state: UiState): String {
+        val overlay = state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
+        val bans = if (state.entryBansEnabled) {
+            state.entryBanStatus ?: getString(R.string.entry_ban_toggle)
+        } else {
+            null
+        }
+        return listOfNotNull(overlay, bans).joinToString(" · ")
     }
 
     private fun setupFilterControlsListeners(
@@ -892,8 +921,7 @@ class MainActivity : AppCompatActivity() {
             val chevron = if (overlayExpanded) " ▲" else " ▼"
             sheetBinding.btnToggleSheetBdlOverlay.text =
                 getString(R.string.bdl_overlay_toggle) + chevron
-            sheetBinding.sheetBdlOverlaySummary.text =
-                state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
+            sheetBinding.sheetBdlOverlaySummary.text = overlaySectionSummary(state)
             sheetBinding.sheetBdlOverlayPanel.isVisible = overlayExpanded
             if (overlayExpanded) {
                 syncBdlOverlayDraftTo(
@@ -1367,7 +1395,7 @@ class MainActivity : AppCompatActivity() {
     private fun toggleMapTrackingFromUi() {
         if (!mapReady) return
         val mode = viewModel.state.value.mapTrackingMode
-        if (mode == MapTrackingMode.TRACKING) {
+        if (!MapTrackingCamera.shouldCaptureLiveCamera(mode)) {
             viewModel.toggleMapTracking(0f, 0f, 0.0, 0.0)
             return
         }
@@ -1388,7 +1416,7 @@ class MainActivity : AppCompatActivity() {
             focalScreenX = focalX,
             focalScreenY = focalY,
             bearing = mapController.currentBearing(),
-            zoom = mapController.currentZoom().coerceAtLeast(13.0),
+            zoom = MapTrackingCamera.zoomForStart(mapController.currentZoom()),
         )
     }
 
@@ -1523,12 +1551,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 applyBrowseMapFilters(state)
                 mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
+                mapController.setEntryBanPolygons(state.entryBanViewport)
                 val browseHash = state.selectedSiteIds.hashCode() xor
                     state.profile.hashCode() xor
                     state.mapBrowseRevision.hashCode() xor
                     state.browseCarFilter.hashCode() xor
                     state.bdlOverlayFilter.hashCode() xor
                     state.bdlOverlayViewport.size xor
+                    state.entryBansEnabled.hashCode() xor
+                    state.entryBanViewport.size xor
                     state.zanocujPolygons.size xor
                     state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
                 if (forceMarkers || browseHash != lastRenderedResultsToken) {
@@ -1544,6 +1575,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 mapController.exitBrowseMode()
                 mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
+                mapController.setEntryBanPolygons(state.entryBanViewport)
                 mapController.updateSearchPin(
                     if (state.searchOriginMode == SearchOriginMode.LINE) null else state.mapSearchPin,
                 )
@@ -1555,6 +1587,8 @@ class MainActivity : AppCompatActivity() {
                     state.browseCarFilter.hashCode() xor
                     state.bdlOverlayFilter.hashCode() xor
                     state.bdlOverlayViewport.size xor
+                    state.entryBansEnabled.hashCode() xor
+                    state.entryBanViewport.size xor
                     (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
                     state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
                 if (forceMarkers || resultsHash != lastRenderedResultsToken) {
@@ -2018,6 +2052,14 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
+        if (state.entryBansEnabled) {
+            row(
+                getString(R.string.entry_ban_toggle),
+                items.map { item ->
+                    state.entryBanAt(item.site.latitude, item.site.longitude)?.summaryPl() ?: "—"
+                },
+            )
+        }
         if (state.profile == TravelProfile.MOTORCYCLE) {
             row(
                 getString(R.string.compare_moto),
@@ -2104,6 +2146,13 @@ class MainActivity : AppCompatActivity() {
             )
         }
         mapBinding.cardZanocuj.isVisible = selected.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
+        val entryBan = state.entryBanAt(selected.site.latitude, selected.site.longitude)
+        if (entryBan != null) {
+            mapBinding.cardEntryBan.text = getString(R.string.entry_ban_on_site, entryBan.summaryPl())
+            mapBinding.cardEntryBan.isVisible = true
+        } else {
+            mapBinding.cardEntryBan.isVisible = false
+        }
         mapBinding.cardNavigate.isVisible = true
         val saved = state.savedPoint(selected.site.id)
         val isSaved = saved != null
@@ -2637,11 +2686,12 @@ class MainActivity : AppCompatActivity() {
             }
         }.orEmpty()
         val overlayGroup = BdlOverlayCatalog.groupForLayer(site.sourceLayerId)
+        val banLine = entryBanDetailsLine(state, site)
         val detailsBody = if (overlayGroup != null) {
             """
             ${site.description.orEmpty()}
 
-            Źródło: ${site.sourceLayerName}$savedBlock
+            Źródło: ${site.sourceLayerName}$banLine$savedBlock
             """.trimIndent()
         } else {
             """
@@ -2652,6 +2702,7 @@ class MainActivity : AppCompatActivity() {
             $related
 
             Zanocuj: $zone
+            $banLine
 
             Źródło: ${site.sourceLayerName}$savedBlock
             """.trimIndent()
@@ -2667,6 +2718,19 @@ class MainActivity : AppCompatActivity() {
             builder.setNegativeButton(R.string.btn_save) { _, _ -> onSaveClicked(item) }
         }
         builder.show()
+    }
+
+    private fun entryBanDetailsLine(state: UiState, site: RestSite): String {
+        val ban = state.entryBanAt(site.latitude, site.longitude) ?: return ""
+        return "\nZakaz wstępu: ${ban.summaryPl()}"
+    }
+
+    private fun showEntryBanDialog(ban: ForestEntryBan) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.entry_ban_dialog_title)
+            .setMessage(ban.detailLines().joinToString("\n"))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun stateConfigLinkRadius(): Int =
@@ -2884,6 +2948,7 @@ private class ResultsAdapter(
     private val isSavedProvider: (String) -> Boolean,
     private val savedMetaProvider: (String) -> Pair<String?, String?>?,
     private val distanceLabelProvider: (RestSiteResult) -> String,
+    private val entryBanLabelProvider: (RestSite) -> String?,
 ) : RecyclerView.Adapter<ResultsAdapter.Holder>() {
     private var items: List<RestSiteResult> = emptyList()
 
@@ -2908,6 +2973,7 @@ private class ResultsAdapter(
         private val title: TextView = itemView.findViewById(R.id.itemTitle)
         private val features: TextView = itemView.findViewById(R.id.itemFeatures)
         private val zanocuj: TextView = itemView.findViewById(R.id.itemZanocuj)
+        private val entryBan: TextView = itemView.findViewById(R.id.itemEntryBan)
         private val road: TextView = itemView.findViewById(R.id.itemRoad)
         private val comment: TextView = itemView.findViewById(R.id.itemComment)
         private val savedCategory: TextView = itemView.findViewById(R.id.itemSavedCategory)
@@ -2922,6 +2988,9 @@ private class ResultsAdapter(
             features.text = item.site.featureSummaryPl()
             zanocuj.text = zanocujLabel(item.site.zanocujStatus, item.site.distanceToZanocujBoundaryMeters)
             zanocuj.isVisible = item.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
+            val banLabel = entryBanLabelProvider(item.site)
+            entryBan.text = banLabel
+            entryBan.isVisible = banLabel != null
             distance.text = distanceLabelProvider(item)
 
             val savedMeta = savedMetaProvider(item.site.id)

@@ -44,6 +44,9 @@ import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.isUsableBrowseViewport
 import pl.navilas.finder.domain.selectBrowseContent
 import pl.navilas.finder.domain.BrowseParkingProximityMode
+import pl.navilas.finder.data.bdl.ForestEntryBanClassifier
+import pl.navilas.finder.data.bdl.ForestEntryBanLoader
+import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
@@ -187,6 +190,10 @@ data class UiState(
     val bdlOverlayFilter: BdlOverlayFilter = BdlOverlayFilter(),
     val bdlOverlayViewport: List<BdlOverlayPoint> = emptyList(),
     val bdlOverlayFullAvailable: Boolean = false,
+    /** Periodic BDL forest-entry bans overlay. Off by default; live query, not offline pack. */
+    val entryBansEnabled: Boolean = false,
+    val entryBanViewport: List<ForestEntryBan> = emptyList(),
+    val entryBanStatus: String? = null,
 ) {
     fun activeListResults(): List<RestSiteResult> = when (listViewMode) {
         ListViewMode.SEARCH -> results
@@ -220,6 +227,13 @@ data class UiState(
 
     fun isMapBrowse(): Boolean = exploreMode == AppExploreMode.MAP_BROWSE
 
+    fun entryBanAt(latitude: Double, longitude: Double): ForestEntryBan? =
+        if (!entryBansEnabled) {
+            null
+        } else {
+            ForestEntryBanClassifier.containing(latitude, longitude, entryBanViewport)
+        }
+
     companion object {
         const val DEFAULT_CORRIDOR_LEFT_KM = 5.0
         const val DEFAULT_CORRIDOR_RIGHT_KM = 10.0
@@ -245,6 +259,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sessionCache = bdlSessionCache,
         config = SearchConfig.DEFAULT,
     )
+    private val forestEntryBanLoader = ForestEntryBanLoader()
     private val roadAnalyzer = RoadProximityAnalyzer(
         overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
         assessmentCache = roadAssessmentCache,
@@ -1231,7 +1246,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         if (!isUsableBrowseViewport(west, south, east, north)) return
         val overlayActive = _state.value.bdlOverlayFilter.isActive
-        if (!_state.value.isMapBrowse() && !overlayActive) return
+        val bansActive = _state.value.entryBansEnabled
+        if (!_state.value.isMapBrowse() && !overlayActive && !bansActive) return
         val padLon = (east - west).coerceAtLeast(0.01) * 0.15
         val padLat = (north - south).coerceAtLeast(0.01) * 0.15
         val envelope = GeoUtils.Envelope(
@@ -1253,6 +1269,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             (north * 100).toInt(),
             zoom.toInt(),
             _state.value.bdlOverlayFilter.hashCode(),
+            _state.value.entryBansEnabled.hashCode(),
         ).joinToString(",")
         if (key == lastBrowseViewportKey) return
         lastBrowseViewportKey = key
@@ -1275,6 +1292,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         } else if (!filter.isActive) {
             _state.update { it.copy(bdlOverlayViewport = emptyList()) }
+        }
+    }
+
+    fun setEntryBansEnabled(enabled: Boolean) {
+        lastBrowseViewportKey = null
+        if (!enabled) {
+            _state.update {
+                it.copy(
+                    entryBansEnabled = false,
+                    entryBanViewport = emptyList(),
+                    entryBanStatus = null,
+                )
+            }
+            return
+        }
+        _state.update {
+            it.copy(
+                entryBansEnabled = true,
+                entryBanStatus = getApplication<Application>().getString(R.string.entry_ban_loading),
+            )
+        }
+        val bounds = lastBrowseBounds
+        if (bounds != null) {
+            scheduleBrowseViewportRefresh(
+                bounds,
+                lastBrowseCenterLat,
+                lastBrowseCenterLon,
+                lastBrowseZoom,
+            )
         }
     }
 
@@ -1326,6 +1372,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 emptyList()
             }
+            val (banSubset, banStatus) = loadEntryBansForViewport(
+                envelope,
+                centerLat,
+                centerLon,
+                zoom,
+            )
             val browseContent = withContext(Dispatchers.Default) {
                 selectBrowseContent(
                     allSites,
@@ -1337,7 +1389,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             if (!_state.value.isMapBrowse()) {
-                _state.update { it.copy(bdlOverlayViewport = overlaySubset) }
+                _state.update {
+                    it.copy(
+                        bdlOverlayViewport = overlaySubset,
+                        entryBanViewport = banSubset,
+                        entryBanStatus = banStatus,
+                    )
+                }
                 return@launch
             }
             _state.update {
@@ -1364,6 +1422,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     zanocujPolygons = zanocujSubset,
                     bdlOverlayViewport = overlaySubset,
+                    entryBanViewport = banSubset,
+                    entryBanStatus = banStatus,
                     browseViewportSites = nextSites,
                     browseMapClusters = nextClusters,
                     mapBrowseRevision = if (viewportChanged) {
@@ -1373,6 +1433,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     },
                 )
             }
+        }
+    }
+
+    private suspend fun loadEntryBansForViewport(
+        envelope: GeoUtils.Envelope,
+        centerLat: Double,
+        centerLon: Double,
+        zoom: Double,
+    ): Pair<List<ForestEntryBan>, String?> {
+        if (!_state.value.entryBansEnabled) return emptyList<ForestEntryBan>() to null
+        val app = getApplication<Application>()
+        if (zoom < ENTRY_BAN_MIN_ZOOM) {
+            return emptyList<ForestEntryBan>() to app.getString(R.string.entry_ban_zoom_hint)
+        }
+        return try {
+            val bans = withContext(Dispatchers.IO) {
+                forestEntryBanLoader.queryViewport(
+                    envelope = envelope,
+                    centerLat = centerLat,
+                    centerLon = centerLon,
+                    limit = ENTRY_BAN_MAX_POLYGONS,
+                )
+            }
+            val status = if (bans.isEmpty()) {
+                app.getString(R.string.entry_ban_empty)
+            } else {
+                app.getString(R.string.entry_ban_count, bans.size)
+            }
+            bans to status
+        } catch (_: Exception) {
+            emptyList<ForestEntryBan>() to app.getString(R.string.entry_ban_offline)
         }
     }
 
@@ -2033,7 +2124,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Track FAB: TRACKING → PAUSED; OFF/PAUSED → TRACKING with the supplied camera frame.
+     * Track FAB: TRACKING → PAUSED; PAUSED → TRACKING with the stored frame;
+     * OFF → TRACKING with the supplied camera frame.
      */
     fun toggleMapTracking(
         focalScreenX: Float,
@@ -2043,7 +2135,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         when (_state.value.mapTrackingMode) {
             MapTrackingMode.TRACKING -> pauseMapTracking()
-            MapTrackingMode.OFF, MapTrackingMode.PAUSED -> startOrResumeMapTracking(
+            MapTrackingMode.PAUSED -> resumeMapTracking()
+            MapTrackingMode.OFF -> startOrResumeMapTracking(
                 focalScreenX = focalScreenX,
                 focalScreenY = focalScreenY,
                 bearing = bearing,
@@ -2097,6 +2190,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     getApplication<Application>().getString(R.string.map_tracking_paused),
                 ),
             )
+        }
+    }
+
+    private fun resumeMapTracking() {
+        mapTrackingGestureHold = false
+        _state.update {
+            it.copy(
+                mapTrackingMode = MapTrackingMode.TRACKING,
+                message = AppMessage.Info(
+                    getApplication<Application>().getString(R.string.map_tracking_active),
+                ),
+            )
+        }
+        ensureMapTrackingUpdates()
+        _state.value.userPosition?.let { pos ->
+            applyTrackingLocation(pos, forceFollow = lastFollowAppliedLat == null)
         }
     }
 
@@ -2798,6 +2907,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         private const val BROWSE_OVERLAY_MIN_ZOOM = 8.5
         private const val BROWSE_OVERLAY_MAX_POINTS = 400
+        private const val ENTRY_BAN_MIN_ZOOM = 8.5
+        private const val ENTRY_BAN_MAX_POLYGONS = 80
         /** Camera follow only after this GPS movement (metres). */
         private const val FOLLOW_MOVE_THRESHOLD_M = 5.0
         private const val MIN_FOLLOW_ZOOM = 3.0
