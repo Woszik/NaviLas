@@ -31,6 +31,7 @@ class MapTrackingAndEntryBanTest {
     @Test
     fun catalog_uses_detail_layers_not_litter_moisture() {
         assertEquals(listOf(6, 7, 2), ForestEntryBanCatalog.QUERY_LAYER_IDS)
+        assertEquals("https://www.bdl.lasy.gov.pl/", pl.navilas.finder.data.bdl.BdlArcGisClient.BDL_REFERER)
         assertEquals(ForestEntryBanReason.OTHER, ForestEntryBanCatalog.reasonFor(6, null))
         assertEquals(ForestEntryBanReason.PESTICIDE, ForestEntryBanCatalog.reasonFor(7, null))
         assertEquals(ForestEntryBanReason.FIRE, ForestEntryBanCatalog.reasonFor(2, "zagrożenie pożarowe"))
@@ -149,6 +150,14 @@ class MapTrackingAndEntryBanTest {
             limit = 80,
         )
         assertEquals(listOf(near.id), hits.map { it.id })
+    }
+
+    @Test
+    fun classifier_containing_uses_bounds_index() {
+        val ban = sampleBan("ban:6:near", 52.70, 23.80)
+        val index = listOf(ForestEntryBanBounds.from(ban)!!)
+        assertEquals(ban.id, ForestEntryBanClassifier.containingInIndex(52.705, 23.805, index)?.id)
+        assertNull(ForestEntryBanClassifier.containingInIndex(50.0, 19.0, index))
     }
 }
 

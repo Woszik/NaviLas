@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-08-31**.
+Ostatnia aktualizacja dokumentacji: **2026-09-01**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.40-nightly | 46 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.41-nightly | 47 |
 | **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.41
+
+Naprawione pobieranie zakazów wstępu (HTTP 403 — brak Referera). Zakazy w **Dane BDL offline** (osobna aktualność 7 dni / 24 h). Czerwone strefy jak Zanocuj; filtr **Poza strefą zakazu wstępu** ukrywa wyniki w poligonie. Pola z wartością domyślną: klik czyści i otwiera klawiaturę, przy polu jest zakres.
 
 ## Zakres Nightly 0.5.40
 

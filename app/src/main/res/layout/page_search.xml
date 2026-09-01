@@ -112,6 +112,8 @@
             android:layout_marginHorizontal="12dp"
             android:layout_marginTop="4dp"
             android:hint="@string/search_radius_custom_hint"
+            app:helperText="@string/search_radius_custom_range"
+            app:helperTextEnabled="true"
             app:layout_constraintEnd_toStartOf="@id/btnApplyCustomRadius"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/radiusSpinner">
@@ -225,7 +227,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:hint="@string/corridor_left_hint">
+                    android:hint="@string/corridor_left_hint"
+                    app:helperText="@string/corridor_side_range"
+                    app:helperTextEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/corridorLeftInput"
@@ -241,7 +245,9 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:hint="@string/corridor_right_hint">
+                    android:hint="@string/corridor_right_hint"
+                    app:helperText="@string/corridor_side_range"
+                    app:helperTextEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/corridorRightInput"
@@ -633,6 +639,15 @@
                 android:textAppearance="?attr/textAppearanceTitleSmall" />
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="4dp"
+                android:text="@string/offline_places_title"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
                 android:id="@+id/offlineScopeLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -753,10 +768,72 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="12dp"
                 android:layout_marginTop="6dp"
-                android:layout_marginBottom="8dp"
                 android:text="@string/offline_hint"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="12dp"
+                android:background="#33445533" />
+
+            <TextView
+                android:id="@+id/offlineBansTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/offline_bans_title"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+            <TextView
+                android:id="@+id/offlineBansFreshness"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="4dp"
+                android:text="@string/offline_bans_freshness"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/offlineBansStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorPrimary"
+                tools:text="Baza offline: 1 wrz 2026 · 1242 obszarów" />
+
+            <LinearLayout
+                android:id="@+id/offlineBansActionRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDownloadEntryBans"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/entry_ban_download" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeleteEntryBans"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/offline_delete"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

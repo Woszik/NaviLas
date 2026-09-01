@@ -146,6 +146,20 @@ class BrowseCarFilterMatcherTest {
     }
 
     @Test
+    fun exclude_entry_ban_removes_sites_in_zone() {
+        val sites = listOf(
+            site("in", 52.0, 21.0, emptySet()),
+            site("out", 52.01, 21.0, emptySet()),
+        )
+        val ids = BrowseCarFilterMatcher.matchingIds(
+            sites,
+            BrowseCarFilter(excludeSitesInEntryBan = true),
+            excludeSiteIds = setOf("in"),
+        )
+        assertEquals(setOf("out"), ids)
+    }
+
+    @Test
     fun summaryPl_lists_active_filters() {
         val empty = BrowseCarFilter()
         assertEquals(BrowseCarFilter.SUMMARY_ALL, empty.summaryPl())

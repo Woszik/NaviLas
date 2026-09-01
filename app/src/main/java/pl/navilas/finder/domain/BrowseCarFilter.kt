@@ -16,6 +16,8 @@ data class BrowseCarFilter(
     /** Used when [parkingMode] is [BrowseParkingProximityMode.MAX_DISTANCE] (1–9999 m). */
     val parkingMaxMeters: Int = DEFAULT_PARKING_MAX_METERS,
     val requireZanocujInZone: Boolean = false,
+    /** Hide rest sites that fall inside a BDL forest-entry ban polygon. */
+    val excludeSitesInEntryBan: Boolean = false,
 ) {
     val isActive: Boolean
         get() = requireLawostoly ||
@@ -24,7 +26,8 @@ data class BrowseCarFilter(
             requireWodaPitna ||
             requireZrodlo ||
             requireParking ||
-            requireZanocujInZone
+            requireZanocujInZone ||
+            excludeSitesInEntryBan
 
     fun parkingRadiusMeters(): Double {
         if (!requireParking) return 0.0
@@ -53,6 +56,7 @@ data class BrowseCarFilter(
                 )
             }
             if (requireZanocujInZone) add("Zanocuj")
+            if (excludeSitesInEntryBan) add("Poza zakazem wstępu")
         }
         return parts.joinToString(" · ").ifBlank { SUMMARY_ALL }
     }

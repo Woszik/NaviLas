@@ -195,8 +195,7 @@ data class UiState(
     val bdlOverlayFilter: BdlOverlayFilter = BdlOverlayFilter(),
     val bdlOverlayViewport: List<BdlOverlayPoint> = emptyList(),
     val bdlOverlayFullAvailable: Boolean = false,
-    /** Periodic BDL forest-entry bans overlay. Off by default; local pack if downloaded, else live. */
-    val entryBansEnabled: Boolean = false,
+    /** Periodic BDL forest-entry bans drawn like Zanocuj; filter hides sites inside them. */
     val entryBanViewport: List<ForestEntryBan> = emptyList(),
     val entryBanStatus: String? = null,
     val entryBanPackDownloadedAt: Long? = null,
@@ -237,11 +236,7 @@ data class UiState(
     fun isMapBrowse(): Boolean = exploreMode == AppExploreMode.MAP_BROWSE
 
     fun entryBanAt(latitude: Double, longitude: Double): ForestEntryBan? =
-        if (!entryBansEnabled) {
-            null
-        } else {
-            ForestEntryBanClassifier.containing(latitude, longitude, entryBanViewport)
-        }
+        ForestEntryBanClassifier.containing(latitude, longitude, entryBanViewport)
 
     companion object {
         const val DEFAULT_CORRIDOR_LEFT_KM = 5.0
@@ -966,7 +961,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         filterResultsJob = viewModelScope.launch {
             if (snapshot.isMapBrowse()) {
                 val matchingIds = withContext(Dispatchers.Default) {
-                    BrowseCarFilterMatcher.matchingIds(snapshot.allSites, filter)
+                    matchingSiteIds(snapshot.allSites, filter)
                 }
                 if (filterGeneration.get() != generation) return@launch
                 _state.update { current ->
@@ -1262,9 +1257,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         zoom: Double,
     ) {
         if (!isUsableBrowseViewport(west, south, east, north)) return
-        val overlayActive = _state.value.bdlOverlayFilter.isActive
-        val bansActive = _state.value.entryBansEnabled
-        if (!_state.value.isMapBrowse() && !overlayActive && !bansActive) return
         val padLon = (east - west).coerceAtLeast(0.01) * 0.15
         val padLat = (north - south).coerceAtLeast(0.01) * 0.15
         val envelope = GeoUtils.Envelope(
@@ -1286,7 +1278,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             (north * 100).toInt(),
             zoom.toInt(),
             _state.value.bdlOverlayFilter.hashCode(),
-            _state.value.entryBansEnabled.hashCode(),
         ).joinToString(",")
         if (key == lastBrowseViewportKey) return
         lastBrowseViewportKey = key
@@ -1309,35 +1300,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         } else if (!filter.isActive) {
             _state.update { it.copy(bdlOverlayViewport = emptyList()) }
-        }
-    }
-
-    fun setEntryBansEnabled(enabled: Boolean) {
-        lastBrowseViewportKey = null
-        if (!enabled) {
-            _state.update {
-                it.copy(
-                    entryBansEnabled = false,
-                    entryBanViewport = emptyList(),
-                    entryBanStatus = null,
-                )
-            }
-            return
-        }
-        _state.update {
-            it.copy(
-                entryBansEnabled = true,
-                entryBanStatus = getApplication<Application>().getString(R.string.entry_ban_loading),
-            )
-        }
-        val bounds = lastBrowseBounds
-        if (bounds != null) {
-            scheduleBrowseViewportRefresh(
-                bounds,
-                lastBrowseCenterLat,
-                lastBrowseCenterLon,
-                lastBrowseZoom,
-            )
         }
     }
 
@@ -1459,7 +1421,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         centerLon: Double,
         zoom: Double,
     ): Pair<List<ForestEntryBan>, String?> {
-        if (!_state.value.entryBansEnabled) return emptyList<ForestEntryBan>() to null
         val app = getApplication<Application>()
         if (zoom < ENTRY_BAN_MIN_ZOOM) {
             return emptyList<ForestEntryBan>() to app.getString(R.string.entry_ban_zoom_hint)
@@ -2106,15 +2067,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 lastBrowseViewportKey = null
-                val bounds = lastBrowseBounds
-                if (bounds != null && _state.value.entryBansEnabled) {
-                    scheduleBrowseViewportRefresh(
-                        bounds,
-                        lastBrowseCenterLat,
-                        lastBrowseCenterLon,
-                        lastBrowseZoom,
-                    )
-                }
+                refreshEntryBanDependentUi()
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -2142,6 +2095,69 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         uiPreferences.entryBanRefreshSnoozeUntilMs =
             System.currentTimeMillis() + ENTRY_BAN_REFRESH_SNOOZE_MS
         _state.update { it.copy(entryBanRefreshOffer = null) }
+    }
+
+    fun deleteEntryBans() {
+        if (entryBanDownloadJob?.isActive == true) return
+        forestEntryBanStore.deleteAll()
+        entryBanIndex = emptyList()
+        uiPreferences.entryBanRefreshSnoozeUntilMs = 0L
+        _state.update {
+            it.copy(
+                entryBanPackDownloadedAt = null,
+                entryBanPackCount = 0,
+                entryBanRefreshOffer = null,
+                message = AppMessage.Info(
+                    getApplication<Application>().getString(R.string.entry_ban_deleted),
+                ),
+            )
+        }
+        refreshEntryBanDependentUi()
+    }
+
+    private fun refreshEntryBanDependentUi() {
+        lastBrowseViewportKey = null
+        val bounds = lastBrowseBounds
+        if (bounds != null) {
+            scheduleBrowseViewportRefresh(
+                bounds,
+                lastBrowseCenterLat,
+                lastBrowseCenterLon,
+                lastBrowseZoom,
+            )
+        }
+        if (_state.value.browseCarFilter.excludeSitesInEntryBan) {
+            setBrowseCarFilter(_state.value.browseCarFilter)
+        }
+    }
+
+    private fun matchingSiteIds(sites: List<RestSite>, filter: BrowseCarFilter): Set<String>? {
+        val banned = if (filter.excludeSitesInEntryBan) {
+            siteIdsInsideEntryBans(sites)
+        } else {
+            emptySet()
+        }
+        return BrowseCarFilterMatcher.matchingIds(sites, filter, banned)
+    }
+
+    private fun siteIdsInsideEntryBans(sites: List<RestSite>): Set<String> {
+        val index = entryBanIndex
+        if (index.isNotEmpty()) {
+            return sites.asSequence()
+                .filter {
+                    ForestEntryBanClassifier.containingInIndex(it.latitude, it.longitude, index) != null
+                }
+                .map { it.id }
+                .toHashSet()
+        }
+        val viewport = _state.value.entryBanViewport
+        if (viewport.isEmpty()) return emptySet()
+        return sites.asSequence()
+            .filter {
+                ForestEntryBanClassifier.containing(it.latitude, it.longitude, viewport) != null
+            }
+            .map { it.id }
+            .toHashSet()
     }
 
     private fun maybeOfferEntryBanRefresh() {
@@ -3001,7 +3017,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         corridorLine: List<LatLon> = emptyList(),
     ): List<RestSiteResult> {
         if (position == null && !_state.value.isMapBrowse()) return emptyList()
-        val matchingIds = BrowseCarFilterMatcher.matchingIds(sites, amenityFilter)
+        val matchingIds = matchingSiteIds(sites, amenityFilter)
         val filtered = if (matchingIds == null) {
             sites
         } else {

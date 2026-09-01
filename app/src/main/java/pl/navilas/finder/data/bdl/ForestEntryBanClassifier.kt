@@ -16,6 +16,21 @@ object ForestEntryBanClassifier {
         }
     }
 
+    fun containingInIndex(
+        latitude: Double,
+        longitude: Double,
+        index: List<ForestEntryBanBounds>,
+    ): ForestEntryBan? {
+        if (!latitude.isFinite() || !longitude.isFinite()) return null
+        return index.firstOrNull { bounds ->
+            latitude >= bounds.minLat &&
+                latitude <= bounds.maxLat &&
+                longitude >= bounds.minLon &&
+                longitude <= bounds.maxLon &&
+                GeoUtils.pointInPolygonRings(latitude, longitude, bounds.ban.rings)
+        }?.ban
+    }
+
     fun inEnvelope(
         index: List<ForestEntryBanBounds>,
         envelope: GeoUtils.Envelope,

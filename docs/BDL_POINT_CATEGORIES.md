@@ -84,15 +84,17 @@ Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie du
 
 Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników zostaje przy zaznaczeniu. Overlay rysowany tylko w bbox widoku (min. zoom ~8.5, cap 400). Poligony/szlaki — poza zakresem.
 
-### Overlay „Zakazy wstępu” (Nightly 0.5.40)
+### Zakazy wstępu (Nightly 0.5.41)
 
-**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu`. Domyślnie wyłączone; checkbox przy Obiektach BDL / Filtrach. **Osobna baza offline** (nie paczka BDL miejsc): przycisk „Pobierz zakazy offline” zapisuje uproszczone poligony całej Polski w `filesDir/entry_bans/bans.json`. Gdy baza jest na urządzeniu, mapa filtruje lokalny indeks (działa bez sieci). Bez bazy — jak wcześniej, zapytanie **bbox widoku** (HTTPS).
+**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu` (nginx wymaga `Referer` portalu BDL). Czerwone poligony rysowane jak Zanocuj (widok mapy). W **Filtrach miejsc** checkbox **Poza strefą zakazu wstępu** ukrywa wyniki leżące w poligonie.
 
-Aktualność jest **krótsza niż BDL miejsc**: po **7 dniach** monit „Aktualizacja zakazów wstępu”; **Później** / zamknięcie odkłada pytanie o **24 godziny**. Monit tylko gdy baza już istnieje i jest przeterminowana; nie nachodzi na dialog BDL ani aktualizacji APK.
+Pobieranie jest w **Dane BDL offline** (osobna podsekcja, nie paczka miejsc): `filesDir/entry_bans/bans.json`. Gdy baza jest na urządzeniu, mapa i filtr działają bez sieci. Bez bazy — zapytanie bbox widoku.
+
+Aktualność **krótsza niż miejsca**: po **7 dniach** monit; **Później** odkłada o **24 godziny**. Miejsca BDL: 30 dni / 7 dni. Dialogi nie nachodzą na siebie ani na aktualizację APK.
 
 | UI | Źródło | Rysunek |
 |----|--------|---------|
-| Zakazy wstępu BDL | warstwy 6 / 7 / 2 (inne przyczyny, zabiegi SOR, pożar — LOD szczegółowy) | czerwona plama + obrys |
+| Zakazy wstępu | warstwy 6 / 7 / 2 (inne przyczyny, zabiegi SOR, pożar — LOD szczegółowy) | czerwona plama + obrys |
 
 Klik obszaru → dialog (przyczyna, nadleśnictwo, leśnictwo, oddział, data od/do). Miejsce w poligonie: znacznik na karcie i liście. Warstwa 0 (wilgotność ściółki) **nie** jest zakazem. Informacja pomocnicza — obowiązują oficjalne źródła LP / BDL.
 

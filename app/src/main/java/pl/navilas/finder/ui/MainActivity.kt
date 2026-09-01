@@ -132,7 +132,6 @@ class MainActivity : AppCompatActivity() {
     private var syncingBdlOverlayUi = false
     private var syncingExploreModeUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
-    private var openMapFilterBdlControls: BdlOverlayControlsBinding? = null
     private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
     private var syncingListUi = false
@@ -657,18 +656,6 @@ class MainActivity : AppCompatActivity() {
         controls.overlayGroupWater.setOnCheckedChangeListener(listener)
         controls.overlayGroupPlay.setOnCheckedChangeListener(listener)
         controls.overlayGroupLodging.setOnCheckedChangeListener(listener)
-        controls.overlayEntryBans.setOnCheckedChangeListener { _, checked ->
-            if (!syncingBdlOverlayUi) {
-                viewModel.setEntryBansEnabled(checked)
-                bindBdlOverlayUi(viewModel.state.value)
-                onChanged?.invoke()
-            }
-        }
-        controls.btnDownloadEntryBans.setOnClickListener {
-            viewModel.downloadEntryBans()
-            bindEntryBanPackUi(controls, viewModel.state.value)
-            onChanged?.invoke()
-        }
     }
 
     private fun readBdlOverlayFilter(controls: BdlOverlayControlsBinding): BdlOverlayFilter {
@@ -701,35 +688,7 @@ class MainActivity : AppCompatActivity() {
         controls.overlayGroupPlay.isEnabled = fullAvailable
         controls.overlayGroupLodging.isEnabled = fullAvailable
         controls.overlayFullHint.isVisible = !fullAvailable
-        controls.overlayEntryBans.isChecked = viewModel.state.value.entryBansEnabled
-        bindEntryBanPackUi(controls, viewModel.state.value)
         syncingBdlOverlayUi = false
-    }
-
-    private fun bindEntryBanPackUi(controls: BdlOverlayControlsBinding, state: UiState) {
-        val downloadedAt = state.entryBanPackDownloadedAt
-        val status = when {
-            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
-            downloadedAt == null -> getString(R.string.entry_ban_pack_none)
-            System.currentTimeMillis() - downloadedAt >= ENTRY_BAN_REFRESH_STALE_MS ->
-                getString(
-                    R.string.entry_ban_pack_stale,
-                    formatOfflineUpdatedAt(downloadedAt),
-                    state.entryBanPackCount,
-                )
-            else -> getString(
-                R.string.entry_ban_pack_ready,
-                formatOfflineUpdatedAt(downloadedAt),
-                state.entryBanPackCount,
-            )
-        }
-        controls.overlayEntryBanPackStatus.text = status
-        controls.btnDownloadEntryBans.isEnabled = !state.entryBanDownloading
-        controls.btnDownloadEntryBans.text = when {
-            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
-            downloadedAt != null -> getString(R.string.entry_ban_update)
-            else -> getString(R.string.entry_ban_download)
-        }
     }
 
     private fun bindBdlOverlayUi(state: UiState) {
@@ -744,18 +703,10 @@ class MainActivity : AppCompatActivity() {
                 state.bdlOverlayFullAvailable,
             )
         }
-        openMapFilterBdlControls?.let { bindEntryBanPackUi(it, state) }
     }
 
-    private fun overlaySectionSummary(state: UiState): String {
-        val overlay = state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
-        val bans = if (state.entryBansEnabled) {
-            state.entryBanStatus ?: getString(R.string.entry_ban_toggle)
-        } else {
-            null
-        }
-        return listOfNotNull(overlay, bans).joinToString(" · ")
-    }
+    private fun overlaySectionSummary(state: UiState): String =
+        state.bdlOverlayFilter.summaryPl(state.bdlOverlayFullAvailable)
 
     private fun setupFilterControlsListeners(
         controls: BrowseCarFilterControlsBinding,
@@ -774,6 +725,7 @@ class MainActivity : AppCompatActivity() {
         controls.browseFilterWodaPitna.setOnCheckedChangeListener(checkboxListener)
         controls.browseFilterZrodlo.setOnCheckedChangeListener(checkboxListener)
         controls.browseFilterZanocuj.setOnCheckedChangeListener(checkboxListener)
+        controls.browseFilterExcludeEntryBan.setOnCheckedChangeListener(checkboxListener)
 
         controls.browseFilterParking.setOnCheckedChangeListener { _, checked ->
             if (!syncingBrowseCarFilterUi) {
@@ -790,24 +742,13 @@ class MainActivity : AppCompatActivity() {
             )
             notifyDraftChanged()
         }
-        controls.browseParkingMaxMeters.setOnFocusChangeListener { _, hasFocus ->
-            if (syncingBrowseCarFilterUi) return@setOnFocusChangeListener
-            if (hasFocus) {
-                controls.browseParkingMaxMeters.setText("")
-                controls.browseParkingMaxMeters.post {
-                    val imm = getSystemService(InputMethodManager::class.java)
-                    imm?.showSoftInput(controls.browseParkingMaxMeters, InputMethodManager.SHOW_IMPLICIT)
-                }
-            } else {
-                val text = controls.browseParkingMaxMeters.text?.toString()?.trim()
-                if (text.isNullOrEmpty()) {
-                    controls.browseParkingMaxMeters.setText(
-                        BrowseCarFilter.DEFAULT_PARKING_MAX_METERS.toString(),
-                    )
-                }
-                notifyDraftChanged()
-            }
-        }
+        controls.browseParkingMaxMeters.setOnFocusChangeListener(null)
+        installClearDefaultOnFocus(
+            field = controls.browseParkingMaxMeters,
+            defaultValue = { BrowseCarFilter.DEFAULT_PARKING_MAX_METERS.toString() },
+            isSyncing = { syncingBrowseCarFilterUi },
+            onIdle = { notifyDraftChanged() },
+        )
         if (onDraftChanged != null) {
             controls.browseParkingMaxMeters.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -863,6 +804,7 @@ class MainActivity : AppCompatActivity() {
             parkingMode = parkingMode,
             parkingMaxMeters = meters,
             requireZanocujInZone = controls.browseFilterZanocuj.isChecked,
+            excludeSitesInEntryBan = controls.browseFilterExcludeEntryBan.isChecked,
         )
     }
 
@@ -878,6 +820,7 @@ class MainActivity : AppCompatActivity() {
         controls.browseFilterZrodlo.isChecked = filter.requireZrodlo
         controls.browseFilterParking.isChecked = filter.requireParking
         controls.browseFilterZanocuj.isChecked = filter.requireZanocujInZone
+        controls.browseFilterExcludeEntryBan.isChecked = filter.excludeSitesInEntryBan
         when (filter.parkingMode) {
             BrowseParkingProximityMode.NEAR_POINT ->
                 controls.browseParkingProximityToggle.check(R.id.btnParkingNearPoint)
@@ -885,7 +828,9 @@ class MainActivity : AppCompatActivity() {
                 controls.browseParkingProximityToggle.check(R.id.btnParkingMaxDistance)
         }
         val metersText = filter.parkingMaxMeters.toString()
-        if (controls.browseParkingMaxMeters.text?.toString() != metersText) {
+        if (!controls.browseParkingMaxMeters.hasFocus() &&
+            controls.browseParkingMaxMeters.text?.toString() != metersText
+        ) {
             controls.browseParkingMaxMeters.setText(metersText)
         }
         updateBrowseParkingSubControlsEnabled(controls, filter.requireParking)
@@ -1005,11 +950,9 @@ class MainActivity : AppCompatActivity() {
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(sheetBinding.root)
         mapFilterBottomSheet = dialog
-        openMapFilterBdlControls = sheetBinding.bdlOverlaySheetControls
         dialog.setOnDismissListener {
             if (mapFilterBottomSheet === dialog) {
                 mapFilterBottomSheet = null
-                openMapFilterBdlControls = null
             }
         }
         dialog.show()
@@ -1088,6 +1031,16 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
+        installClearDefaultOnFocus(
+            field = searchBinding.corridorLeftInput,
+            defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_LEFT_KM) },
+            isSyncing = { syncingCorridorUi },
+        )
+        installClearDefaultOnFocus(
+            field = searchBinding.corridorRightInput,
+            defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_RIGHT_KM) },
+            isSyncing = { syncingCorridorUi },
+        )
     }
 
     private fun setupOfflineSection() {
@@ -1117,6 +1070,15 @@ class MainActivity : AppCompatActivity() {
                 .setTitle(R.string.offline_delete)
                 .setMessage(R.string.offline_delete_confirm)
                 .setPositiveButton(android.R.string.ok) { _, _ -> viewModel.deleteOfflineData() }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+        searchBinding.btnDownloadEntryBans.setOnClickListener { viewModel.downloadEntryBans() }
+        searchBinding.btnDeleteEntryBans.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.offline_delete)
+                .setMessage(R.string.entry_ban_delete_confirm)
+                .setPositiveButton(android.R.string.ok) { _, _ -> viewModel.deleteEntryBans() }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
@@ -1389,6 +1351,13 @@ class MainActivity : AppCompatActivity() {
             }
             updateSearchButtonLabel(applied, lineMode = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE)
         }
+        installClearDefaultOnFocus(
+            field = searchBinding.customRadiusInput,
+            defaultValue = {
+                viewModel.state.value.searchConfig.searchRadiusKm.toInt().toString()
+            },
+            isSyncing = { false },
+        )
     }
 
     private fun setCustomRadiusUiVisible(visible: Boolean) {
@@ -1602,7 +1571,6 @@ class MainActivity : AppCompatActivity() {
                     state.browseCarFilter.hashCode() xor
                     state.bdlOverlayFilter.hashCode() xor
                     state.bdlOverlayViewport.size xor
-                    state.entryBansEnabled.hashCode() xor
                     state.entryBanViewport.size xor
                     state.zanocujPolygons.size xor
                     state.zanocujPolygons.fold(0) { acc, p -> acc * 31 + p.id.hashCode() }
@@ -1631,7 +1599,6 @@ class MainActivity : AppCompatActivity() {
                     state.browseCarFilter.hashCode() xor
                     state.bdlOverlayFilter.hashCode() xor
                     state.bdlOverlayViewport.size xor
-                    state.entryBansEnabled.hashCode() xor
                     state.entryBanViewport.size xor
                     (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
                     state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
@@ -2147,14 +2114,12 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
-        if (state.entryBansEnabled) {
-            row(
-                getString(R.string.entry_ban_toggle),
-                items.map { item ->
-                    state.entryBanAt(item.site.latitude, item.site.longitude)?.summaryPl() ?: "—"
-                },
-            )
-        }
+        row(
+            getString(R.string.entry_ban_toggle),
+            items.map { item ->
+                state.entryBanAt(item.site.latitude, item.site.longitude)?.summaryPl() ?: "—"
+            },
+        )
         if (state.profile == TravelProfile.MOTORCYCLE) {
             row(
                 getString(R.string.compare_moto),
@@ -2557,10 +2522,14 @@ class MainActivity : AppCompatActivity() {
             syncingCorridorUi = true
             val leftText = formatKm(state.corridorLeftKm)
             val rightText = formatKm(state.corridorRightKm)
-            if (searchBinding.corridorLeftInput.text?.toString() != leftText) {
+            if (!searchBinding.corridorLeftInput.hasFocus() &&
+                searchBinding.corridorLeftInput.text?.toString() != leftText
+            ) {
                 searchBinding.corridorLeftInput.setText(leftText)
             }
-            if (searchBinding.corridorRightInput.text?.toString() != rightText) {
+            if (!searchBinding.corridorRightInput.hasFocus() &&
+                searchBinding.corridorRightInput.text?.toString() != rightText
+            ) {
                 searchBinding.corridorRightInput.setText(rightText)
             }
             syncingCorridorUi = false
@@ -2630,6 +2599,33 @@ class MainActivity : AppCompatActivity() {
     private fun formatKm(value: Double): String =
         if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
+    /**
+     * Fields with a pre-filled default: tap clears the value and opens the keyboard.
+     * Empty blur restores the default. Range is shown next to the field in the layout.
+     */
+    private fun installClearDefaultOnFocus(
+        field: EditText,
+        defaultValue: () -> String,
+        isSyncing: () -> Boolean,
+        onIdle: () -> Unit = {},
+    ) {
+        field.setOnFocusChangeListener { _, hasFocus ->
+            if (isSyncing()) return@setOnFocusChangeListener
+            if (hasFocus) {
+                field.setText("")
+                field.post {
+                    getSystemService(InputMethodManager::class.java)
+                        ?.showSoftInput(field, InputMethodManager.SHOW_IMPLICIT)
+                }
+            } else {
+                if (field.text?.toString()?.trim().isNullOrEmpty()) {
+                    field.setText(defaultValue())
+                }
+                onIdle()
+            }
+        }
+    }
+
     private fun showCorridorVertexMenu(index: Int) {
         val options = arrayOf(
             getString(R.string.corridor_vertex_move),
@@ -2657,7 +2653,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindOfflineUi(state: UiState) {
-        if (state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING) {
+        if (state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING || state.entryBanDownloading) {
             offlineSectionExpanded = true
         }
         updateOfflinePanelVisibility()
@@ -2732,6 +2728,38 @@ class MainActivity : AppCompatActivity() {
         searchBinding.btnDeleteOffline.isEnabled = !downloading
         searchBinding.offlineScopeGroup.isEnabled = !downloading
         searchBinding.offlineZanocujGroup.isEnabled = !downloading
+        bindEntryBanOfflineUi(state)
+    }
+
+    private fun bindEntryBanOfflineUi(state: UiState) {
+        if (state.entryBanDownloading) {
+            offlineSectionExpanded = true
+            updateOfflinePanelVisibility()
+        }
+        val downloadedAt = state.entryBanPackDownloadedAt
+        searchBinding.offlineBansStatus.text = when {
+            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
+            downloadedAt == null -> getString(R.string.entry_ban_pack_none)
+            System.currentTimeMillis() - downloadedAt >= ENTRY_BAN_REFRESH_STALE_MS ->
+                getString(
+                    R.string.entry_ban_pack_stale,
+                    formatOfflineUpdatedAt(downloadedAt),
+                    state.entryBanPackCount,
+                )
+            else -> getString(
+                R.string.entry_ban_pack_ready,
+                formatOfflineUpdatedAt(downloadedAt),
+                state.entryBanPackCount,
+            )
+        }
+        searchBinding.btnDownloadEntryBans.isEnabled = !state.entryBanDownloading
+        searchBinding.btnDownloadEntryBans.text = when {
+            state.entryBanDownloading -> getString(R.string.entry_ban_downloading)
+            downloadedAt != null -> getString(R.string.entry_ban_update)
+            else -> getString(R.string.entry_ban_download)
+        }
+        searchBinding.btnDeleteEntryBans.isVisible = downloadedAt != null
+        searchBinding.btnDeleteEntryBans.isEnabled = !state.entryBanDownloading
     }
 
     private fun formatOfflineUpdatedAt(epochMs: Long): String {

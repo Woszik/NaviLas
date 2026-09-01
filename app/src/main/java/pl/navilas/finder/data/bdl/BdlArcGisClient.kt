@@ -99,6 +99,8 @@ class BdlArcGisClient(
             .url(url)
             .header("Accept", "application/json")
             .header("User-Agent", "NaviLas/${pl.navilas.finder.BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)")
+            // Mapa zakazów wstępu (nginx) odrzuca zapytania bez Referera (HTTP 403).
+            .header("Referer", BDL_REFERER)
             .get()
             .build()
         client.newCall(request).execute().use { response ->
@@ -121,6 +123,7 @@ class BdlArcGisClient(
     }
 
     companion object {
+        const val BDL_REFERER = "https://www.bdl.lasy.gov.pl/"
         const val DOWNLOAD_PAGE_SIZE = 1000
 
         /** Szlaki (35) and ścieżki dydaktyczne (34) — full geometry OOMs on mobile (~280 MB layer 35). */

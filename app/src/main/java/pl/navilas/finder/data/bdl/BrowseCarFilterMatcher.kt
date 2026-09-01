@@ -18,8 +18,13 @@ object BrowseCarFilterMatcher {
 
     /**
      * @return `null` when filter inactive (show all); otherwise ids of matching sites.
+     * @param excludeSiteIds sites inside a forest-entry ban, used when [BrowseCarFilter.excludeSitesInEntryBan].
      */
-    fun matchingIds(sites: List<RestSite>, filter: BrowseCarFilter): Set<String>? {
+    fun matchingIds(
+        sites: List<RestSite>,
+        filter: BrowseCarFilter,
+        excludeSiteIds: Set<String> = emptySet(),
+    ): Set<String>? {
         if (!filter.isActive) return null
         if (sites.isEmpty()) return emptySet()
 
@@ -37,6 +42,9 @@ object BrowseCarFilterMatcher {
         for (site in sites) {
             if (!site.latitude.isFinite() || !site.longitude.isFinite()) continue
             if (filter.requireZanocujInZone && site.zanocujStatus != ZanocujStatus.IN_ZONE) {
+                continue
+            }
+            if (filter.excludeSitesInEntryBan && site.id in excludeSiteIds) {
                 continue
             }
             val nearbyAmenity = nearby(site, byCell, amenityRadius)

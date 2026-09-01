@@ -58,36 +58,4 @@
         android:paddingTop="4dp"
         android:text="@string/bdl_overlay_legend"
         android:textAppearance="?attr/textAppearanceBodySmall" />
-
-    <CheckBox
-        android:id="@+id/overlayEntryBans"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/entry_ban_toggle" />
-
-    <TextView
-        android:id="@+id/overlayEntryBanHint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="4dp"
-        android:paddingTop="2dp"
-        android:text="@string/entry_ban_hint"
-        android:textAppearance="?attr/textAppearanceBodySmall" />
-
-    <TextView
-        android:id="@+id/overlayEntryBanPackStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="4dp"
-        android:paddingTop="4dp"
-        android:textAppearance="?attr/textAppearanceBodySmall" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnDownloadEntryBans"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/entry_ban_download" />
 </LinearLayout>

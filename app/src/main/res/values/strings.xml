@@ -6,6 +6,7 @@
     <string name="search_action">Znajdź</string>
     <string name="search_radius_label">Promień wyszukiwania</string>
     <string name="search_radius_custom_hint">Własny (1–100 km)</string>
+    <string name="search_radius_custom_range">Zakres: 1–100 km</string>
     <string name="search_radius_apply">OK</string>
     <string name="search_radius_custom_option">Własny…</string>
     <string name="search_with_radius">Znajdź w promieniu %1$d km</string>
@@ -66,6 +67,7 @@
     <string name="corridor_hint">Klikaj mapę (min. 2 punkty). Lewo/prawo = szerokość korytarza. Skróty poniżej budują linię 2-punktową.</string>
     <string name="corridor_left_hint">Lewo (km)</string>
     <string name="corridor_right_hint">Prawo (km)</string>
+    <string name="corridor_side_range">Zakres: 0–50 km</string>
     <string name="corridor_clear">Wyczyść linię</string>
     <string name="corridor_status">Punkty linii: %1$d · L %2$s / P %3$s km</string>
     <string name="corridor_gps_map">Linia: GPS → punkt na mapie</string>
@@ -98,7 +100,7 @@
     <string name="bdl_overlay_full_hint">Woda, zabawa i nocleg wymagają pakietu „pełna baza BDL”.</string>
     <string name="bdl_overlay_legend">Kolory: niebieski widok · brąz inne · turkus woda · pomarańcz zabawa · burgund nocleg</string>
     <string name="entry_ban_toggle">Zakazy wstępu BDL</string>
-    <string name="entry_ban_hint">Okresowe zakazy wstępu do lasu (BDL). Można pobrać całą Polskę do użycia offline. Domyślnie wyłączone. Klik na czerwony obszar pokazuje nadleśnictwo i datę.</string>
+    <string name="entry_ban_hint">Okresowe zakazy wstępu do lasu (BDL). Pobierz w „Dane BDL offline”. Domyślnie widać czerwone strefy na mapie; filtr miejsc może je wyłączyć z wyników.</string>
     <string name="entry_ban_loading">Zakazy wstępu: wczytuję…</string>
     <string name="entry_ban_count">Zakazy wstępu: %1$d obszarów</string>
     <string name="entry_ban_count_pack">Zakazy wstępu: %1$d w widoku · baza z %2$s</string>
@@ -132,7 +134,9 @@
     <string name="browse_parking_near_point">Przy punkcie</string>
     <string name="browse_parking_max_distance">Oddalony o max.</string>
     <string name="browse_parking_meters_hint">m</string>
+    <string name="browse_parking_meters_range">Zakres: 1–9999 m</string>
     <string name="browse_filter_zanocuj">W strefie „Zanocuj w lesie”</string>
+    <string name="browse_filter_exclude_entry_ban">Poza strefą zakazu wstępu</string>
     <string name="map_browse_reload">Odśwież mapę</string>
     <string name="map_browse_switched">Przeglądanie mapy — wymagane dane BDL offline.</string>
     <string name="map_browse_moto_hint">W przeglądaniu ocena dróg OSM dotyczy zaznaczonych punktów.</string>
@@ -159,6 +163,7 @@
     <string name="offline_toggle_collapse">Dane BDL offline ▲</string>
 
     <string name="offline_section_title">Dane BDL offline</string>
+    <string name="offline_places_title">Miejsca i Zanocuj — przypomnienie po 30 dniach, „Później” na 7 dni.</string>
     <string name="offline_scope_label">Zakres pobierania:</string>
     <string name="offline_scope_navila">NaviLas — 6 warstw wyszukiwania i przeglądania (~28 tys. obiektów)</string>
     <string name="offline_scope_full">Pełna baza „Czas w Las” (~43 tys. obiektów; szlaki uproszczone)</string>
@@ -175,7 +180,11 @@
     <string name="offline_updated_unknown">nieznana</string>
     <string name="offline_status_downloading">Pobieranie… %1$s</string>
     <string name="offline_status_error">Błąd pobierania: %1$s</string>
-    <string name="offline_hint">Zmiana zakresu lub jakości stref wymaga ponownego pobrania. Dotychczasowa baza działa do skutku aktualizacji. Wyszukiwanie LP działa offline; analiza dróg OSM wymaga internetu.</string>
+    <string name="offline_hint">Miejsca i Zanocuj: przypomnienie po 30 dniach; „Później” odkłada pytanie o 7 dni. Zmiana zakresu lub jakości stref wymaga ponownego pobrania. Wyszukiwanie LP działa offline; analiza dróg OSM wymaga internetu.</string>
+    <string name="offline_bans_title">Zakazy wstępu</string>
+    <string name="offline_bans_freshness">Osobna baza (inny MapServer). Przypomnienie po 7 dniach; „Później” odkłada pytanie o 24 godziny.</string>
+    <string name="entry_ban_deleted">Usunięto bazę zakazów wstępu.</string>
+    <string name="entry_ban_delete_confirm">Usunąć pobrane zakazy wstępu z telefonu?</string>
     <string name="offline_pending_mismatch">Wybrane ustawienia różnią się od pobranej bazy — naciśnij „Pobierz ponownie”, aby zastosować.</string>
     <string name="offline_refresh_title">Aktualizacja danych BDL</string>
     <string name="offline_refresh_body">Baza offline jest starsza niż 30 dni.\n\nOstatnie pobranie: %1$s\nZakres: %2$s\nStrefy: %3$s</string>

@@ -8,6 +8,7 @@ import pl.navilas.finder.domain.ForestEntryBanReason
  *
  * Scale-dependent pairs (coarse / detail) duplicate the same bans; we query the detail LOD only.
  * Layer 0 (litter moisture) is fire-weather context, not a legal ban.
+ * This MapServer requires HTTP Referer (`BdlArcGisClient.BDL_REFERER`); nginx returns 403 without it.
  */
 object ForestEntryBanCatalog {
     const val BASE_URL =
