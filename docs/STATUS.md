@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-01**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.42 | 49 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.43-nightly | 50 |
 | **Beta** | GitHub Releases | 0.5.42 | 49 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.42** na urządzeniu testowym: APK z [NaviLas-releases v0.5.42](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.42). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.43
+
+Na mapie arkusz **Filtry** ma belki **Tryb** (przeglądanie / wyszukiwanie) i **Profil** (samochód / motocykl) — ten sam wybór co na ekranie 1. Zmiana trybu z mapy zostawia Cię na mapie.
 
 ## Zakres Beta 0.5.42
 

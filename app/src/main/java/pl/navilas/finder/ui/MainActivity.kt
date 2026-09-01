@@ -131,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     private var browseOverlayExpanded = false
     private var syncingBdlOverlayUi = false
     private var syncingExploreModeUi = false
+    private var syncingProfileUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
     private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
@@ -536,7 +537,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupSearchPage() {
         setupRadiusSpinner()
         searchBinding.profileToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
+            if (!isChecked || syncingProfileUi) return@addOnButtonCheckedListener
             val profile = when (checkedId) {
                 R.id.btnProfileCar -> TravelProfile.CAR
                 R.id.btnProfileMoto -> TravelProfile.MOTORCYCLE
@@ -885,8 +886,58 @@ class MainActivity : AppCompatActivity() {
         mapFilterBottomSheet?.dismiss()
         val sheetBinding = BottomSheetMapFiltersBinding.inflate(layoutInflater)
         val filter = viewModel.state.value.browseCarFilter
+        var exploreExpanded = false
+        var profileExpanded = false
         var placeExpanded = false
         var overlayExpanded = false
+        var syncingSheetToggles = false
+
+        fun refreshExploreChrome() {
+            val state = viewModel.state.value
+            val chevron = if (exploreExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetExploreMode.text =
+                getString(R.string.map_filter_explore_toggle) + chevron
+            sheetBinding.sheetExploreModeSummary.text = if (state.isMapBrowse()) {
+                getString(R.string.explore_mode_browse)
+            } else {
+                getString(R.string.explore_mode_search)
+            }
+            sheetBinding.sheetExploreModeSummary.isVisible = !exploreExpanded
+            sheetBinding.sheetExploreModePanel.isVisible = exploreExpanded
+        }
+
+        fun refreshProfileChrome() {
+            val state = viewModel.state.value
+            val chevron = if (profileExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetProfile.text =
+                getString(R.string.map_filter_profile_toggle) + chevron
+            sheetBinding.sheetProfileSummary.text = when (state.profile) {
+                TravelProfile.CAR -> getString(R.string.profile_car_summary)
+                TravelProfile.MOTORCYCLE -> getString(R.string.profile_moto_summary)
+            }
+            sheetBinding.sheetProfileSummary.isVisible = !profileExpanded
+            sheetBinding.sheetProfilePanel.isVisible = profileExpanded
+        }
+
+        fun bindSheetToggles() {
+            val state = viewModel.state.value
+            syncingSheetToggles = true
+            sheetBinding.sheetExploreModeToggle.check(
+                if (state.isMapBrowse()) {
+                    R.id.btnSheetExploreBrowse
+                } else {
+                    R.id.btnSheetExploreSearch
+                },
+            )
+            sheetBinding.sheetProfileToggle.check(
+                if (state.profile == TravelProfile.MOTORCYCLE) {
+                    R.id.btnSheetProfileMoto
+                } else {
+                    R.id.btnSheetProfileCar
+                },
+            )
+            syncingSheetToggles = false
+        }
 
         fun refreshPlaceChrome() {
             val chevron = if (placeExpanded) " ▲" else " ▼"
@@ -912,6 +963,39 @@ class MainActivity : AppCompatActivity() {
                     state.bdlOverlayFullAvailable,
                 )
             }
+        }
+
+        bindSheetToggles()
+        refreshExploreChrome()
+        refreshProfileChrome()
+        sheetBinding.btnToggleSheetExploreMode.setOnClickListener {
+            exploreExpanded = !exploreExpanded
+            if (exploreExpanded) bindSheetToggles()
+            refreshExploreChrome()
+        }
+        sheetBinding.sheetExploreModeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || syncingSheetToggles) return@addOnButtonCheckedListener
+            val mode = when (checkedId) {
+                R.id.btnSheetExploreBrowse -> AppExploreMode.MAP_BROWSE
+                else -> AppExploreMode.SEARCH
+            }
+            viewModel.setExploreMode(mode, stayOnPage = true)
+            refreshExploreChrome()
+        }
+        sheetBinding.btnToggleSheetProfile.setOnClickListener {
+            profileExpanded = !profileExpanded
+            if (profileExpanded) bindSheetToggles()
+            refreshProfileChrome()
+        }
+        sheetBinding.sheetProfileToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked || syncingSheetToggles) return@addOnButtonCheckedListener
+            val profile = when (checkedId) {
+                R.id.btnSheetProfileCar -> TravelProfile.CAR
+                R.id.btnSheetProfileMoto -> TravelProfile.MOTORCYCLE
+                else -> return@addOnButtonCheckedListener
+            }
+            viewModel.setProfile(profile)
+            refreshProfileChrome()
         }
 
         syncBrowseCarFilterDraftTo(sheetBinding.mapFilterControls, filter)
@@ -1502,6 +1586,15 @@ class MainActivity : AppCompatActivity() {
             if (state.isMapBrowse()) R.id.btnExploreBrowse else R.id.btnExploreSearch,
         )
         syncingExploreModeUi = false
+        syncingProfileUi = true
+        searchBinding.profileToggle.check(
+            if (state.profile == TravelProfile.MOTORCYCLE) {
+                R.id.btnProfileMoto
+            } else {
+                R.id.btnProfileCar
+            },
+        )
+        syncingProfileUi = false
         if (state.isMapBrowse()) {
             applyMapBrowseSearchChrome(state)
         } else {

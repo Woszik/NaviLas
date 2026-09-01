@@ -1,88 +1,149 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="24dp">
-
-    <TextView
-        android:id="@+id/mapFilterSheetTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/map_filter_sheet_title"
-        android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnToggleSheetPlaceFilter"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/browse_car_filter_toggle" />
-
-    <TextView
-        android:id="@+id/sheetPlaceFilterSummary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:paddingHorizontal="4dp"
-        android:textAppearance="?attr/textAppearanceBodySmall"
-        tools:text="Wszystkie miejsca" />
+    android:fillViewport="true">
 
     <LinearLayout
-        android:id="@+id/sheetPlaceFilterPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
         android:orientation="vertical"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <include
-            android:id="@+id/mapFilterControls"
-            layout="@layout/browse_car_filter_controls"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnApplyMapFilter"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/browse_car_filter_apply" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/sheetBdlOverlaySection"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnToggleSheetBdlOverlay"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/bdl_overlay_toggle" />
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp">
 
         <TextView
-            android:id="@+id/sheetBdlOverlaySummary"
+            android:id="@+id/mapFilterSheetTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/map_filter_sheet_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleSheetExploreMode"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/map_filter_explore_toggle" />
+
+        <TextView
+            android:id="@+id/sheetExploreModeSummary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:paddingHorizontal="4dp"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            tools:text="Ukryte" />
+            tools:text="Przeglądanie mapy" />
 
         <LinearLayout
-            android:id="@+id/sheetBdlOverlayPanel"
+            android:id="@+id/sheetExploreModePanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/sheetExploreModeToggle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:checkedButton="@+id/btnSheetExploreSearch"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSheetExploreBrowse"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/explore_mode_browse" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSheetExploreSearch"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/explore_mode_search" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleSheetProfile"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/map_filter_profile_toggle" />
+
+        <TextView
+            android:id="@+id/sheetProfileSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:paddingHorizontal="4dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            tools:text="Samochód" />
+
+        <LinearLayout
+            android:id="@+id/sheetProfilePanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/sheetProfileToggle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:checkedButton="@+id/btnSheetProfileCar"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSheetProfileCar"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/profile_car" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSheetProfileMoto"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/profile_moto" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleSheetPlaceFilter"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/browse_car_filter_toggle" />
+
+        <TextView
+            android:id="@+id/sheetPlaceFilterSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:paddingHorizontal="4dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            tools:text="Wszystkie miejsca" />
+
+        <LinearLayout
+            android:id="@+id/sheetPlaceFilterPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
@@ -91,10 +152,60 @@
             tools:visibility="visible">
 
             <include
-                android:id="@+id/bdlOverlaySheetControls"
-                layout="@layout/bdl_overlay_controls"
+                android:id="@+id/mapFilterControls"
+                layout="@layout/browse_car_filter_controls"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplyMapFilter"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/browse_car_filter_apply" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/sheetBdlOverlaySection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleSheetBdlOverlay"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/bdl_overlay_toggle" />
+
+            <TextView
+                android:id="@+id/sheetBdlOverlaySummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:paddingHorizontal="4dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="Ukryte" />
+
+            <LinearLayout
+                android:id="@+id/sheetBdlOverlayPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <include
+                    android:id="@+id/bdlOverlaySheetControls"
+                    layout="@layout/bdl_overlay_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -6,6 +6,7 @@ import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.ui.AppPages
 import pl.navilas.finder.ui.UiState
+import pl.navilas.finder.ui.exploreModeTargetPage
 import pl.navilas.finder.ui.savedExploreMode
 import pl.navilas.finder.ui.startupExploreMode
 
@@ -36,6 +37,34 @@ class ExploreModeStartupTest {
         assertEquals(
             AppExploreMode.MAP_BROWSE,
             startupExploreMode(StartupMode.MAP_BROWSE, "SEARCH"),
+        )
+    }
+
+    @Test
+    fun explore_mode_from_search_page_jumps_to_target_screen() {
+        assertEquals(
+            AppPages.SEARCH,
+            exploreModeTargetPage(AppExploreMode.SEARCH, stayOnPage = false, currentPage = AppPages.MAP),
+        )
+        assertEquals(
+            AppPages.MAP,
+            exploreModeTargetPage(AppExploreMode.MAP_BROWSE, stayOnPage = false, currentPage = AppPages.SEARCH),
+        )
+    }
+
+    @Test
+    fun explore_mode_from_map_filters_stays_on_current_page() {
+        assertEquals(
+            AppPages.MAP,
+            exploreModeTargetPage(AppExploreMode.SEARCH, stayOnPage = true, currentPage = AppPages.MAP),
+        )
+        assertEquals(
+            AppPages.MAP,
+            exploreModeTargetPage(AppExploreMode.MAP_BROWSE, stayOnPage = true, currentPage = AppPages.MAP),
+        )
+        assertEquals(
+            AppPages.SEARCH,
+            exploreModeTargetPage(AppExploreMode.MAP_BROWSE, stayOnPage = true, currentPage = AppPages.SEARCH),
         )
     }
 }

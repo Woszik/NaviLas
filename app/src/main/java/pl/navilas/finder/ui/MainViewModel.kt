@@ -120,6 +120,19 @@ internal fun startupExploreMode(mode: StartupMode, savedValue: String?): AppExpl
         StartupMode.REMEMBER_LAST -> savedExploreMode(savedValue)
     }
 
+internal fun exploreModeTargetPage(
+    mode: AppExploreMode,
+    stayOnPage: Boolean,
+    currentPage: Int,
+): Int = if (stayOnPage) {
+    currentPage
+} else {
+    when (mode) {
+        AppExploreMode.SEARCH -> AppPages.SEARCH
+        AppExploreMode.MAP_BROWSE -> AppPages.MAP
+    }
+}
+
 data class UiState(
     val profile: TravelProfile = TravelProfile.CAR,
     val exploreMode: AppExploreMode = AppExploreMode.SEARCH,
@@ -1035,7 +1048,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun setExploreMode(mode: AppExploreMode) {
+    fun setExploreMode(mode: AppExploreMode, stayOnPage: Boolean = false) {
         if (_state.value.exploreMode == mode) return
         saveExploreMode(mode)
         when (mode) {
@@ -1067,7 +1080,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         zanocujPolygons = emptyList(),
                         selectedSiteIds = emptyList(),
                         message = AppMessage.Info("Tryb wyszukiwania — ustaw źródło i naciśnij Znajdź."),
-                        currentPage = AppPages.SEARCH,
+                        currentPage = exploreModeTargetPage(
+                            mode,
+                            stayOnPage,
+                            current.currentPage,
+                        ),
                     )
                 }
             }
@@ -1091,7 +1108,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         roadAnalysisCompleted = 0,
                         roadAnalysisTotal = 0,
                         message = null,
-                        currentPage = AppPages.MAP,
+                        currentPage = exploreModeTargetPage(
+                            mode,
+                            stayOnPage,
+                            it.currentPage,
+                        ),
                     )
                 }
                 loadMapBrowseLayer(force = true)
