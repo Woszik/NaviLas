@@ -72,7 +72,7 @@ Pakiet **pełna baza BDL** offline dodaje m.in. warstwy noclegowe (1–14), eduk
 
 ### Overlay „Obiekty BDL” (przeglądanie mapy)
 
-Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie dubluje wyników odpoczynku (15 / amenity 17/19). Wejście: rozwijany przycisk **Obiekty BDL** na ekranie 1 oraz belka **Obiekty BDL** w arkuszu **Filtry** na mapie — w Search i Browse (Nightly 0.5.38). Każda grupa jest niezależna; puste zaznaczenie nic nie rysuje (Nightly 0.5.37).
+Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie dubluje wyników odpoczynku (15 / amenity 17/19). Wejście: rozwijany przycisk **Obiekty BDL** na ekranie 1 oraz belka **Obiekty BDL** w arkuszu **Filtry** na mapie — w Search i Browse (Beta **0.5.42**). Każda grupa jest niezależna; puste zaznaczenie nic nie rysuje.
 
 | Grupa UI | Warstwy | Pakiet | Kolor |
 |----------|---------|--------|-------|
@@ -84,7 +84,7 @@ Osobna warstwa na mapie, **domyślnie wyłączona** (od Beta **0.5.34**). Nie du
 
 Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników zostaje przy zaznaczeniu. Overlay rysowany tylko w bbox widoku (min. zoom ~8.5, cap 400). Poligony/szlaki — poza zakresem.
 
-### Zakazy wstępu (Nightly 0.5.41)
+### Zakazy wstępu (Beta 0.5.42)
 
 **Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu` (nginx wymaga `Referer` portalu BDL). Czerwone poligony rysowane jak Zanocuj (widok mapy). W **Filtrach miejsc** checkbox **Poza strefą zakazu wstępu** ukrywa wyniki leżące w poligonie.
 

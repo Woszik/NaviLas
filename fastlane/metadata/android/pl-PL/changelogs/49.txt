@@ -1,0 +1,1 @@
+Zakazy wstępu BDL offline na mapie (zoom jak Zanocuj), filtr poza strefą, Obiekty BDL w Search i Browse, wielozaznaczenie z porównaniem oraz etykiety dojazdu moto.

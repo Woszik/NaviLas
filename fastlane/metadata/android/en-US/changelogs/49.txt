@@ -1,0 +1,1 @@
+Offline BDL forest-entry bans on the map (same zoom as Zanocuj), hide-in-ban filter, BDL overlay in Search and Browse, multi-select compare, and motorcycle approach labels.

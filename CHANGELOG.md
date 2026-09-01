@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.42 (49) — 2026-09-01
+
+**APK:** [navilas-0.5.42.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.42/navilas-0.5.42.apk)
+
+Zakazy wstępu BDL na mapie (paczka offline, zoom jak Zanocuj, filtr poza strefą). Obiekty BDL w Search i Browse, belki Filtry miejsc / Obiekty BDL na mapie, wielozaznaczenie z porównaniem oraz etykiety dojazdu moto.
+
+**Poprzednia wersja:** [0.5.36](#0536-42--2026-08-30)
+
+---
+
 ## 0.5.36 (42) — 2026-08-30
 
 **APK:** [navilas-0.5.36.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.36/navilas-0.5.36.apk)

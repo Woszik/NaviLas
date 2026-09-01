@@ -76,7 +76,7 @@ Release keystore (opcjonalnie, dla podpisanego APK): zmienne `RELEASE_KEYSTORE_P
 
 ## Stan roboczy
 
-Bieżąca **Beta:** **0.5.36** ([`CHANGELOG.md`](CHANGELOG.md)).
+Bieżąca **Beta:** **0.5.42** ([`CHANGELOG.md`](CHANGELOG.md)).
 
 **Nightly** i tematy **do dopracowania:** [`docs/STATUS.md`](docs/STATUS.md).
 

@@ -6,8 +6,8 @@ Ostatnia aktualizacja dokumentacji: **2026-09-01**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.42-nightly | 48 |
-| **Beta** | GitHub Releases | 0.5.36 | 42 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.42 | 49 |
+| **Beta** | GitHub Releases | 0.5.42 | 49 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,33 +20,9 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.42** na urządzeniu testowym: APK z [NaviLas-releases v0.5.42](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.42). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
-## Zakres Nightly 0.5.42
-
-Zakazy wstępu na mapie od tego samego przybliżenia co Zanocuj (zoom 7.5).
-
-## Zakres Nightly 0.5.41
-
-Naprawione pobieranie zakazów wstępu (HTTP 403 — brak Referera). Zakazy w **Dane BDL offline** (osobna aktualność 7 dni / 24 h). Czerwone strefy jak Zanocuj; filtr **Poza strefą zakazu wstępu** ukrywa wyniki w poligonie. Pola z wartością domyślną: klik czyści i otwiera klawiaturę, przy polu jest zakres.
-
-## Zakres Nightly 0.5.40
-
-**Zakazy wstępu:** osobna baza offline (cała Polska), mapa bez sieci gdy paczka jest na urządzeniu. Po **7 dniach** monit o aktualizację; **Później** odkłada pytanie o **24 godziny**. Bez paczki nadal zapytanie live. Dialog nie nachodzi na BDL ani aktualizację APK.
-
-## Zakres Nightly 0.5.39
-
-Śledzenie GPS: pauza → play wznawia zapisaną skalę, kierunek i ogniskowy (bez skoku do zoom 13). Overlay **Zakazy wstępu BDL** (osobny MapServer, live, domyślnie OFF): czerwone poligony w widoku, klik z datą i nadleśnictwem, znacznik na karcie miejsca.
-
-## Zakres Nightly 0.5.38
-
-Obiekty BDL na mapie w Search i Browse. Wielozaznaczenie punktów (max 8) z listą i tabelą **Porównaj**. W profilu moto etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych.
-
-## Zakres Nightly 0.5.37
-
-Kategorie overlay **Obiekty BDL** zaznacza się niezależnie (Widok i Inne nie wracają razem po odznaczeniu). Na mapie arkusz **Filtry** ma belki **Filtry miejsc** i **Obiekty BDL** — ten sam wybór grup co na ekranie wyszukiwania.
-
-## Zakres Beta 0.5.36
+## Zakres Beta 0.5.42
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:
 
@@ -72,7 +48,12 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 ### Mapa
 
 - **Ekran włączony** podczas aktywnego śledzenia pozycji GPS (`FLAG_KEEP_SCREEN_ON`).
-- **Obiekty BDL** (browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
+- **Obiekty BDL** (Search i Browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kategorie zaznacza się niezależnie. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
+- **Filtry na mapie:** arkusz **Filtry** ma belki **Filtry miejsc** i **Obiekty BDL** — ten sam wybór co na ekranie wyszukiwania.
+- **Wielozaznaczenie** punktów (max 8) z listą i tabelą **Porównaj**.
+- **Profil moto:** etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych.
+- **Śledzenie GPS:** pauza → play wznawia zapisaną skalę, kierunek i ogniskowy (bez skoku do zoom 13).
+- **Zakazy wstępu BDL:** overlay (osobny MapServer, live, domyślnie OFF) od zoom 7.5 jak Zanocuj; paczka offline (cała Polska); po **7 dniach** monit, **Później** odkłada o **24 godziny**. Filtr **Poza strefą zakazu wstępu** ukrywa wyniki w poligonie. Pobieranie wymaga Referera portalu BDL.
 - **Przewidywalny start:** domyślnie pierwszy start otwiera Search, a kolejne przywracają ostatni tryb. Ustawienia mogą to nadpisać na stałe Wyszukiwanie albo Przeglądanie mapy. Browse nie uruchamia się w tle dla Search.
 - **Browse bez blokowania UI:** mapa pojawia się od razu, punkty są przygotowywane w tle i rysowane na widocznym obszarze (bez klastrów).
 - **Bez wyścigu trybów:** przejście Browse → Search anuluje stare zadanie; zakończone ładowanie nie może przejąć ekranu.
@@ -87,6 +68,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 - Motyw jest nakładany przed utworzeniem głównego ekranu; kolory tekstu, powierzchni, kart i kontrolek korzystają z palety DayNight zamiast stałych jasnych kolorów. Overflow menu w trybie dziennym ma czarny tekst.
 - Mapa wybiera styl OpenFreeMap **Liberty** albo **Dark** zgodnie z aktywnym motywem.
 - Jeśli baza BDL offline jest gotowa i ma **co najmniej 30 dni**, po starcie pojawia się przypomnienie „Aktualizacja danych BDL” (data pobrania + ostatni zakres). **Aktualizuj** pobiera ponownie zapisaną konfigurację; **Później** odkłada pytanie o 7 dni. Brak bazy albo trwające pobieranie nie pokazuje dialogu. W kanale GitHub dialog nie nachodzi na ofertę aktualizacji APK.
+- Pola z wartością domyślną: klik czyści i otwiera klawiaturę, przy polu jest zakres.
 
 ### Weryfikacja KINGKONG 8
 

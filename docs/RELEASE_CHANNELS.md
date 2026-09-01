@@ -2,7 +2,7 @@
 
 Model dystrybucji **GitHub** (flavor `github`): **Nightly**, **Beta**, **Final**.
 
-Ostatnia aktualizacja: **2026-08-30**.
+Ostatnia aktualizacja: **2026-09-01**.
 
 ```
 Nightly  →  (stabilizacja)  →  Beta  →  (dopracowanie)  →  Final
@@ -64,7 +64,7 @@ Brak pliku (404) jest pomijany. Flavor `fdroid` nie łączy się z GitHub.
 | versionName | czysta, np. `0.5.35` |
 | Podpis | release keystore |
 
-Przykład bieżącej Beta: **0.5.36** (versionCode 42), tag `v0.5.36`.
+Przykład bieżącej Beta: **0.5.42** (versionCode 49), tag `v0.5.42`.
 
 Procedura: [`APP_UPDATES.md`](APP_UPDATES.md).
 
@@ -78,11 +78,11 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 
 ---
 
-## Mapowanie obecnego stanu (2026-08-30)
+## Mapowanie obecnego stanu (2026-09-01)
 
 | Co masz | Kanał |
 |---------|-------|
-| 0.5.36 / `latest.json` | **Beta** |
-| 0.5.39-nightly / `nightly.json` | **Nightly** |
+| 0.5.42 / `latest.json` | **Beta** |
+| 0.5.42 / `nightly.json` | **Nightly** (ten sam kod po promocji) |
 | F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
 | Final | **jeszcze nie** |
