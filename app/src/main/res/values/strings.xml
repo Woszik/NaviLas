@@ -149,6 +149,7 @@
     <string name="map_filter_fab">Filtry</string>
     <string name="map_filter_sheet_title">Filtry</string>
     <string name="map_filter_explore_toggle">Tryb</string>
+    <string name="map_filter_search_toggle">Szukaj</string>
     <string name="map_filter_profile_toggle">Profil</string>
     <string name="profile_car_summary">Samochód</string>
     <string name="profile_moto_summary">Motocykl</string>

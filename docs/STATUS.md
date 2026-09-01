@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-01**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.43-nightly | 50 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44-nightly | 51 |
 | **Beta** | GitHub Releases | 0.5.42 | 49 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.42** na urządzeniu testowym: APK z [NaviLas-releases v0.5.42](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.42). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.44
+
+Arkusz **Filtry** na mapie ma belkę **Szukaj** (tylko w wyszukiwaniu): źródło, promień, miejscowość, korytarz, **ZNAJDŹ** i pinezka. Ekran 1 i arkusz używają tego samego układu i `UiState`. W przeglądaniu belka Szukaj jest ukryta; **Odśwież mapę** jest w panelu Tryb.
 
 ## Zakres Nightly 0.5.43
 

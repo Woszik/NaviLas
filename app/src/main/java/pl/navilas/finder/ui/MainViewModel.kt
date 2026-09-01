@@ -120,6 +120,24 @@ internal fun startupExploreMode(mode: StartupMode, savedValue: String?): AppExpl
         StartupMode.REMEMBER_LAST -> savedExploreMode(savedValue)
     }
 
+internal fun searchCriteriaSummaryPl(
+    origin: SearchOriginMode,
+    radiusKm: Double,
+    localityQuery: String,
+    corridorPointCount: Int,
+    corridorLeftKm: Double,
+    corridorRightKm: Double,
+): String = when (origin) {
+    SearchOriginMode.GPS -> "${radiusKm.toInt()} km · od GPS"
+    SearchOriginMode.MAP -> "${radiusKm.toInt()} km · od mapa"
+    SearchOriginMode.LOCALITY -> {
+        val name = localityQuery.trim().ifBlank { "?" }
+        "${radiusKm.toInt()} km · od $name"
+    }
+    SearchOriginMode.LINE ->
+        "linia: $corridorPointCount pkt L${corridorLeftKm.toInt()}/P${corridorRightKm.toInt()}"
+}
+
 internal fun exploreModeTargetPage(
     mode: AppExploreMode,
     stayOnPage: Boolean,

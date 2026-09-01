@@ -64,6 +64,7 @@ import pl.navilas.finder.databinding.BrowseCarFilterControlsBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
+import pl.navilas.finder.databinding.SearchCriteriaControlsBinding
 import pl.navilas.finder.data.bdl.BdlOverlayCatalog
 import pl.navilas.finder.domain.BdlOverlayFilter
 import pl.navilas.finder.domain.ForestEntryBan
@@ -132,7 +133,13 @@ class MainActivity : AppCompatActivity() {
     private var syncingBdlOverlayUi = false
     private var syncingExploreModeUi = false
     private var syncingProfileUi = false
+    private var syncingRadiusUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
+    private var mapFilterSheetBinding: BottomSheetMapFiltersBinding? = null
+    private var sheetExploreExpanded = false
+    private var sheetSearchExpanded = false
+    private var sheetProfileExpanded = false
+    private var syncingSheetToggles = false
     private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
     private var syncingListUi = false
@@ -534,8 +541,15 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun pageCriteria(): SearchCriteriaControlsBinding = searchBinding.searchCriteria
+
+    private fun forEachSearchCriteria(block: (SearchCriteriaControlsBinding) -> Unit) {
+        block(searchBinding.searchCriteria)
+        mapFilterSheetBinding?.sheetSearchCriteria?.let(block)
+    }
+
     private fun setupSearchPage() {
-        setupRadiusSpinner()
+        setupRadiusSpinner(pageCriteria())
         searchBinding.profileToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked || syncingProfileUi) return@addOnButtonCheckedListener
             val profile = when (checkedId) {
@@ -558,13 +572,13 @@ class MainActivity : AppCompatActivity() {
         setupBdlOverlaySection()
         searchBinding.btnSearch.setOnClickListener { viewModel.searchNearby() }
         searchBinding.btnLocate.setOnClickListener { requestLocationPermissions() }
-        searchBinding.btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
+        pageCriteria().btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
         searchBinding.appVersionLabel.text = getString(R.string.app_version_label, BuildConfig.VERSION_NAME)
         searchBinding.btnCheckUpdate.isVisible = BuildConfig.APP_UPDATE_ENABLED
         if (BuildConfig.APP_UPDATE_ENABLED) {
             searchBinding.btnCheckUpdate.setOnClickListener { viewModel.checkForAppUpdate(force = true) }
         }
-        setupSearchOriginSection()
+        setupSearchOriginSection(pageCriteria())
         setupOfflineSection()
     }
 
@@ -577,15 +591,8 @@ class MainActivity : AppCompatActivity() {
         searchBinding.bdlOverlaySection.isVisible = true
         bindBrowseCarFilterUi(state)
         bindBdlOverlayUi(state)
-        searchBinding.searchOriginLabel.isVisible = false
-        searchBinding.searchOriginGroup.isVisible = false
-        searchBinding.corridorPanel.isVisible = false
-        searchBinding.localityInputLayout.isVisible = false
-        searchBinding.localityCandidatesPanel.isVisible = false
-        searchBinding.radiusLabel.isVisible = false
-        searchBinding.radiusSpinner.isVisible = false
-        setCustomRadiusUiVisible(false)
-        searchBinding.btnClearMapPin.isVisible = false
+        pageCriteria().root.isVisible = false
+        searchBinding.btnSearch.isVisible = true
         searchBinding.btnSearch.text = getString(R.string.map_browse_reload)
         searchBinding.searchHint.setText(R.string.search_page_hint_browse)
     }
@@ -599,9 +606,9 @@ class MainActivity : AppCompatActivity() {
         searchBinding.bdlOverlaySection.isVisible = true
         bindBrowseCarFilterUi(state)
         bindBdlOverlayUi(state)
-        searchBinding.searchOriginLabel.isVisible = true
-        searchBinding.searchOriginGroup.isVisible = true
-        bindSearchOriginUi(state)
+        pageCriteria().root.isVisible = true
+        searchBinding.btnSearch.isVisible = true
+        bindSearchCriteriaUi(state)
         updateSearchButtonLabel(
             state.searchConfig.searchRadiusKm,
             lineMode = state.searchOriginMode == SearchOriginMode.LINE,
@@ -885,52 +892,77 @@ class MainActivity : AppCompatActivity() {
     private fun showMapFilterBottomSheet() {
         mapFilterBottomSheet?.dismiss()
         val sheetBinding = BottomSheetMapFiltersBinding.inflate(layoutInflater)
-        val filter = viewModel.state.value.browseCarFilter
-        var exploreExpanded = false
-        var profileExpanded = false
+        mapFilterSheetBinding = sheetBinding
+        val state = viewModel.state.value
+        sheetSearchExpanded = !state.isMapBrowse()
+        sheetExploreExpanded = false
+        sheetProfileExpanded = false
         var placeExpanded = false
         var overlayExpanded = false
-        var syncingSheetToggles = false
 
         fun refreshExploreChrome() {
-            val state = viewModel.state.value
-            val chevron = if (exploreExpanded) " ▲" else " ▼"
+            val current = viewModel.state.value
+            val chevron = if (sheetExploreExpanded) " ▲" else " ▼"
             sheetBinding.btnToggleSheetExploreMode.text =
                 getString(R.string.map_filter_explore_toggle) + chevron
-            sheetBinding.sheetExploreModeSummary.text = if (state.isMapBrowse()) {
+            sheetBinding.sheetExploreModeSummary.text = if (current.isMapBrowse()) {
                 getString(R.string.explore_mode_browse)
             } else {
                 getString(R.string.explore_mode_search)
             }
-            sheetBinding.sheetExploreModeSummary.isVisible = !exploreExpanded
-            sheetBinding.sheetExploreModePanel.isVisible = exploreExpanded
+            sheetBinding.sheetExploreModeSummary.isVisible = !sheetExploreExpanded
+            sheetBinding.sheetExploreModePanel.isVisible = sheetExploreExpanded
+            sheetBinding.btnSheetBrowseReload.isVisible = current.isMapBrowse()
+        }
+
+        fun refreshSearchChrome() {
+            val current = viewModel.state.value
+            val search = !current.isMapBrowse()
+            sheetBinding.sheetSearchSection.isVisible = search
+            if (!search) return
+            val chevron = if (sheetSearchExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetSearch.text =
+                getString(R.string.map_filter_search_toggle) + chevron
+            sheetBinding.sheetSearchSummary.text = searchCriteriaSummaryPl(
+                current.searchOriginMode,
+                current.searchConfig.searchRadiusKm,
+                current.localityQuery,
+                current.corridorLine.size,
+                current.corridorLeftKm,
+                current.corridorRightKm,
+            )
+            sheetBinding.sheetSearchSummary.isVisible = !sheetSearchExpanded
+            sheetBinding.sheetSearchPanel.isVisible = sheetSearchExpanded
+            if (sheetSearchExpanded) {
+                bindSearchCriteriaUi(sheetBinding.sheetSearchCriteria, current)
+            }
         }
 
         fun refreshProfileChrome() {
-            val state = viewModel.state.value
-            val chevron = if (profileExpanded) " ▲" else " ▼"
+            val current = viewModel.state.value
+            val chevron = if (sheetProfileExpanded) " ▲" else " ▼"
             sheetBinding.btnToggleSheetProfile.text =
                 getString(R.string.map_filter_profile_toggle) + chevron
-            sheetBinding.sheetProfileSummary.text = when (state.profile) {
+            sheetBinding.sheetProfileSummary.text = when (current.profile) {
                 TravelProfile.CAR -> getString(R.string.profile_car_summary)
                 TravelProfile.MOTORCYCLE -> getString(R.string.profile_moto_summary)
             }
-            sheetBinding.sheetProfileSummary.isVisible = !profileExpanded
-            sheetBinding.sheetProfilePanel.isVisible = profileExpanded
+            sheetBinding.sheetProfileSummary.isVisible = !sheetProfileExpanded
+            sheetBinding.sheetProfilePanel.isVisible = sheetProfileExpanded
         }
 
         fun bindSheetToggles() {
-            val state = viewModel.state.value
+            val current = viewModel.state.value
             syncingSheetToggles = true
             sheetBinding.sheetExploreModeToggle.check(
-                if (state.isMapBrowse()) {
+                if (current.isMapBrowse()) {
                     R.id.btnSheetExploreBrowse
                 } else {
                     R.id.btnSheetExploreSearch
                 },
             )
             sheetBinding.sheetProfileToggle.check(
-                if (state.profile == TravelProfile.MOTORCYCLE) {
+                if (current.profile == TravelProfile.MOTORCYCLE) {
                     R.id.btnSheetProfileMoto
                 } else {
                     R.id.btnSheetProfileCar
@@ -950,27 +982,30 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun refreshBdlChrome() {
-            val state = viewModel.state.value
+            val current = viewModel.state.value
             val chevron = if (overlayExpanded) " ▲" else " ▼"
             sheetBinding.btnToggleSheetBdlOverlay.text =
                 getString(R.string.bdl_overlay_toggle) + chevron
-            sheetBinding.sheetBdlOverlaySummary.text = overlaySectionSummary(state)
+            sheetBinding.sheetBdlOverlaySummary.text = overlaySectionSummary(current)
             sheetBinding.sheetBdlOverlayPanel.isVisible = overlayExpanded
             if (overlayExpanded) {
                 syncBdlOverlayDraftTo(
                     sheetBinding.bdlOverlaySheetControls,
-                    state.bdlOverlayFilter,
-                    state.bdlOverlayFullAvailable,
+                    current.bdlOverlayFilter,
+                    current.bdlOverlayFullAvailable,
                 )
             }
         }
 
+        setupRadiusSpinner(sheetBinding.sheetSearchCriteria)
+        setupSearchOriginSection(sheetBinding.sheetSearchCriteria)
         bindSheetToggles()
         refreshExploreChrome()
+        refreshSearchChrome()
         refreshProfileChrome()
         sheetBinding.btnToggleSheetExploreMode.setOnClickListener {
-            exploreExpanded = !exploreExpanded
-            if (exploreExpanded) bindSheetToggles()
+            sheetExploreExpanded = !sheetExploreExpanded
+            if (sheetExploreExpanded) bindSheetToggles()
             refreshExploreChrome()
         }
         sheetBinding.sheetExploreModeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -979,12 +1014,20 @@ class MainActivity : AppCompatActivity() {
                 R.id.btnSheetExploreBrowse -> AppExploreMode.MAP_BROWSE
                 else -> AppExploreMode.SEARCH
             }
+            if (mode == AppExploreMode.SEARCH) sheetSearchExpanded = true
             viewModel.setExploreMode(mode, stayOnPage = true)
-            refreshExploreChrome()
         }
+        sheetBinding.btnSheetBrowseReload.setOnClickListener {
+            viewModel.loadMapBrowseLayer(force = true)
+        }
+        sheetBinding.btnToggleSheetSearch.setOnClickListener {
+            sheetSearchExpanded = !sheetSearchExpanded
+            refreshSearchChrome()
+        }
+        sheetBinding.btnSheetSearch.setOnClickListener { viewModel.searchNearby() }
         sheetBinding.btnToggleSheetProfile.setOnClickListener {
-            profileExpanded = !profileExpanded
-            if (profileExpanded) bindSheetToggles()
+            sheetProfileExpanded = !sheetProfileExpanded
+            if (sheetProfileExpanded) bindSheetToggles()
             refreshProfileChrome()
         }
         sheetBinding.sheetProfileToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -995,10 +1038,9 @@ class MainActivity : AppCompatActivity() {
                 else -> return@addOnButtonCheckedListener
             }
             viewModel.setProfile(profile)
-            refreshProfileChrome()
         }
 
-        syncBrowseCarFilterDraftTo(sheetBinding.mapFilterControls, filter)
+        syncBrowseCarFilterDraftTo(sheetBinding.mapFilterControls, state.browseCarFilter)
         refreshPlaceChrome()
         setupFilterControlsListeners(
             sheetBinding.mapFilterControls,
@@ -1037,9 +1079,75 @@ class MainActivity : AppCompatActivity() {
         dialog.setOnDismissListener {
             if (mapFilterBottomSheet === dialog) {
                 mapFilterBottomSheet = null
+                mapFilterSheetBinding = null
             }
         }
         dialog.show()
+        bindOpenMapFilterSheet(viewModel.state.value)
+    }
+
+    private fun bindOpenMapFilterSheet(state: UiState) {
+        val sheetBinding = mapFilterSheetBinding ?: return
+        val chevronExplore = if (sheetExploreExpanded) " ▲" else " ▼"
+        sheetBinding.btnToggleSheetExploreMode.text =
+            getString(R.string.map_filter_explore_toggle) + chevronExplore
+        sheetBinding.sheetExploreModeSummary.text = if (state.isMapBrowse()) {
+            getString(R.string.explore_mode_browse)
+        } else {
+            getString(R.string.explore_mode_search)
+        }
+        sheetBinding.sheetExploreModeSummary.isVisible = !sheetExploreExpanded
+        sheetBinding.sheetExploreModePanel.isVisible = sheetExploreExpanded
+        sheetBinding.btnSheetBrowseReload.isVisible = state.isMapBrowse()
+        syncingSheetToggles = true
+        sheetBinding.sheetExploreModeToggle.check(
+            if (state.isMapBrowse()) R.id.btnSheetExploreBrowse else R.id.btnSheetExploreSearch,
+        )
+
+        val search = !state.isMapBrowse()
+        sheetBinding.sheetSearchSection.isVisible = search
+        if (search) {
+            val chevron = if (sheetSearchExpanded) " ▲" else " ▼"
+            sheetBinding.btnToggleSheetSearch.text =
+                getString(R.string.map_filter_search_toggle) + chevron
+            sheetBinding.sheetSearchSummary.text = searchCriteriaSummaryPl(
+                state.searchOriginMode,
+                state.searchConfig.searchRadiusKm,
+                state.localityQuery,
+                state.corridorLine.size,
+                state.corridorLeftKm,
+                state.corridorRightKm,
+            )
+            sheetBinding.sheetSearchSummary.isVisible = !sheetSearchExpanded
+            sheetBinding.sheetSearchPanel.isVisible = sheetSearchExpanded
+            bindSearchCriteriaUi(sheetBinding.sheetSearchCriteria, state)
+        }
+
+        sheetBinding.sheetProfileToggle.check(
+            if (state.profile == TravelProfile.MOTORCYCLE) {
+                R.id.btnSheetProfileMoto
+            } else {
+                R.id.btnSheetProfileCar
+            },
+        )
+        syncingSheetToggles = false
+        sheetBinding.sheetProfileSummary.text = when (state.profile) {
+            TravelProfile.CAR -> getString(R.string.profile_car_summary)
+            TravelProfile.MOTORCYCLE -> getString(R.string.profile_moto_summary)
+        }
+        sheetBinding.sheetProfileSummary.isVisible = !sheetProfileExpanded
+        sheetBinding.sheetProfilePanel.isVisible = sheetProfileExpanded
+        sheetBinding.btnToggleSheetProfile.text =
+            getString(R.string.map_filter_profile_toggle) +
+                if (sheetProfileExpanded) " ▲" else " ▼"
+
+        sheetBinding.sheetBdlOverlaySummary.text = overlaySectionSummary(state)
+        updateSearchButtonLabel(
+            state.searchConfig.searchRadiusKm,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+        )
+        sheetBinding.btnSheetSearch.isEnabled = searchBinding.btnSearch.isEnabled
+        sheetBinding.btnSheetBrowseReload.isEnabled = searchBinding.btnSearch.isEnabled
     }
 
     private fun applyBrowseMapFilters(state: UiState) {
@@ -1056,8 +1164,8 @@ class MainActivity : AppCompatActivity() {
         mapController.setBrowseLayerMatchFlags(state.browseViewportSites, match)
     }
 
-    private fun setupSearchOriginSection() {
-        searchBinding.searchOriginGroup.setOnCheckedChangeListener { _, checkedId ->
+    private fun setupSearchOriginSection(controls: SearchCriteriaControlsBinding) {
+        controls.searchOriginGroup.setOnCheckedChangeListener { _, checkedId ->
             if (syncingSearchOriginUi) return@setOnCheckedChangeListener
             val mode = when (checkedId) {
                 R.id.radioSearchMap -> SearchOriginMode.MAP
@@ -1066,11 +1174,11 @@ class MainActivity : AppCompatActivity() {
                 else -> SearchOriginMode.GPS
             }
             viewModel.setSearchOriginMode(mode)
-            if (mode == SearchOriginMode.LINE) {
+            if (mode == SearchOriginMode.LINE && viewModel.state.value.currentPage != AppPages.MAP) {
                 viewModel.setCurrentPage(AppPages.MAP)
             }
         }
-        searchBinding.localityInput.setOnEditorActionListener { _, actionId, _ ->
+        controls.localityInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
                 viewModel.searchNearby()
                 true
@@ -1078,7 +1186,7 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
-        searchBinding.localityInput.addTextChangedListener(
+        controls.localityInput.addTextChangedListener(
             object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -1088,14 +1196,15 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
-        searchBinding.btnClearCorridor.setOnClickListener { viewModel.clearCorridorLine() }
-        searchBinding.btnLineGpsMap.setOnClickListener { viewModel.startCorridorGpsToMap() }
-        searchBinding.btnLineGpsLocality.setOnClickListener { viewModel.startCorridorGpsToLocality() }
-        searchBinding.btnLineLocalityLocality.setOnClickListener { viewModel.startCorridorLocalityToLocality() }
-        searchBinding.btnDismissLocalityCandidates.setOnClickListener {
+        controls.btnClearCorridor.setOnClickListener { viewModel.clearCorridorLine() }
+        controls.btnLineGpsMap.setOnClickListener { viewModel.startCorridorGpsToMap() }
+        controls.btnLineGpsLocality.setOnClickListener { viewModel.startCorridorGpsToLocality() }
+        controls.btnLineLocalityLocality.setOnClickListener { viewModel.startCorridorLocalityToLocality() }
+        controls.btnDismissLocalityCandidates.setOnClickListener {
             viewModel.dismissLocalityCandidates()
         }
-        searchBinding.corridorLeftInput.addTextChangedListener(
+        controls.btnClearMapPin.setOnClickListener { viewModel.clearMapSearchPin() }
+        controls.corridorLeftInput.addTextChangedListener(
             object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -1105,7 +1214,7 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
-        searchBinding.corridorRightInput.addTextChangedListener(
+        controls.corridorRightInput.addTextChangedListener(
             object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -1116,12 +1225,12 @@ class MainActivity : AppCompatActivity() {
             },
         )
         installClearDefaultOnFocus(
-            field = searchBinding.corridorLeftInput,
+            field = controls.corridorLeftInput,
             defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_LEFT_KM) },
             isSyncing = { syncingCorridorUi },
         )
         installClearDefaultOnFocus(
-            field = searchBinding.corridorRightInput,
+            field = controls.corridorRightInput,
             defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_RIGHT_KM) },
             isSyncing = { syncingCorridorUi },
         )
@@ -1393,25 +1502,24 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupRadiusSpinner() {
+    private fun setupRadiusSpinner(controls: SearchCriteriaControlsBinding) {
         val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
         val labels = presets.map { "${it.toInt()} km" } + getString(R.string.search_radius_custom_option)
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
-        searchBinding.radiusSpinner.adapter = adapter
+        controls.radiusSpinner.adapter = adapter
         val defaultIndex = presets.indexOf(SearchConfig.DEFAULT_SEARCH_RADIUS_KM).coerceAtLeast(0)
-        searchBinding.radiusSpinner.setSelection(defaultIndex, false)
-        setCustomRadiusUiVisible(false)
-        updateSearchButtonLabel(presets[defaultIndex], lineMode = false)
-        searchBinding.radiusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        controls.radiusSpinner.setSelection(defaultIndex, false)
+        setCustomRadiusUiVisible(controls, false)
+        controls.radiusSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (syncingRadiusUi || syncingSearchOriginUi) return
                 if (position < presets.size) {
-                    setCustomRadiusUiVisible(false)
+                    setCustomRadiusUiVisible(controls, false)
                     val km = presets[position]
                     viewModel.setSearchRadiusKm(km)
-                    updateSearchButtonLabel(km, lineMode = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE)
                 } else {
-                    setCustomRadiusUiVisible(true)
-                    searchBinding.customRadiusInput.setText(
+                    setCustomRadiusUiVisible(controls, true)
+                    controls.customRadiusInput.setText(
                         viewModel.state.value.searchConfig.searchRadiusKm.toInt().toString(),
                     )
                 }
@@ -1419,42 +1527,39 @@ class MainActivity : AppCompatActivity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
-        searchBinding.btnApplyCustomRadius.setOnClickListener {
-            val raw = searchBinding.customRadiusInput.text?.toString()?.trim().orEmpty()
+        controls.btnApplyCustomRadius.setOnClickListener {
+            val raw = controls.customRadiusInput.text?.toString()?.trim().orEmpty()
             val km = raw.replace(',', '.').toDoubleOrNull()
             if (km == null) {
                 Snackbar.make(binding.root, "Podaj liczbę km (1–100).", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             viewModel.setSearchRadiusKm(km)
-            val applied = viewModel.state.value.searchConfig.searchRadiusKm
-            val presetIndex = presets.indexOf(applied)
-            if (presetIndex >= 0) {
-                searchBinding.radiusSpinner.setSelection(presetIndex, false)
-                setCustomRadiusUiVisible(false)
-            }
-            updateSearchButtonLabel(applied, lineMode = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE)
         }
         installClearDefaultOnFocus(
-            field = searchBinding.customRadiusInput,
+            field = controls.customRadiusInput,
             defaultValue = {
                 viewModel.state.value.searchConfig.searchRadiusKm.toInt().toString()
             },
-            isSyncing = { false },
+            isSyncing = { syncingRadiusUi || syncingSearchOriginUi },
         )
     }
 
-    private fun setCustomRadiusUiVisible(visible: Boolean) {
-        searchBinding.customRadiusLayout.isVisible = visible
-        searchBinding.btnApplyCustomRadius.isVisible = visible
+    private fun setCustomRadiusUiVisible(controls: SearchCriteriaControlsBinding, visible: Boolean) {
+        controls.customRadiusLayout.isVisible = visible
+        controls.btnApplyCustomRadius.isVisible = visible
     }
 
     private fun updateSearchButtonLabel(radiusKm: Double, lineMode: Boolean) {
-        searchBinding.btnSearch.text = if (lineMode) {
+        val label = if (lineMode) {
             getString(R.string.search_along_line)
         } else {
             getString(R.string.search_with_radius, radiusKm.toInt())
         }
+        if (!viewModel.state.value.isMapBrowse()) {
+            searchBinding.btnSearch.text = label
+        }
+        mapFilterSheetBinding?.btnSheetSearch?.text = label
     }
 
     private fun requestLocationPermissions(
@@ -1577,9 +1682,12 @@ class MainActivity : AppCompatActivity() {
             state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING
         searchBinding.btnSearch.isEnabled = !state.isSearching && !state.isLocating &&
             !state.isAnalyzingRoads && !state.isFilteringPlaces && !state.isMapBrowseLoading
-        searchBinding.btnClearMapPin.isVisible = !state.isMapBrowse() &&
+        mapFilterSheetBinding?.btnSheetSearch?.isEnabled = searchBinding.btnSearch.isEnabled
+        mapFilterSheetBinding?.btnSheetBrowseReload?.isEnabled = searchBinding.btnSearch.isEnabled
+        val pinVisible = !state.isMapBrowse() &&
             state.searchOriginMode == SearchOriginMode.MAP &&
             state.usesMapPinForSearch()
+        forEachSearchCriteria { it.btnClearMapPin.isVisible = pinVisible }
         searchBinding.statusText.text = buildStatus(state)
         syncingExploreModeUi = true
         searchBinding.exploreModeToggle.check(
@@ -1714,6 +1822,7 @@ class MainActivity : AppCompatActivity() {
         bindMapTrackingFab(state.mapTrackingMode)
         updateKeepScreenOn(state)
         bindMapFilterFab(state)
+        bindOpenMapFilterSheet(state)
 
         state.message?.let { showMessage(it) }
         handleAppUpdateState(state)
@@ -2567,46 +2676,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindSearchOriginUi(state: UiState) {
+    private fun bindSearchCriteriaUi(state: UiState) {
+        forEachSearchCriteria { bindSearchCriteriaUi(it, state) }
+        updateSearchButtonLabel(
+            state.searchConfig.searchRadiusKm,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+        )
+    }
+
+    private fun bindSearchCriteriaUi(controls: SearchCriteriaControlsBinding, state: UiState) {
         syncingSearchOriginUi = true
+        syncingRadiusUi = true
         when (state.searchOriginMode) {
-            SearchOriginMode.GPS -> searchBinding.searchOriginGroup.check(R.id.radioSearchGps)
-            SearchOriginMode.MAP -> searchBinding.searchOriginGroup.check(R.id.radioSearchMap)
-            SearchOriginMode.LOCALITY -> searchBinding.searchOriginGroup.check(R.id.radioSearchLocality)
-            SearchOriginMode.LINE -> searchBinding.searchOriginGroup.check(R.id.radioSearchLine)
+            SearchOriginMode.GPS -> controls.searchOriginGroup.check(R.id.radioSearchGps)
+            SearchOriginMode.MAP -> controls.searchOriginGroup.check(R.id.radioSearchMap)
+            SearchOriginMode.LOCALITY -> controls.searchOriginGroup.check(R.id.radioSearchLocality)
+            SearchOriginMode.LINE -> controls.searchOriginGroup.check(R.id.radioSearchLine)
         }
 
         val localityVisible = state.searchOriginMode == SearchOriginMode.LOCALITY
         val lineVisible = state.searchOriginMode == SearchOriginMode.LINE
-        searchBinding.corridorPanel.isVisible = lineVisible
-        // Radius: hide entirely in LINE mode; custom fields only when "Własny…" selected.
-        searchBinding.radiusSpinner.isVisible = !lineVisible
-        searchBinding.radiusLabel.isVisible = !lineVisible
+        controls.corridorPanel.isVisible = lineVisible
+        controls.radiusSpinner.isVisible = !lineVisible
+        controls.radiusLabel.isVisible = !lineVisible
+        val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
         if (lineVisible) {
-            setCustomRadiusUiVisible(false)
+            setCustomRadiusUiVisible(controls, false)
         } else {
-            val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
             val isCustom = state.searchConfig.searchRadiusKm !in presets
-            if (isCustom && searchBinding.radiusSpinner.selectedItemPosition != presets.size) {
-                searchBinding.radiusSpinner.setSelection(presets.size, false)
+            val targetIndex = if (isCustom) presets.size else presets.indexOf(state.searchConfig.searchRadiusKm)
+            if (targetIndex >= 0 && controls.radiusSpinner.selectedItemPosition != targetIndex) {
+                controls.radiusSpinner.setSelection(targetIndex, false)
             }
             setCustomRadiusUiVisible(
-                searchBinding.radiusSpinner.selectedItemPosition >= presets.size,
+                controls,
+                controls.radiusSpinner.selectedItemPosition >= presets.size,
             )
         }
-        // Locality input also for LINE shortcuts that need a name.
         val localityForLine = lineVisible &&
             state.localityPickPurpose != pl.navilas.finder.domain.LocalityPickPurpose.SEARCH_ORIGIN
-        searchBinding.localityInputLayout.isVisible = localityVisible || localityForLine
+        controls.localityInputLayout.isVisible = localityVisible || localityForLine
         if ((localityVisible || localityForLine) &&
-            searchBinding.localityInput.text?.toString() != state.localityQuery
+            controls.localityInput.text?.toString() != state.localityQuery
         ) {
-            searchBinding.localityInput.setText(state.localityQuery)
-            searchBinding.localityInput.setSelection(state.localityQuery.length)
+            controls.localityInput.setText(state.localityQuery)
+            controls.localityInput.setSelection(state.localityQuery.length)
         }
-        bindLocalityCandidates(state.localityCandidates)
+        bindLocalityCandidates(controls, state.localityCandidates)
         if (lineVisible) {
-            searchBinding.corridorStatus.text = getString(
+            controls.corridorStatus.text = getString(
                 R.string.corridor_status,
                 state.corridorLine.size,
                 formatKm(state.corridorLeftKm),
@@ -2615,25 +2733,29 @@ class MainActivity : AppCompatActivity() {
             syncingCorridorUi = true
             val leftText = formatKm(state.corridorLeftKm)
             val rightText = formatKm(state.corridorRightKm)
-            if (!searchBinding.corridorLeftInput.hasFocus() &&
-                searchBinding.corridorLeftInput.text?.toString() != leftText
+            if (!controls.corridorLeftInput.hasFocus() &&
+                controls.corridorLeftInput.text?.toString() != leftText
             ) {
-                searchBinding.corridorLeftInput.setText(leftText)
+                controls.corridorLeftInput.setText(leftText)
             }
-            if (!searchBinding.corridorRightInput.hasFocus() &&
-                searchBinding.corridorRightInput.text?.toString() != rightText
+            if (!controls.corridorRightInput.hasFocus() &&
+                controls.corridorRightInput.text?.toString() != rightText
             ) {
-                searchBinding.corridorRightInput.setText(rightText)
+                controls.corridorRightInput.setText(rightText)
             }
             syncingCorridorUi = false
         }
+        syncingRadiusUi = false
         syncingSearchOriginUi = false
     }
 
-    private fun bindLocalityCandidates(candidates: List<pl.navilas.finder.data.osm.GeocodedPlace>?) {
-        val list = searchBinding.localityCandidatesList
+    private fun bindLocalityCandidates(
+        controls: SearchCriteriaControlsBinding,
+        candidates: List<pl.navilas.finder.data.osm.GeocodedPlace>?,
+    ) {
+        val list = controls.localityCandidatesList
         val show = !candidates.isNullOrEmpty()
-        searchBinding.localityCandidatesPanel.isVisible = show
+        controls.localityCandidatesPanel.isVisible = show
         if (!show) {
             list.removeAllViews()
             return

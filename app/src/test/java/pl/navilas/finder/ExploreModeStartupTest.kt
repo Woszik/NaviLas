@@ -4,10 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.domain.AppExploreMode
+import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.ui.AppPages
 import pl.navilas.finder.ui.UiState
 import pl.navilas.finder.ui.exploreModeTargetPage
 import pl.navilas.finder.ui.savedExploreMode
+import pl.navilas.finder.ui.searchCriteriaSummaryPl
 import pl.navilas.finder.ui.startupExploreMode
 
 class ExploreModeStartupTest {
@@ -65,6 +67,30 @@ class ExploreModeStartupTest {
         assertEquals(
             AppPages.SEARCH,
             exploreModeTargetPage(AppExploreMode.MAP_BROWSE, stayOnPage = true, currentPage = AppPages.SEARCH),
+        )
+    }
+
+    @Test
+    fun search_criteria_summary_matches_sheet_bar() {
+        assertEquals(
+            "25 km · od GPS",
+            searchCriteriaSummaryPl(SearchOriginMode.GPS, 25.0, "", 0, 5.0, 10.0),
+        )
+        assertEquals(
+            "10 km · od mapa",
+            searchCriteriaSummaryPl(SearchOriginMode.MAP, 10.0, "", 0, 5.0, 10.0),
+        )
+        assertEquals(
+            "15 km · od Zakopane",
+            searchCriteriaSummaryPl(SearchOriginMode.LOCALITY, 15.0, "Zakopane", 0, 5.0, 10.0),
+        )
+        assertEquals(
+            "15 km · od ?",
+            searchCriteriaSummaryPl(SearchOriginMode.LOCALITY, 15.0, "  ", 0, 5.0, 10.0),
+        )
+        assertEquals(
+            "linia: 3 pkt L5/P10",
+            searchCriteriaSummaryPl(SearchOriginMode.LINE, 25.0, "", 3, 5.0, 10.0),
         )
     }
 }
