@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-01**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.41-nightly | 47 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.42-nightly | 48 |
 | **Beta** | GitHub Releases | 0.5.36 | 42 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.36** na urządzeniu testowym: APK z [NaviLas-releases v0.5.36](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.36). Bieżący Nightly: [prerelease `nightly`](https://github.com/Woszik/NaviLas-releases/releases/tag/nightly). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Zakres Nightly 0.5.42
+
+Zakazy wstępu na mapie od tego samego przybliżenia co Zanocuj (zoom 7.5).
 
 ## Zakres Nightly 0.5.41
 

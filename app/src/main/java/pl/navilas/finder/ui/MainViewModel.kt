@@ -3085,7 +3085,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         private const val BROWSE_OVERLAY_MIN_ZOOM = 8.5
         private const val BROWSE_OVERLAY_MAX_POINTS = 400
-        private const val ENTRY_BAN_MIN_ZOOM = 8.5
+        /** Same floor as Zanocuj fills so both zone layers appear together. */
+        private const val ENTRY_BAN_MIN_ZOOM = BROWSE_ZANOCUJ_MIN_ZOOM
         private const val ENTRY_BAN_MAX_POLYGONS = 80
         /** Camera follow only after this GPS movement (metres). */
         private const val FOLLOW_MOVE_THRESHOLD_M = 5.0
