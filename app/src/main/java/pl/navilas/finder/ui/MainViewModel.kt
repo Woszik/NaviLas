@@ -22,12 +22,10 @@ import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
 import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
-import pl.navilas.finder.data.cache.PersistentOsmWaterTileStore
 import pl.navilas.finder.data.cache.RoadAssessmentCache
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
-import pl.navilas.finder.data.osm.CachingOverpassWaterClient
 import pl.navilas.finder.data.osm.NominatimGeocoder
 import pl.navilas.finder.data.osm.OverpassRoadClient
 import pl.navilas.finder.data.osm.PersistentLocalityGeocodeStore
@@ -46,8 +44,6 @@ import pl.navilas.finder.domain.BrowseMapCluster
 import pl.navilas.finder.domain.isUsableBrowseViewport
 import pl.navilas.finder.domain.selectBrowseContent
 import pl.navilas.finder.domain.BrowseParkingProximityMode
-import pl.navilas.finder.domain.BrowseWaterProximityMode
-import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.data.bdl.ForestEntryBanBounds
 import pl.navilas.finder.data.bdl.ForestEntryBanClassifier
 import pl.navilas.finder.data.bdl.ForestEntryBanLoader
@@ -285,7 +281,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val bdlSessionCache = BdlSearchSessionCache()
     private val roadAssessmentCache = RoadAssessmentCache()
     private val osmTileStore = PersistentOsmRoadTileStore.fromAppFilesDir(application.filesDir)
-    private val osmWaterTileStore = PersistentOsmWaterTileStore.fromAppFilesDir(application.filesDir)
     private val localityStore = PersistentLocalityGeocodeStore.fromAppFilesDir(application.filesDir)
     private val lastGpsPreferences = LastGpsPreferences(application)
     private val locationProvider = AppLocationProvider(
@@ -305,7 +300,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
         assessmentCache = roadAssessmentCache,
     )
-    private val waterClient = CachingOverpassWaterClient(tileCache = osmWaterTileStore)
     private val localityGeocoder = NominatimGeocoder(
         localityStore = localityStore,
         voivodeshipCacheFile = File(application.filesDir, "county_voivodeship_cache.json"),
@@ -336,9 +330,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     @Volatile
     private var browseOverlayIndex: List<BdlOverlayPoint> = emptyList()
     private var browseOverlayById: Map<String, BdlOverlayPoint> = emptyMap()
-    private var overlayIndexLoaded = false
-    private var browseVehicleIndex: List<RestSite> = emptyList()
-    private var searchVehicleIndex: List<RestSite> = emptyList()
     private var lastBrowseViewportKey: String? = null
     private var lastBrowseBounds: GeoUtils.Envelope? = null
     private var lastBrowseZoom: Double = 0.0
@@ -978,8 +969,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { current ->
             current.copy(
                 browseCarFilter = filter,
-                isFilteringPlaces = current.allSites.isNotEmpty() ||
-                    (filter.requireNearWater && vehicleIndex().isNotEmpty()),
+                isFilteringPlaces = current.allSites.isNotEmpty(),
                 browseFilterMatchingIds = null,
                 message = if (
                     filter.requireParking &&
@@ -989,29 +979,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     AppMessage.Info(
                         "Duży promień parkingu (${filter.parkingMaxMeters} m) może wydłużyć filtrowanie.",
                     )
-                } else if (
-                    filter.requireNearWater &&
-                    filter.waterMode == BrowseWaterProximityMode.MAX_DISTANCE &&
-                    filter.waterMaxMeters >= LARGE_PARKING_FILTER_WARNING_METERS
-                ) {
-                    AppMessage.Info(
-                        "Duży promień „nad wodą” (${filter.waterMaxMeters} m) może wydłużyć sprawdzanie OSM.",
-                    )
                 } else {
                     current.message
                 },
             )
         }
         val snapshot = _state.value
-        if (snapshot.allSites.isEmpty() && vehicleIndex().isEmpty()) {
+        if (snapshot.allSites.isEmpty()) {
             _state.update { it.copy(isFilteringPlaces = false) }
             return
         }
         filterResultsJob = viewModelScope.launch {
             if (snapshot.isMapBrowse()) {
-                val pool = sitesForCurrentFilter(snapshot.allSites, filter, lastBrowseBounds)
-                val matchingIds = withContext(Dispatchers.IO) {
-                    matchingSiteIds(pool, filter, lastBrowseBounds)
+                val matchingIds = withContext(Dispatchers.Default) {
+                    matchingSiteIds(snapshot.allSites, filter)
                 }
                 if (filterGeneration.get() != generation) return@launch
                 _state.update { current ->
@@ -1046,7 +1027,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     },
                 )
             } else {
-                val results = withContext(Dispatchers.IO) {
+                val results = withContext(Dispatchers.Default) {
                     rebuildResults(snapshot)
                 }
                 if (filterGeneration.get() != generation) return@launch
@@ -1070,7 +1051,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (state.isMapBrowse()) {
             return browseSelectionResults(state, state.selectedSiteIds)
         }
-        if (state.allSites.isEmpty() && vehicleIndex().isEmpty()) return emptyList()
+        if (state.allSites.isEmpty()) return emptyList()
         return buildResults(
             state.allSites,
             state.searchOrigin(),
@@ -1097,8 +1078,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 filterResultsJob?.cancel()
                 filterResultsJob = null
                 browseZanocujIndex = emptyList()
-                browseVehicleIndex = emptyList()
-                searchVehicleIndex = emptyList()
                 lastBrowseViewportKey = null
                 browseViewportJob?.cancel()
                 _state.update { current ->
@@ -1132,7 +1111,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 filterGeneration.incrementAndGet()
                 filterResultsJob?.cancel()
                 filterResultsJob = null
-                searchVehicleIndex = emptyList()
                 _state.update {
                     it.copy(
                         exploreMode = AppExploreMode.MAP_BROWSE,
@@ -1226,10 +1204,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 browseZanocujIndex = bundle.zanocujIndex
-                browseVehicleIndex = bundle.vehicleSites
                 browseOverlayIndex = overlay
                 browseOverlayById = overlay.associateBy { it.id }
-                overlayIndexLoaded = true
                 lastBrowseViewportKey = null
                 // Nationwide MapLibre overlays OOMs — keep index private; draw viewport subset only.
                 _state.update { current ->
@@ -1284,10 +1260,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 if (!isActiveMapBrowseLoad(generation)) return@launch
                 browseZanocujIndex = emptyList()
-                browseVehicleIndex = emptyList()
                 browseOverlayIndex = emptyList()
                 browseOverlayById = emptyMap()
-                overlayIndexLoaded = false
                 _state.update {
                     if (!it.isMapBrowse() || mapBrowseGeneration.get() != generation) {
                         return@update it
@@ -1343,7 +1317,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             (north * 100).toInt(),
             zoom.toInt(),
             _state.value.bdlOverlayFilter.hashCode(),
-            _state.value.browseCarFilter.hashCode(),
         ).joinToString(",")
         if (key == lastBrowseViewportKey) return
         lastBrowseViewportKey = key
@@ -1423,24 +1396,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 centerLon,
                 zoom,
             )
-            val waterFilter = _state.value.browseCarFilter
-            val pool = sitesForCurrentFilter(allSites, waterFilter, envelope)
-            val resolvedMatchingIds = if (waterFilter.requireNearWater && pool.isNotEmpty()) {
-                _state.update { it.copy(isFilteringPlaces = true) }
-                withContext(Dispatchers.IO) {
-                    matchingSiteIds(pool, waterFilter, envelope)
-                }
-            } else {
-                matchingIds
-            }
             val browseContent = withContext(Dispatchers.Default) {
                 selectBrowseContent(
-                    pool,
+                    allSites,
                     envelope,
                     centerLat,
                     centerLon,
                     zoom,
-                    resolvedMatchingIds,
+                    matchingIds,
                 )
             }
             if (!_state.value.isMapBrowse()) {
@@ -1481,8 +1444,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     entryBanStatus = banStatus,
                     browseViewportSites = nextSites,
                     browseMapClusters = nextClusters,
-                    browseFilterMatchingIds = resolvedMatchingIds,
-                    isFilteringPlaces = false,
                     mapBrowseRevision = if (viewportChanged) {
                         it.mapBrowseRevision + 1
                     } else {
@@ -1566,8 +1527,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (siteIds.isEmpty()) return emptyList()
         val sites = siteIds.mapNotNull { siteId ->
             state.allSites.firstOrNull { it.id == siteId }
-                ?: browseVehicleIndex.firstOrNull { it.id == siteId }
-                ?: searchVehicleIndex.firstOrNull { it.id == siteId }
                 ?: browseOverlayById[siteId]?.toRestSite()
                 ?: state.results.firstOrNull { it.site.id == siteId }?.site
         }
@@ -1583,8 +1542,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun resolveSelectedSite(state: UiState, siteId: String): RestSite? =
         state.allSites.firstOrNull { it.id == siteId }
-            ?: browseVehicleIndex.firstOrNull { it.id == siteId }
-            ?: searchVehicleIndex.firstOrNull { it.id == siteId }
             ?: browseOverlayById[siteId]?.toRestSite()
             ?: state.results.firstOrNull { it.site.id == siteId }?.site
 
@@ -1637,12 +1594,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun ensureOverlayIndexLoaded() {
-        if (overlayIndexLoaded) return
+        if (browseOverlayIndex.isNotEmpty()) return
         if (overlayLoadJob?.isActive == true) return
         overlayLoadJob = viewModelScope.launch {
-            val loaded = withContext(Dispatchers.IO) { loadOverlayIndexBlocking() }
-            if (!loaded) return@launch
+            if (!offlineStore.isReady()) return@launch
             val fullAvailable = _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
+            val overlay = withContext(Dispatchers.IO) {
+                BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
+            }
+            browseOverlayIndex = overlay
+            browseOverlayById = overlay.associateBy { it.id }
             _state.update { it.copy(bdlOverlayFullAvailable = fullAvailable) }
             lastBrowseViewportKey = null
             val bounds = lastBrowseBounds
@@ -1655,18 +1616,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
-    }
-
-    @Synchronized
-    private fun loadOverlayIndexBlocking(): Boolean {
-        if (overlayIndexLoaded) return true
-        if (!offlineStore.isReady()) return false
-        val fullAvailable = _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
-        val overlay = BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
-        browseOverlayIndex = overlay
-        browseOverlayById = overlay.associateBy { it.id }
-        overlayIndexLoaded = true
-        return true
     }
 
     fun setListViewMode(mode: ListViewMode) {
@@ -2221,95 +2170,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun vehicleIndex(): List<RestSite> =
-        if (_state.value.isMapBrowse()) browseVehicleIndex else searchVehicleIndex
-
-    private fun sitesForCurrentFilter(
-        restSites: List<RestSite>,
-        filter: BrowseCarFilter,
-        envelope: GeoUtils.Envelope? = null,
-    ): List<RestSite> = BrowseCarFilterMatcher.sitesForWaterFilter(
-        restSites,
-        vehicleIndex(),
-        filter,
-        envelope,
-    )
-
-    private fun matchingSiteIds(
-        sites: List<RestSite>,
-        filter: BrowseCarFilter,
-        envelope: GeoUtils.Envelope? = null,
-    ): Set<String>? {
+    private fun matchingSiteIds(sites: List<RestSite>, filter: BrowseCarFilter): Set<String>? {
         val banned = if (filter.excludeSitesInEntryBan) {
             siteIdsInsideEntryBans(sites)
         } else {
             emptySet()
         }
-        if (!filter.requireNearWater) {
-            return BrowseCarFilterMatcher.matchingIds(sites, filter, banned)
-        }
-        loadOverlayIndexBlocking()
-        val radius = filter.waterRadiusMeters()
-        val anchors = overlayWaterAnchors()
-        val osmHits = osmWaterHits(sites, filter, envelope, banned, radius)
-        return BrowseCarFilterMatcher.matchingIds(
-            sites,
-            filter,
-            banned,
-            overlayWaterPoints = anchors,
-            osmWaterHits = osmHits,
-        )
-    }
-
-    private fun overlayWaterAnchors(): List<LatLon> =
-        browseOverlayIndex.mapNotNull { point ->
-            val boat = point.layerId == RestSiteRepository.LAYER_BOAT
-            val amenity = SiteFeature.KAPIELISKO in point.features ||
-                SiteFeature.MARINA in point.features
-            if (boat || amenity) {
-                LatLon(point.latitude, point.longitude)
-            } else {
-                null
-            }
-        }
-
-    private fun osmWaterHits(
-        sites: List<RestSite>,
-        filter: BrowseCarFilter,
-        envelope: GeoUtils.Envelope?,
-        banned: Set<String>,
-        radiusMeters: Double,
-    ): Set<String> {
-        val exceptWater = filter.copy(requireNearWater = false)
-        val baseIds = BrowseCarFilterMatcher.matchingIds(sites, exceptWater, banned)
-        val pool = when {
-            !exceptWater.isActive -> sites
-            baseIds == null -> sites
-            else -> sites.filter { it.id in baseIds }
-        }
-        val padDeg = (radiusMeters / 111_000.0) * 1.2
-        val scoped = if (envelope == null) {
-            pool
-        } else {
-            pool.filter { site ->
-                site.latitude in (envelope.ymin - padDeg)..(envelope.ymax + padDeg) &&
-                    site.longitude in (envelope.xmin - padDeg)..(envelope.xmax + padDeg)
-            }
-        }
-        val needOsm = scoped.filter { !BrowseCarFilterMatcher.hasBdlWaterAmenity(it) }
-        if (needOsm.isEmpty()) return emptySet()
-        return try {
-            waterClient.siteIdsNearWater(needOsm, radiusMeters)
-        } catch (e: Exception) {
-            _state.update {
-                it.copy(
-                    message = AppMessage.Error(
-                        "Nad wodą (OSM): ${e.message ?: "brak danych"}",
-                    ),
-                )
-            }
-            emptySet()
-        }
+        return BrowseCarFilterMatcher.matchingIds(sites, filter, banned)
     }
 
     private fun siteIdsInsideEntryBans(sites: List<RestSite>): Set<String> {
@@ -2860,7 +2727,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 startRoadAnalysis = profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty(),
                 corridorSummary = "korytarz L${leftKm.toInt()}/P${rightKm.toInt()} km · ${line.size} pkt · ${elapsedMs} ms",
                 corridorLine = line,
-                vehicleSites = outcome.bundle.vehicleSites,
             )
             if (profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty()) {
                 analyzeRoadsInBackground(generation, sorted, origin)
@@ -2958,7 +2824,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     startRoadAnalysis = profile == TravelProfile.MOTORCYCLE && subset.sites.isNotEmpty(),
                     fromRadiusSubset = true,
                     retainedRoadAssessments = retainedRoads,
-                    vehicleSites = subset.vehicleSites,
                 )
                 if (profile == TravelProfile.MOTORCYCLE && subset.sites.isNotEmpty()) {
                     analyzeRoadsInBackground(generation, subset.sites, position)
@@ -2988,7 +2853,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 cameraToken = token,
                 startRoadAnalysis = profile == TravelProfile.MOTORCYCLE && bundle.sites.isNotEmpty(),
                 fromSessionCache = outcome.fromSessionCache,
-                vehicleSites = bundle.vehicleSites,
             )
             if (profile == TravelProfile.MOTORCYCLE && bundle.sites.isNotEmpty()) {
                 analyzeRoadsInBackground(generation, bundle.sites, position)
@@ -3040,10 +2904,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         retainedRoadAssessments: Map<String, RoadAssessment> = emptyMap(),
         corridorSummary: String? = null,
         corridorLine: List<LatLon> = emptyList(),
-        vehicleSites: List<RestSite> = emptyList(),
     ) {
         if (searchGeneration.get() != generation) return
-        searchVehicleIndex = vehicleSites
         val snapshot = _state.value
         val roadBySiteId = if (retainedRoadAssessments.isNotEmpty()) {
             retainedRoadAssessments
@@ -3194,12 +3056,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         corridorLine: List<LatLon> = emptyList(),
     ): List<RestSiteResult> {
         if (position == null && !_state.value.isMapBrowse()) return emptyList()
-        val pool = sitesForCurrentFilter(sites, amenityFilter)
-        val matchingIds = matchingSiteIds(pool, amenityFilter)
+        val matchingIds = matchingSiteIds(sites, amenityFilter)
         val filtered = if (matchingIds == null) {
-            pool
+            sites
         } else {
-            pool.filter { it.id in matchingIds }
+            sites.filter { it.id in matchingIds }
         }
         return filtered
             .asSequence()

@@ -72,7 +72,6 @@ import pl.navilas.finder.domain.MapTrackingCamera
 import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BrowseCarFilter
 import pl.navilas.finder.domain.BrowseParkingProximityMode
-import pl.navilas.finder.domain.BrowseWaterProximityMode
 import pl.navilas.finder.domain.AppExploreMode
 import pl.navilas.finder.domain.AppMessage
 import pl.navilas.finder.domain.MapTrackingMode
@@ -742,27 +741,12 @@ class MainActivity : AppCompatActivity() {
                 notifyDraftChanged()
             }
         }
-        controls.browseFilterNearWater.setOnCheckedChangeListener { _, checked ->
-            if (!syncingBrowseCarFilterUi) {
-                updateBrowseWaterSubControlsEnabled(controls, checked)
-                notifyDraftChanged()
-            }
-        }
         controls.browseParkingProximityToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (!isChecked || syncingBrowseCarFilterUi) return@addOnButtonCheckedListener
             updateBrowseParkingMetersEnabled(
                 controls,
                 controls.browseFilterParking.isChecked &&
                     checkedId == R.id.btnParkingMaxDistance,
-            )
-            notifyDraftChanged()
-        }
-        controls.browseWaterProximityToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked || syncingBrowseCarFilterUi) return@addOnButtonCheckedListener
-            updateBrowseWaterMetersEnabled(
-                controls,
-                controls.browseFilterNearWater.isChecked &&
-                    checkedId == R.id.btnWaterMaxDistance,
             )
             notifyDraftChanged()
         }
@@ -781,20 +765,7 @@ class MainActivity : AppCompatActivity() {
                     notifyDraftChanged()
                 }
             })
-            controls.browseWaterMaxMeters.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-                override fun afterTextChanged(s: Editable?) {
-                    notifyDraftChanged()
-                }
-            })
         }
-        installClearDefaultOnFocus(
-            field = controls.browseWaterMaxMeters,
-            defaultValue = { BrowseCarFilter.DEFAULT_WATER_MAX_METERS.toString() },
-            isSyncing = { syncingBrowseCarFilterUi },
-            onIdle = { notifyDraftChanged() },
-        )
     }
 
     private fun applyBrowseCarFilterFromUi() {
@@ -822,23 +793,6 @@ class MainActivity : AppCompatActivity() {
         controls.browseParkingMaxMeters.isEnabled = enabled
     }
 
-    private fun updateBrowseWaterSubControlsEnabled(
-        controls: BrowseCarFilterControlsBinding,
-        waterChecked: Boolean,
-    ) {
-        controls.browseWaterProximityToggle.isEnabled = waterChecked
-        val maxDistance = controls.btnWaterMaxDistance.isChecked
-        updateBrowseWaterMetersEnabled(controls, waterChecked && maxDistance)
-    }
-
-    private fun updateBrowseWaterMetersEnabled(
-        controls: BrowseCarFilterControlsBinding,
-        enabled: Boolean,
-    ) {
-        controls.browseWaterMaxMetersLayout.isEnabled = enabled
-        controls.browseWaterMaxMeters.isEnabled = enabled
-    }
-
     private fun readBrowseCarFilterFrom(controls: BrowseCarFilterControlsBinding): BrowseCarFilter {
         val metersText = controls.browseParkingMaxMeters.text?.toString()?.trim().orEmpty()
         val meters = metersText.toIntOrNull()?.coerceIn(1, BrowseCarFilter.MAX_PARKING_METERS)
@@ -847,14 +801,6 @@ class MainActivity : AppCompatActivity() {
             BrowseParkingProximityMode.MAX_DISTANCE
         } else {
             BrowseParkingProximityMode.NEAR_POINT
-        }
-        val waterMetersText = controls.browseWaterMaxMeters.text?.toString()?.trim().orEmpty()
-        val waterMeters = waterMetersText.toIntOrNull()?.coerceIn(1, BrowseCarFilter.MAX_WATER_METERS)
-            ?: BrowseCarFilter.DEFAULT_WATER_MAX_METERS
-        val waterMode = if (controls.btnWaterMaxDistance.isChecked) {
-            BrowseWaterProximityMode.MAX_DISTANCE
-        } else {
-            BrowseWaterProximityMode.NEAR_POINT
         }
         return BrowseCarFilter(
             requireLawostoly = controls.browseFilterLawostoly.isChecked,
@@ -865,9 +811,6 @@ class MainActivity : AppCompatActivity() {
             requireParking = controls.browseFilterParking.isChecked,
             parkingMode = parkingMode,
             parkingMaxMeters = meters,
-            requireNearWater = controls.browseFilterNearWater.isChecked,
-            waterMode = waterMode,
-            waterMaxMeters = waterMeters,
             requireZanocujInZone = controls.browseFilterZanocuj.isChecked,
             excludeSitesInEntryBan = controls.browseFilterExcludeEntryBan.isChecked,
         )
@@ -884,7 +827,6 @@ class MainActivity : AppCompatActivity() {
         controls.browseFilterWodaPitna.isChecked = filter.requireWodaPitna
         controls.browseFilterZrodlo.isChecked = filter.requireZrodlo
         controls.browseFilterParking.isChecked = filter.requireParking
-        controls.browseFilterNearWater.isChecked = filter.requireNearWater
         controls.browseFilterZanocuj.isChecked = filter.requireZanocujInZone
         controls.browseFilterExcludeEntryBan.isChecked = filter.excludeSitesInEntryBan
         when (filter.parkingMode) {
@@ -899,20 +841,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             controls.browseParkingMaxMeters.setText(metersText)
         }
-        when (filter.waterMode) {
-            BrowseWaterProximityMode.NEAR_POINT ->
-                controls.browseWaterProximityToggle.check(R.id.btnWaterNearPoint)
-            BrowseWaterProximityMode.MAX_DISTANCE ->
-                controls.browseWaterProximityToggle.check(R.id.btnWaterMaxDistance)
-        }
-        val waterMetersText = filter.waterMaxMeters.toString()
-        if (!controls.browseWaterMaxMeters.hasFocus() &&
-            controls.browseWaterMaxMeters.text?.toString() != waterMetersText
-        ) {
-            controls.browseWaterMaxMeters.setText(waterMetersText)
-        }
         updateBrowseParkingSubControlsEnabled(controls, filter.requireParking)
-        updateBrowseWaterSubControlsEnabled(controls, filter.requireNearWater)
         syncingBrowseCarFilterUi = false
     }
 

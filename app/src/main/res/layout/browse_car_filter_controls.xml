@@ -88,58 +88,6 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <CheckBox
-        android:id="@+id/browseFilterNearWater"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/browse_filter_near_water" />
-
-    <com.google.android.material.button.MaterialButtonToggleGroup
-        android:id="@+id/browseWaterProximityToggle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        app:checkedButton="@+id/btnWaterNearPoint"
-        app:selectionRequired="true"
-        app:singleSelection="true">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWaterNearPoint"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/browse_parking_near_point" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWaterMaxDistance"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/browse_parking_max_distance" />
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/browseWaterMaxMetersLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="4dp"
-        android:hint="@string/browse_parking_meters_hint"
-        app:helperText="@string/browse_parking_meters_range"
-        app:helperTextEnabled="true">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/browseWaterMaxMeters"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:imeOptions="actionDone"
-            android:inputType="number"
-            android:maxLength="4"
-            android:text="500" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <CheckBox
         android:id="@+id/browseFilterZanocuj"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

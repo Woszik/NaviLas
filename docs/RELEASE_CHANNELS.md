@@ -83,6 +83,6 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 | Co masz | Kanał |
 |---------|-------|
 | 0.5.44 / `latest.json` | **Beta** |
-| 0.5.46-nightly / `nightly.json` | **Nightly** |
+| 0.5.44-nightly / `nightly.json` | **Nightly** (kod Bety 0.5.44, versionCode 55) |
 | F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
 | Final | **jeszcze nie** |

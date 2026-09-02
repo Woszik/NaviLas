@@ -1,7 +1,6 @@
 package pl.navilas.finder.data.bdl
 
 import pl.navilas.finder.domain.BrowseCarFilter
-import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SiteFeature
@@ -18,30 +17,6 @@ object BrowseCarFilterMatcher {
     private const val CELL_DEG = 0.01 // ~1.1 km
 
     /**
-     * When [BrowseCarFilter.requireNearWater] is on, parking/stop points (17/19) join the
-     * candidate set so water is a peer amenity to wiata — not only a filter on rest sites.
-     */
-    fun sitesForWaterFilter(
-        restSites: List<RestSite>,
-        vehicleSites: List<RestSite>,
-        filter: BrowseCarFilter,
-        envelope: GeoUtils.Envelope? = null,
-    ): List<RestSite> {
-        if (!filter.requireNearWater || vehicleSites.isEmpty()) return restSites
-        val known = restSites.mapTo(HashSet(restSites.size * 2)) { it.id }
-        val padDeg = (filter.waterRadiusMeters() / 111_000.0) * 1.2
-        val extras = vehicleSites.filter { site ->
-            if (site.id in known) return@filter false
-            if (!site.latitude.isFinite() || !site.longitude.isFinite()) return@filter false
-            if (envelope == null) return@filter true
-            site.latitude in (envelope.ymin - padDeg)..(envelope.ymax + padDeg) &&
-                site.longitude in (envelope.xmin - padDeg)..(envelope.xmax + padDeg)
-        }
-        if (extras.isEmpty()) return restSites
-        return restSites + extras
-    }
-
-    /**
      * @return `null` when filter inactive (show all); otherwise ids of matching sites.
      * @param excludeSiteIds sites inside a forest-entry ban, used when [BrowseCarFilter.excludeSitesInEntryBan].
      */
@@ -49,8 +24,6 @@ object BrowseCarFilterMatcher {
         sites: List<RestSite>,
         filter: BrowseCarFilter,
         excludeSiteIds: Set<String> = emptySet(),
-        overlayWaterPoints: List<LatLon> = emptyList(),
-        osmWaterHits: Set<String> = emptySet(),
     ): Set<String>? {
         if (!filter.isActive) return null
         if (sites.isEmpty()) return emptySet()
@@ -64,7 +37,6 @@ object BrowseCarFilterMatcher {
 
         val amenityRadius = BrowseCarFilter.AMENITY_LINK_METERS
         val parkingRadius = filter.parkingRadiusMeters()
-        val waterRadius = filter.waterRadiusMeters()
         val match = HashSet<String>(sites.size / 4 + 1)
 
         for (site in sites) {
@@ -105,15 +77,6 @@ object BrowseCarFilterMatcher {
                 }
                 if (!hasParkingNearby(nearbyParking, site)) continue
             }
-            if (filter.requireNearWater) {
-                val nearbyWater = if (waterRadius <= amenityRadius) {
-                    nearbyAmenity
-                } else {
-                    nearby(site, byCell, waterRadius)
-                }
-                val bdlWater = hasBdlWater(site, nearbyWater, overlayWaterPoints, waterRadius)
-                if (!bdlWater && site.id !in osmWaterHits) continue
-            }
             match += site.id
         }
         return match
@@ -136,29 +99,6 @@ object BrowseCarFilterMatcher {
     ): Boolean {
         if (feature in self.features) return true
         return nearby.any { feature in it.features }
-    }
-
-    fun hasBdlWaterAmenity(site: RestSite): Boolean =
-        SiteFeature.KAPIELISKO in site.features ||
-            SiteFeature.MARINA in site.features ||
-            site.sourceLayerId == RestSiteRepository.LAYER_BOAT
-
-    private fun hasBdlWater(
-        self: RestSite,
-        nearby: List<RestSite>,
-        overlayWaterPoints: List<LatLon>,
-        radiusMeters: Double,
-    ): Boolean {
-        if (hasBdlWaterAmenity(self)) return true
-        if (nearby.any { hasBdlWaterAmenity(it) }) return true
-        return overlayWaterPoints.any { point ->
-            GeoUtils.distanceMeters(
-                self.latitude,
-                self.longitude,
-                point.latitude,
-                point.longitude,
-            ) <= radiusMeters
-        }
     }
 
     private fun hasParkingNearby(nearby: List<RestSite>, self: RestSite): Boolean {

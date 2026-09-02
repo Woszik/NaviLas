@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-02**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.46-nightly | 54 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44-nightly | 55 |
 | **Beta** | GitHub Releases | 0.5.44 | 52 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.46:** filtr **Nad wodą** jest peerem wiaty — przy włączonym filtrze parkingi/postoje 17/19 nad wodą wchodzą do wyników; Źródło nie wchodzi. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.44-nightly** (versionCode 55) to ten sam kod co Beta 0.5.44 — powrót po wycofaniu filtra „Nad wodą”. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
 ## Zakres Beta 0.5.44
 
