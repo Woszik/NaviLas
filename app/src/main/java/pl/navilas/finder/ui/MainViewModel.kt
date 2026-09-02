@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import pl.navilas.finder.data.bdl.BrowseCarFilterMatcher
 import pl.navilas.finder.data.bdl.BdlOfflineDownloader
@@ -18,6 +20,7 @@ import pl.navilas.finder.data.bdl.BdlOfflineStore
 import pl.navilas.finder.data.bdl.BdlSearchContext
 import pl.navilas.finder.data.bdl.BdlSearchSubsetFilter
 import pl.navilas.finder.data.bdl.BdlOverlayLoader
+import pl.navilas.finder.data.bdl.NearbyOverlayObjects
 import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
@@ -340,6 +343,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     @Volatile
     private var entryBanIndex: List<ForestEntryBanBounds> = emptyList()
     private var overlayLoadJob: Job? = null
+    private val overlayIndexMutex = Mutex()
     private var entryBanDownloadJob: Job? = null
     private var selectedRoadsJob: Job? = null
     private var filterResultsJob: Job? = null
@@ -1597,14 +1601,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (browseOverlayIndex.isNotEmpty()) return
         if (overlayLoadJob?.isActive == true) return
         overlayLoadJob = viewModelScope.launch {
-            if (!offlineStore.isReady()) return@launch
-            val fullAvailable = _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
-            val overlay = withContext(Dispatchers.IO) {
-                BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
-            }
-            browseOverlayIndex = overlay
-            browseOverlayById = overlay.associateBy { it.id }
-            _state.update { it.copy(bdlOverlayFullAvailable = fullAvailable) }
+            overlayIndexForDetails()
             lastBrowseViewportKey = null
             val bounds = lastBrowseBounds
             if (bounds != null && _state.value.bdlOverlayFilter.isActive) {
@@ -1615,6 +1612,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     lastBrowseZoom,
                 )
             }
+        }
+    }
+
+    /**
+     * Offline overlay points within 200 m of [site] for the details dialog.
+     * Does not draw on the map.
+     */
+    suspend fun nearbyOverlayGroups(site: RestSite): List<NearbyOverlayObjects.Group> {
+        val index = overlayIndexForDetails()
+        return NearbyOverlayObjects.groupedWithin(
+            points = index,
+            latitude = site.latitude,
+            longitude = site.longitude,
+            excludeId = site.id,
+            radiusMeters = NearbyOverlayObjects.DETAILS_RADIUS_METERS,
+        )
+    }
+
+    private suspend fun overlayIndexForDetails(): List<BdlOverlayPoint> {
+        if (browseOverlayIndex.isNotEmpty()) return browseOverlayIndex
+        if (!offlineStore.isReady()) return emptyList()
+        return overlayIndexMutex.withLock {
+            if (browseOverlayIndex.isNotEmpty()) return@withLock browseOverlayIndex
+            val fullAvailable = _state.value.offlineBdl.storedConfig?.scope == BdlDataScope.FULL_BDL
+            val overlay = withContext(Dispatchers.IO) {
+                BdlOverlayLoader.loadAll(offlineStore, fullAvailable)
+            }
+            browseOverlayIndex = overlay
+            browseOverlayById = overlay.associateBy { it.id }
+            _state.update { it.copy(bdlOverlayFullAvailable = fullAvailable) }
+            overlay
         }
     }
 

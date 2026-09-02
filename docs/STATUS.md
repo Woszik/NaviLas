@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-02**.
+Ostatnia aktualizacja dokumentacji: **2026-09-03**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44-nightly | 55 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.45-nightly | 56 |
 | **Beta** | GitHub Releases | 0.5.44 | 52 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.44-nightly** (versionCode 55) to ten sam kod co Beta 0.5.44 — powrót po wycofaniu filtra „Nad wodą”. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.45-nightly** (versionCode 56): Szczegóły jak karta, dojazd moto z informacją o niepewnym dostępie OSM, „W pobliżu” 200 m z obiektów BDL offline (bez pinów). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
 ## Zakres Beta 0.5.44
 
@@ -51,7 +51,8 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 - **Obiekty BDL** (Search i Browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kategorie zaznacza się niezależnie. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
 - **Filtry na mapie:** arkusz **Filtry** ma belki **Tryb**, **Szukaj** (w wyszukiwaniu: źródło, promień, miejscowość, korytarz, **ZNAJDŹ**), **Profil**, **Filtry miejsc** i **Obiekty BDL** — ten sam wybór co na ekranie 1. Zmiana trybu z mapy zostawia Cię na mapie. W przeglądaniu belka Szukaj jest ukryta; **Odśwież mapę** jest w panelu Tryb.
 - **Wielozaznaczenie** punktów (max 8) z listą i tabelą **Porównaj**.
-- **Profil moto:** etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych.
+- **Profil moto:** etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych. Nietagowany `track`/`service` zostaje w wynikach, ale karta / Szczegóły / lista piszą **dostęp niepewny** (OSM bez zakazu i bez zezwolenia) — bez zaostrzania filtra.
+- **Szczegóły:** okno jak karta miejsca (nie surowy dialog). Cechy BDL na pinie; **W pobliżu** (200 m) z paczki overlay offline, grupowane nazwy, bez rysowania na mapie — piny tylko po włączeniu Obiektów BDL.
 - **Śledzenie GPS:** pauza → play wznawia zapisaną skalę, kierunek i ogniskowy (bez skoku do zoom 13).
 - **Zakazy wstępu BDL:** overlay (osobny MapServer, live, domyślnie OFF) od zoom 7.5 jak Zanocuj; paczka offline (cała Polska); po **7 dniach** monit, **Później** odkłada o **24 godziny**. Filtr **Poza strefą zakazu wstępu** ukrywa wyniki w poligonie. Pobieranie wymaga Referera portalu BDL.
 - **Przewidywalny start:** domyślnie pierwszy start otwiera Search, a kolejne przywracają ostatni tryb. Ustawienia mogą to nadpisać na stałe Wyszukiwanie albo Przeglądanie mapy. Browse nie uruchamia się w tle dla Search.

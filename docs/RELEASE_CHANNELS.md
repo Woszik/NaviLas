@@ -2,7 +2,7 @@
 
 Model dystrybucji **GitHub** (flavor `github`): **Nightly**, **Beta**, **Final**.
 
-Ostatnia aktualizacja: **2026-09-02**.
+Ostatnia aktualizacja: **2026-09-03**.
 
 ```
 Nightly  →  (stabilizacja)  →  Beta  →  (dopracowanie)  →  Final
@@ -78,11 +78,11 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 
 ---
 
-## Mapowanie obecnego stanu (2026-09-02)
+## Mapowanie obecnego stanu (2026-09-03)
 
 | Co masz | Kanał |
 |---------|-------|
 | 0.5.44 / `latest.json` | **Beta** |
-| 0.5.44-nightly / `nightly.json` | **Nightly** (kod Bety 0.5.44, versionCode 55) |
+| 0.5.45-nightly / `nightly.json` | **Nightly** (versionCode 56) |
 | F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
 | Final | **jeszcze nie** |

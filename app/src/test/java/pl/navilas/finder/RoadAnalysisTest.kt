@@ -5,6 +5,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.data.osm.OverpassRoadClient
 import pl.navilas.finder.data.osm.RoadClassifier
 import pl.navilas.finder.data.osm.RoadProximityAnalyzer
@@ -83,6 +84,30 @@ class RoadAnalysisTest {
         assertEquals(
             RoadAccessClass.MOTO_RESTRICTED,
             RoadClassifier.classify(highway = "service", access = "no"),
+        )
+    }
+
+    @Test
+    fun untagged_track_is_allowed_but_access_uncertain() {
+        val track = road(id = "way/t", type = "track")
+        assertEquals(
+            RoadAccessClass.MOTO_ALLOWED,
+            RoadClassifier.classify(highway = "track"),
+        )
+        assertTrue(
+            MotorcycleAccessHint.isLegalAccessUncertain(track, RoadAccessClass.MOTO_ALLOWED),
+        )
+        assertTrue(
+            !MotorcycleAccessHint.isLegalAccessUncertain(
+                track.copy(motorVehicle = "forestry"),
+                RoadAccessClass.MOTO_RESTRICTED,
+            ),
+        )
+        assertTrue(
+            !MotorcycleAccessHint.isLegalAccessUncertain(
+                road(id = "way/r", type = "residential"),
+                RoadAccessClass.MOTO_ALLOWED,
+            ),
         )
     }
 
@@ -263,7 +288,11 @@ class RoadAnalysisTest {
         geometryKind = PoiGeometryKind.POINT,
     )
 
-    private fun road(id: String, type: String, geometry: List<LatLon>) = Road(
+    private fun road(
+        id: String,
+        type: String,
+        geometry: List<LatLon> = listOf(LatLon(52.0, 21.0), LatLon(52.0, 21.001)),
+    ) = Road(
         id = id,
         type = type,
         access = null,

@@ -61,11 +61,13 @@ import pl.navilas.finder.databinding.ActivityMainBinding
 import pl.navilas.finder.databinding.BottomSheetMapFiltersBinding
 import pl.navilas.finder.databinding.BdlOverlayControlsBinding
 import pl.navilas.finder.databinding.BrowseCarFilterControlsBinding
+import pl.navilas.finder.databinding.DialogSiteDetailsBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
 import pl.navilas.finder.databinding.SearchCriteriaControlsBinding
 import pl.navilas.finder.data.bdl.BdlOverlayCatalog
+import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.domain.BdlOverlayFilter
 import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.MapTrackingCamera
@@ -78,6 +80,8 @@ import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
+import pl.navilas.finder.domain.RestSiteTitles
+import pl.navilas.finder.domain.RoadSuitability
 import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
@@ -93,7 +97,6 @@ import pl.navilas.finder.domain.SavedPointCategory
 import pl.navilas.finder.domain.ZanocujPolygonQuality
 import pl.navilas.finder.domain.estimatedSizeLabel
 import pl.navilas.finder.domain.featureSummaryPl
-import pl.navilas.finder.domain.labelPl
 import pl.navilas.finder.domain.toStars
 import pl.navilas.finder.data.saved.SavedPointsBackupCodec
 import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
@@ -290,7 +293,6 @@ class MainActivity : AppCompatActivity() {
             onNavigate = { item -> showNavigateChooser(item) },
             onSelect = { item -> viewModel.onListItemSelected(item.site.id) },
             onSave = { item -> onSaveClicked(item) },
-            profileProvider = { currentProfile },
             isSavedProvider = { siteId -> viewModel.state.value.isSaved(siteId) },
             savedMetaProvider = { siteId -> savedMetaFor(siteId) },
             distanceLabelProvider = { item ->
@@ -301,6 +303,7 @@ class MainActivity : AppCompatActivity() {
                     getString(R.string.entry_ban_on_site, ban.summaryPl())
                 }
             },
+            motoListLineProvider = { item -> motoListLine(item, currentProfile) },
         )
         listBinding.resultsList.layoutManager = LinearLayoutManager(this)
         listBinding.resultsList.adapter = resultsAdapter
@@ -2327,15 +2330,7 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.compare_moto),
                 items.map { item ->
                     val road = item.roadAssessment?.nearestRoad
-                    if (road == null) {
-                        "—"
-                    } else {
-                        val dist = item.roadAssessment?.distanceToRoadMeters?.let {
-                            String.format(java.util.Locale.forLanguageTag("pl-PL"), "%.0f m", it)
-                        }
-                        listOfNotNull(RoadClassifier.describeMotorcycleRoad(road), dist)
-                            .joinToString(" · ")
-                    }
+                    motoListLine(item, state.profile) ?: "—"
                 },
             )
         }
@@ -2385,7 +2380,7 @@ class MainActivity : AppCompatActivity() {
         val title = if (overlayGroup != null) {
             getString(R.string.bdl_overlay_card_title, overlayGroup.labelPl, selected.site.name)
         } else {
-            "Miejsce odpoczynku „${selected.site.name}”"
+            RestSiteTitles.cardTitle(selected.site.name)
         }
         mapBinding.cardTitle.text = if (state.selectedSiteIds.size > 1) {
             title + " · " + getString(R.string.selection_count, state.selectedSiteIds.size)
@@ -2414,6 +2409,13 @@ class MainActivity : AppCompatActivity() {
             mapBinding.cardEntryBan.isVisible = true
         } else {
             mapBinding.cardEntryBan.isVisible = false
+        }
+        val motoCard = motoCardLine(selected, state.profile)
+        if (motoCard != null) {
+            mapBinding.cardRoad.text = motoCard
+            mapBinding.cardRoad.isVisible = true
+        } else {
+            mapBinding.cardRoad.isVisible = false
         }
         mapBinding.cardNavigate.isVisible = true
         val saved = state.savedPoint(selected.site.id)
@@ -3005,63 +3007,178 @@ class MainActivity : AppCompatActivity() {
         val site = item.site
         val state = viewModel.state.value
         val saved = state.savedPoint(site.id)
-        val features = buildList {
-            site.features.forEach { add("• ${it.labelPl}") }
-            site.naturalSpring?.let { add("• ${it.labelPl()}") }
-        }.joinToString("\n").ifBlank { "• (brak flag BDL)" }
-        val related = site.relatedObjects.joinToString("\n") {
-            "• ${it.name} (${it.layerName}, ${it.distanceMeters.toInt()} m)"
-        }.ifBlank { "• brak w ${stateConfigLinkRadius()} m" }
-        val zone = zanocujLabel(site.zanocujStatus, site.distanceToZanocujBoundaryMeters)
-        val savedBlock = saved?.let {
-            buildString {
-                append("\n\nTwoje notatki:\n")
-                append("Kategorie: ")
-                append(categoriesLabelFor(it.categoryIds, state.savedCategories))
-                append('\n')
-                append("Komentarz: ")
-                append(it.userComment ?: "—")
-            }
-        }.orEmpty()
         val overlayGroup = BdlOverlayCatalog.groupForLayer(site.sourceLayerId)
-        val banLine = entryBanDetailsLine(state, site)
-        val detailsBody = if (overlayGroup != null) {
-            """
-            ${site.description.orEmpty()}
-
-            Źródło: ${site.sourceLayerName}$banLine$savedBlock
-            """.trimIndent()
+        val details = DialogSiteDetailsBinding.inflate(layoutInflater)
+        details.detailsTitle.text = if (overlayGroup != null) {
+            getString(R.string.bdl_overlay_card_title, overlayGroup.labelPl, site.name)
         } else {
-            """
-            Cechy BDL:
-            $features
-
-            Powiązane obiekty BDL:
-            $related
-
-            Zanocuj: $zone
-            $banLine
-
-            Źródło: ${site.sourceLayerName}$savedBlock
-            """.trimIndent()
+            RestSiteTitles.cardTitle(site.name)
         }
-        val builder = AlertDialog.Builder(this)
-            .setTitle(site.name)
-            .setMessage(detailsBody)
-            .setNeutralButton(R.string.btn_navigate) { _, _ -> showNavigateChooser(item) }
-            .setPositiveButton(android.R.string.ok, null)
+        details.detailsDistance.text = formatPoiDistance(state, item.distanceKm)
+        details.detailsFeatures.text = if (overlayGroup != null) {
+            site.description?.replace("\n", " · ") ?: site.featureSummaryPl()
+        } else {
+            site.featureSummaryPl()
+        }
+        details.detailsZanocuj.text = when (site.zanocujStatus) {
+            ZanocujStatus.IN_ZONE -> getString(R.string.zanocuj_in_zone_emoji)
+            ZanocujStatus.NEAR_ZONE -> getString(R.string.zanocuj_near_zone_emoji)
+            ZanocujStatus.OUTSIDE_ZONE -> zanocujLabel(
+                site.zanocujStatus,
+                site.distanceToZanocujBoundaryMeters,
+            )
+        }
+        details.detailsZanocuj.isVisible = site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
+        val entryBan = state.entryBanAt(site.latitude, site.longitude)
+        if (entryBan != null) {
+            details.detailsEntryBan.text = getString(R.string.entry_ban_on_site, entryBan.summaryPl())
+            details.detailsEntryBan.isVisible = true
+        } else {
+            details.detailsEntryBan.isVisible = false
+        }
         if (saved != null) {
-            builder.setNegativeButton(R.string.btn_edit_saved) { _, _ -> showEditSavedDialog(site.id) }
+            val categoryLabel = categoriesLabelFor(saved.categoryIds, state.savedCategories)
+            val parts = buildList {
+                add(
+                    if (saved.categoryIds.size > 1) {
+                        getString(R.string.saved_item_categories, categoryLabel)
+                    } else {
+                        getString(R.string.saved_item_category, categoryLabel)
+                    },
+                )
+                saved.userComment?.let { add(getString(R.string.saved_item_comment, it)) }
+            }
+            details.detailsSavedMeta.text = parts.joinToString(" · ")
+            details.detailsSavedMeta.isVisible = true
         } else {
-            builder.setNegativeButton(R.string.btn_save) { _, _ -> onSaveClicked(item) }
+            details.detailsSavedMeta.isVisible = false
         }
-        builder.show()
+        val motoBlock = motoDetailsBlock(item, state.profile)
+        if (motoBlock != null) {
+            details.detailsMotoHeading.isVisible = true
+            details.detailsMoto.text = motoBlock
+            details.detailsMoto.isVisible = true
+        } else {
+            details.detailsMotoHeading.isVisible = false
+            details.detailsMoto.isVisible = false
+        }
+        details.detailsSource.text = getString(R.string.details_source_layer, site.sourceLayerName)
+        details.detailsNearbyHeading.isVisible = true
+        details.detailsNearby.text = getString(R.string.details_nearby_loading)
+        details.detailsNearby.isVisible = true
+        details.detailsSave.text = getString(
+            if (saved != null) R.string.btn_edit_saved else R.string.btn_save,
+        )
+        val dialog = AlertDialog.Builder(this)
+            .setView(details.root)
+            .create()
+        details.detailsClose.setOnClickListener { dialog.dismiss() }
+        details.detailsSave.setOnClickListener {
+            dialog.dismiss()
+            if (saved != null) {
+                showEditSavedDialog(site.id)
+            } else {
+                onSaveClicked(item)
+            }
+        }
+        details.detailsNavigate.setOnClickListener {
+            dialog.dismiss()
+            showNavigateChooser(item)
+        }
+        dialog.show()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.94f).toInt(),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        lifecycleScope.launch {
+            val groups = viewModel.nearbyOverlayGroups(site)
+            if (!dialog.isShowing) return@launch
+            if (groups.isEmpty()) {
+                details.detailsNearbyHeading.isVisible = false
+                details.detailsNearby.isVisible = false
+            } else {
+                details.detailsNearby.text = groups.joinToString("\n") { it.linePl() }
+                details.detailsNearbyHeading.isVisible = true
+                details.detailsNearby.isVisible = true
+            }
+        }
     }
 
-    private fun entryBanDetailsLine(state: UiState, site: RestSite): String {
-        val ban = state.entryBanAt(site.latitude, site.longitude) ?: return ""
-        return "\nZakaz wstępu: ${ban.summaryPl()}"
+    private fun motoCardLine(item: RestSiteResult, profile: TravelProfile): String? {
+        if (profile != TravelProfile.MOTORCYCLE) return null
+        val assessment = item.roadAssessment ?: return null
+        val dist = formatRoadDistance(assessment.distanceToRoadMeters)
+        val road = assessment.nearestRoad
+        val uncertain = MotorcycleAccessHint.isLegalAccessUncertain(road, assessment.accessClass)
+        val hasTarget = item.navigationTargetKind == NavigationTargetKind.OSM_ROAD &&
+            assessment.roadSuitability != null &&
+            assessment.roadSuitability != RoadSuitability.REJECTED
+        if (!hasTarget) {
+            return getString(R.string.moto_card_no_target)
+        }
+        val surface = road?.let { RoadClassifier.describeMotorcycleRoad(it) }
+            ?: RoadClassifier.polishRoadType(road?.type)
+        return if (uncertain) {
+            getString(R.string.moto_card_uncertain, dist, road?.type ?: "droga")
+        } else {
+            getString(R.string.moto_card_ok, dist, surface)
+        }
     }
+
+    private fun motoListLine(item: RestSiteResult, profile: TravelProfile): String? {
+        if (profile != TravelProfile.MOTORCYCLE) return null
+        val assessment = item.roadAssessment ?: return null
+        val dist = formatRoadDistance(assessment.distanceToRoadMeters)
+        val road = assessment.nearestRoad
+        val uncertain = MotorcycleAccessHint.isLegalAccessUncertain(road, assessment.accessClass)
+        val hasTarget = item.navigationTargetKind == NavigationTargetKind.OSM_ROAD &&
+            assessment.roadSuitability != null &&
+            assessment.roadSuitability != RoadSuitability.REJECTED
+        if (!hasTarget) {
+            return getString(R.string.moto_list_no_target)
+        }
+        val surface = road?.let { RoadClassifier.describeMotorcycleRoad(it) }
+            ?: RoadClassifier.polishRoadType(road?.type)
+        return if (uncertain) {
+            getString(R.string.moto_list_uncertain, dist, surface)
+        } else {
+            getString(R.string.moto_list_ok, dist, surface)
+        }
+    }
+
+    private fun motoDetailsBlock(item: RestSiteResult, profile: TravelProfile): String? {
+        if (profile != TravelProfile.MOTORCYCLE) return null
+        val assessment = item.roadAssessment ?: return getString(R.string.moto_details_no_target)
+        val dist = formatRoadDistance(assessment.distanceToRoadMeters)
+        val road = assessment.nearestRoad
+        val uncertain = MotorcycleAccessHint.isLegalAccessUncertain(road, assessment.accessClass)
+        val hasTarget = item.navigationTargetKind == NavigationTargetKind.OSM_ROAD &&
+            assessment.roadSuitability != null &&
+            assessment.roadSuitability != RoadSuitability.REJECTED
+        if (!hasTarget) {
+            return buildString {
+                append(getString(R.string.moto_details_no_target))
+                assessment.skippedReason?.let { append('\n').append(it) }
+            }
+        }
+        val surface = road?.let { RoadClassifier.describeMotorcycleRoad(it) }
+            ?: RoadClassifier.polishRoadType(road?.type)
+        val stars = assessment.roadSuitability?.toStars()
+        return buildList {
+            add(getString(R.string.moto_details_target, dist))
+            add(surface)
+            if (uncertain) add(getString(R.string.moto_details_uncertain))
+            if (stars != null) add(getString(R.string.moto_details_stars, stars))
+        }.joinToString("\n")
+    }
+
+    private fun formatRoadDistance(meters: Double?): String =
+        if (meters == null) {
+            getString(R.string.moto_list_no_target)
+        } else {
+            String.format(Locale.forLanguageTag("pl-PL"), "%.0f m", meters)
+        }
 
     private fun showEntryBanDialog(ban: ForestEntryBan) {
         AlertDialog.Builder(this)
@@ -3070,9 +3187,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }
-
-    private fun stateConfigLinkRadius(): Int =
-        viewModel.state.value.searchConfig.restLinkRadiusMeters.toInt()
 
     private fun showNavigateChooser(item: RestSiteResult) {
         viewModel.selectSite(item.site.id)
@@ -3282,11 +3396,11 @@ private class ResultsAdapter(
     private val onNavigate: (RestSiteResult) -> Unit,
     private val onSelect: (RestSiteResult) -> Unit,
     private val onSave: (RestSiteResult) -> Unit,
-    private val profileProvider: () -> TravelProfile,
     private val isSavedProvider: (String) -> Boolean,
     private val savedMetaProvider: (String) -> Pair<String?, String?>?,
     private val distanceLabelProvider: (RestSiteResult) -> String,
     private val entryBanLabelProvider: (RestSite) -> String?,
+    private val motoListLineProvider: (RestSiteResult) -> String?,
 ) : RecyclerView.Adapter<ResultsAdapter.Holder>() {
     private var items: List<RestSiteResult> = emptyList()
 
@@ -3322,7 +3436,7 @@ private class ResultsAdapter(
         private val btnNavigate: View = itemView.findViewById(R.id.btnNavigate)
 
         fun bind(item: RestSiteResult) {
-            title.text = "Miejsce odpoczynku „${item.site.name}”"
+            title.text = RestSiteTitles.cardTitle(item.site.name)
             features.text = item.site.featureSummaryPl()
             zanocuj.text = zanocujLabel(item.site.zanocujStatus, item.site.distanceToZanocujBoundaryMeters)
             zanocuj.isVisible = item.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
@@ -3361,23 +3475,10 @@ private class ResultsAdapter(
             )
             btnSave.setOnClickListener { onSave(item) }
 
-            val assessment = item.roadAssessment
-            if (profileProvider() == TravelProfile.MOTORCYCLE && assessment != null) {
+            val listRoad = motoListLineProvider(item)
+            if (listRoad != null) {
                 road.isVisible = true
-                val dist = assessment.distanceToRoadMeters
-                val roadLabel = assessment.nearestRoad?.let { RoadClassifier.describeMotorcycleRoad(it) }
-                    ?: RoadClassifier.polishRoadType(assessment.nearestRoad?.type)
-                val stars = assessment.roadSuitability?.toStars() ?: "—"
-                val distLabel = if (dist != null) {
-                    String.format(Locale.forLanguageTag("pl-PL"), "%.0f m od drogi", dist)
-                } else {
-                    "brak drogi"
-                }
-                val targetHint = when (item.navigationTargetKind) {
-                    NavigationTargetKind.OSM_ROAD -> "Cel nawigacji: droga przy miejscu"
-                    else -> "Brak celu drogowego OSM"
-                }
-                road.text = "$targetHint · $distLabel · $roadLabel · $stars"
+                road.text = listRoad
             } else {
                 road.isVisible = false
             }
