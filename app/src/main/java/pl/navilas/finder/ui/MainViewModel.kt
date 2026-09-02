@@ -224,7 +224,7 @@ data class UiState(
     val browseViewportSites: List<RestSite> = emptyList(),
     val browseMapClusters: List<BrowseMapCluster> = emptyList(),
     /** Amenity / Zanocuj filters (browse + search, car + moto). */
-    val browseCarFilter: BrowseCarFilter = BrowseCarFilter(),
+    val browseCarFilter: BrowseCarFilter = BrowseCarFilter.DEFAULT,
     /** Precomputed IDs for Browse marker filtering; null means no active filter. */
     val browseFilterMatchingIds: Set<String>? = null,
     /** Extra BDL objects overlay (Search and Browse). Off by default. */

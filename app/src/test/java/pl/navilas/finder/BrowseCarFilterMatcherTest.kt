@@ -160,6 +160,13 @@ class BrowseCarFilterMatcherTest {
     }
 
     @Test
+    fun default_filter_excludes_entry_bans() {
+        assertTrue(BrowseCarFilter.DEFAULT.excludeSitesInEntryBan)
+        assertTrue(BrowseCarFilter.DEFAULT.isActive)
+        assertEquals("Poza zakazem wstępu", BrowseCarFilter.DEFAULT.summaryPl())
+    }
+
+    @Test
     fun summaryPl_lists_active_filters() {
         val empty = BrowseCarFilter()
         assertEquals(BrowseCarFilter.SUMMARY_ALL, empty.summaryPl())

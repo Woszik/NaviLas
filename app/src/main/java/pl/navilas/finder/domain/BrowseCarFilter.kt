@@ -62,6 +62,9 @@ data class BrowseCarFilter(
     }
 
     companion object {
+        /** First-run place filter: hide sites inside a BDL forest-entry ban. */
+        val DEFAULT = BrowseCarFilter(excludeSitesInEntryBan = true)
+
         const val SUMMARY_ALL = "Wszystkie miejsca"
         /** Radius for wiata / ławostoły / palenisko / „przy punkcie” parking. */
         const val AMENITY_LINK_METERS = 200.0

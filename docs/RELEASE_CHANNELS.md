@@ -64,7 +64,7 @@ Brak pliku (404) jest pomijany. Flavor `fdroid` nie łączy się z GitHub.
 | versionName | czysta, np. `0.5.35` |
 | Podpis | release keystore |
 
-Przykład bieżącej Beta: **0.5.44** (versionCode 52), tag `v0.5.44`.
+Przykład bieżącej Beta: **0.5.46** (versionCode 58), tag `v0.5.46`.
 
 Procedura: [`APP_UPDATES.md`](APP_UPDATES.md).
 
@@ -82,7 +82,7 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 
 | Co masz | Kanał |
 |---------|-------|
-| 0.5.44 / `latest.json` | **Beta** |
-| 0.5.46-nightly / `nightly.json` | **Nightly** (versionCode 57) |
+| 0.5.46 / `latest.json` | **Beta** (versionCode 58) |
+| 0.5.46 / `nightly.json` | **Nightly** (ten sam kod co Beta 0.5.46) |
 | F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
 | Final | **jeszcze nie** |

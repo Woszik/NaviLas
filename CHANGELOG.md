@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.46 (58) — 2026-09-03
+
+**APK:** [navilas-0.5.46.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.46/navilas-0.5.46.apk)
+
+Zakazy wstępu do lasu **domyślnie włączone** (czerwone strefy na mapie; filtr **Poza strefą zakazu wstępu** ukrywa miejsca w poligonie). Profil moto: dojazd do oficjalnego parkingu / postoju LP (BDL 17/19 + operator) i ten sam komunikat dla obiektów przy tej drodze; nietagowany track bez tej reguły zostaje jako **dostęp niepewny**. Szczegóły jak karta miejsca; **W pobliżu** 200 m z overlay BDL offline.
+
+**Poprzednia wersja:** [0.5.44](#0544-52--2026-09-02)
+
+---
+
 ## 0.5.44 (52) — 2026-09-02
 
 **APK:** [navilas-0.5.44.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.44/navilas-0.5.44.apk)

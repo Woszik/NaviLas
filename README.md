@@ -76,9 +76,10 @@ Release keystore (opcjonalnie, dla podpisanego APK): zmienne `RELEASE_KEYSTORE_P
 
 ## Stan roboczy
 
-Bieżąca **Beta:** **0.5.44** ([`CHANGELOG.md`](CHANGELOG.md)).
+Bieżąca **Beta:** **0.5.46** ([`CHANGELOG.md`](CHANGELOG.md)).
 
-**Nightly** i tematy **do dopracowania:** [`docs/STATUS.md`](docs/STATUS.md).
+**Nightly** i tematy **do dopracowania:** [`docs/STATUS.md`](docs/STATUS.md).  
+**Do zrobienia:** [`docs/TODO.md`](docs/TODO.md).
 
 Model Nightly / Beta / Final: [`docs/RELEASE_CHANNELS.md`](docs/RELEASE_CHANNELS.md).
 
@@ -97,6 +98,8 @@ woszi@pm.me
 - [`CHANGELOG.md`](CHANGELOG.md) — historia wydań **Beta** (GitHub), linki do APK, downgrade
 - [`docs/RELEASE_CHANNELS.md`](docs/RELEASE_CHANNELS.md) — kanały Nightly / Beta / Final
 - [`docs/STATUS.md`](docs/STATUS.md) — stan projektu, Nightly, tematy do dopracowania
+- [`docs/TODO.md`](docs/TODO.md) — lista do zrobienia
+- [`docs/WNIOSEK_BDL_SIEC_DROGOWA.md`](docs/WNIOSEK_BDL_SIEC_DROGOWA.md) — wniosek do BDL/DGLP o sieć drogową
 - [`docs/NAVIGATION_EXPORT.md`](docs/NAVIGATION_EXPORT.md) — nawigacja zewnętrzna (Google Maps, OsmAnd, Cruiser, GPS)
 - [`docs/OSM_ROADS.md`](docs/OSM_ROADS.md) — drogi OpenStreetMap (profil motocyklowy)
 - [`docs/FDROID.md`](docs/FDROID.md) — F-Droid, flavory, MR do fdroiddata

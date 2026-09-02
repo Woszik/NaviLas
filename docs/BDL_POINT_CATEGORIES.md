@@ -86,7 +86,7 @@ Klik → karta + szczegóły + NAWIGUJ (współrzędne punktu). Lista wyników z
 
 ### Zakazy wstępu (Beta 0.5.42)
 
-**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu` (nginx wymaga `Referer` portalu BDL). Czerwone poligony rysowane jak Zanocuj (widok mapy). W **Filtrach miejsc** checkbox **Poza strefą zakazu wstępu** ukrywa wyniki leżące w poligonie.
+**Nie** jest to Czas w Las. Osobny MapServer `Mapa_zakazow_wstepu_do_lasu` (nginx wymaga `Referer` portalu BDL). Czerwone poligony rysowane jak Zanocuj (widok mapy), **domyślnie włączone**. W **Filtrach miejsc** checkbox **Poza strefą zakazu wstępu** jest **domyślnie zaznaczony** i ukrywa wyniki leżące w poligonie.
 
 Pobieranie jest w **Dane BDL offline** (osobna podsekcja, nie paczka miejsc): `filesDir/entry_bans/bans.json`. Gdy baza jest na urządzeniu, mapa i filtr działają bez sieci. Bez bazy — zapytanie bbox widoku.
 

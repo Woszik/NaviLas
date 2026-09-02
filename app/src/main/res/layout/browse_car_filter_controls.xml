@@ -97,6 +97,7 @@
         android:id="@+id/browseFilterExcludeEntryBan"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:checked="true"
         android:text="@string/browse_filter_exclude_entry_ban" />
 
     <TextView
