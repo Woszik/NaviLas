@@ -29,7 +29,9 @@ import pl.navilas.finder.data.cache.RoadAssessmentCache
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
+import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.data.osm.NominatimGeocoder
+import pl.navilas.finder.data.osm.OfficialApproachEntry
 import pl.navilas.finder.data.osm.OverpassRoadClient
 import pl.navilas.finder.data.osm.PersistentLocalityGeocodeStore
 import pl.navilas.finder.data.osm.RoadProximityAnalyzer
@@ -1541,6 +1543,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             state.profile,
             BrowseCarFilter(),
             state.roadBySiteId,
+            corridorSites = state.allSites,
         )
     }
 
@@ -1558,6 +1561,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 state.profile,
                 BrowseCarFilter(),
                 state.roadBySiteId,
+                corridorSites = state.allSites,
             ).first()
         }
         val assessment = if (state.profile == TravelProfile.MOTORCYCLE) {
@@ -1573,13 +1577,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         NavigationTargetKind.REST_SITE)
             }
         }
-        return RestSiteResult(
-            site = site,
-            distanceKm = 0.0,
-            roadAssessment = assessment,
-            navigationTarget = target,
-            navigationTargetKind = kind,
-        )
+        return markOfficialApproach(
+            listOf(
+                RestSiteResult(
+                    site = site,
+                    distanceKm = 0.0,
+                    roadAssessment = assessment,
+                    navigationTarget = target,
+                    navigationTargetKind = kind,
+                ),
+            ),
+            state.roadBySiteId,
+            state.allSites,
+            state.results.map { it.site },
+            state.savedPoints.values.map { it.site },
+        ).first()
     }
 
     fun displayedListResults(state: UiState): List<RestSiteResult> {
@@ -1795,6 +1807,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ),
             )
             .map { buildResultFromSaved(it, origin, state.profile, state.roadBySiteId) }
+            .let { built ->
+                markOfficialApproach(
+                    built,
+                    state.roadBySiteId,
+                    state.allSites,
+                    state.savedPoints.values.map { it.site },
+                )
+            }
     }
 
     private fun primaryCategorySortKey(
@@ -1974,20 +1994,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         results = if (current.isMapBrowse()) {
                             browseSelectionResults(current.copy(roadBySiteId = merged), current.selectedSiteIds)
                         } else {
-                            current.results.map { item ->
-                                val assessment = merged[item.site.id]
-                                if (assessment == null) {
-                                    item
-                                } else {
-                                    val (target, kind) = NavigationTargets.forMotorcycle(assessment)
-                                        ?: (item.navigationTarget to item.navigationTargetKind)
-                                    item.copy(
-                                        roadAssessment = assessment,
-                                        navigationTarget = target,
-                                        navigationTargetKind = kind,
-                                    )
-                                }
-                            }
+                            markOfficialApproach(
+                                current.results.map { item ->
+                                    val assessment = merged[item.site.id]
+                                    if (assessment == null) {
+                                        item
+                                    } else {
+                                        val (target, kind) = NavigationTargets.forMotorcycle(assessment)
+                                            ?: (item.navigationTarget to item.navigationTargetKind)
+                                        item.copy(
+                                            roadAssessment = assessment,
+                                            navigationTarget = target,
+                                            navigationTargetKind = kind,
+                                        )
+                                    }
+                                },
+                                merged,
+                                current.allSites,
+                            )
                         },
                     )
                     next.copy(savedListResults = buildSavedListResults(next))
@@ -3082,6 +3106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         amenityFilter: BrowseCarFilter,
         roadBySiteId: Map<String, RoadAssessment>,
         corridorLine: List<LatLon> = emptyList(),
+        corridorSites: List<RestSite> = emptyList(),
     ): List<RestSiteResult> {
         if (position == null && !_state.value.isMapBrowse()) return emptyList()
         val matchingIds = matchingSiteIds(sites, amenityFilter)
@@ -3133,6 +3158,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             .sortedBy { it.distanceKm }
             .toList()
+            .let { built -> markOfficialApproach(built, roadBySiteId, sites, corridorSites) }
+    }
+
+    private fun officialCorridor(
+        roadBySiteId: Map<String, RoadAssessment>,
+        vararg siteGroups: List<RestSite>,
+    ) = MotorcycleAccessHint.collectCorridor(
+        roadBySiteId.map { (id, assessment) ->
+            val layerId = siteGroups.firstNotNullOfOrNull { group ->
+                group.firstOrNull { it.id == id }?.sourceLayerId
+            } ?: -1
+            OfficialApproachEntry(
+                sourceLayerId = layerId,
+                road = assessment.nearestRoad,
+            )
+        },
+    )
+
+    private fun markOfficialApproach(
+        results: List<RestSiteResult>,
+        roadBySiteId: Map<String, RoadAssessment>,
+        vararg extraSites: List<RestSite>,
+    ): List<RestSiteResult> {
+        if (results.isEmpty()) return results
+        val corridor = officialCorridor(roadBySiteId, results.map { it.site }, *extraSites)
+        return results.map { item ->
+            item.copy(
+                officialLpApproach = MotorcycleAccessHint.isOfficialLpApproach(
+                    sourceLayerId = item.site.sourceLayerId,
+                    latitude = item.site.latitude,
+                    longitude = item.site.longitude,
+                    assessment = item.roadAssessment,
+                    corridor = corridor,
+                ),
+            )
+        }
     }
 
     companion object {

@@ -3117,6 +3117,9 @@ class MainActivity : AppCompatActivity() {
         if (!hasTarget) {
             return getString(R.string.moto_card_no_target)
         }
+        if (item.officialLpApproach) {
+            return getString(R.string.moto_card_official_lp, dist)
+        }
         val surface = road?.let { RoadClassifier.describeMotorcycleRoad(it) }
             ?: RoadClassifier.polishRoadType(road?.type)
         return if (uncertain) {
@@ -3137,6 +3140,9 @@ class MainActivity : AppCompatActivity() {
             assessment.roadSuitability != RoadSuitability.REJECTED
         if (!hasTarget) {
             return getString(R.string.moto_list_no_target)
+        }
+        if (item.officialLpApproach) {
+            return getString(R.string.moto_list_official_lp, dist)
         }
         val surface = road?.let { RoadClassifier.describeMotorcycleRoad(it) }
             ?: RoadClassifier.polishRoadType(road?.type)
@@ -3168,7 +3174,11 @@ class MainActivity : AppCompatActivity() {
         return buildList {
             add(getString(R.string.moto_details_target, dist))
             add(surface)
-            if (uncertain) add(getString(R.string.moto_details_uncertain))
+            if (item.officialLpApproach) {
+                add(getString(R.string.moto_details_official_lp))
+            } else if (uncertain) {
+                add(getString(R.string.moto_details_uncertain))
+            }
             if (stars != null) add(getString(R.string.moto_details_stars, stars))
         }.joinToString("\n")
     }

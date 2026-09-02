@@ -76,6 +76,8 @@ data class RestSiteResult(
     val roadAssessment: RoadAssessment? = null,
     val navigationTarget: LatLon,
     val navigationTargetKind: NavigationTargetKind,
+    /** Moto UI: BDL 17/19 + LP operator, or another point on that approach corridor. */
+    val officialLpApproach: Boolean = false,
 )
 
 enum class NavigationTargetKind {

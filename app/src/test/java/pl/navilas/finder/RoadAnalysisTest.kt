@@ -143,13 +143,14 @@ class RoadAnalysisTest {
     @Test
     fun parse_ways_reads_surface_and_tracktype() {
         val payload = """
-            {"elements":[{"type":"way","id":9,"tags":{"highway":"track","surface":"gravel","tracktype":"grade3"},
+            {"elements":[{"type":"way","id":9,"tags":{"highway":"track","surface":"gravel","tracktype":"grade3","operator":"Nadleśnictwo Koszęcin"},
               "geometry":[{"lat":52.0,"lon":21.0},{"lat":52.001,"lon":21.001}]}]}
         """.trimIndent()
         val roads = OverpassRoadClient().parseWays(payload)
         assertEquals(1, roads.size)
         assertEquals("gravel", roads[0].surface)
         assertEquals("grade3", roads[0].tracktype)
+        assertEquals("Nadleśnictwo Koszęcin", roads[0].operator)
     }
 
     @Test

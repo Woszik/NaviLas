@@ -51,13 +51,16 @@
     <string name="details_source_layer">Warstwa BDL: %1$s</string>
     <string name="moto_card_uncertain">Dojazd moto: %1$s, %2$s · dostęp niepewny (OSM bez tagu)</string>
     <string name="moto_card_ok">Dojazd moto: %1$s · %2$s</string>
+    <string name="moto_card_official_lp">Dojazd moto: %1$s · dojazd do oficjalnego parkingu / postoju LP</string>
     <string name="moto_card_no_target">Dojazd moto: brak celu drogowego OSM</string>
     <string name="moto_details_target">Cel: droga OSM przy miejscu · %1$s</string>
     <string name="moto_details_uncertain">Dostęp niepewny — w OpenStreetMap nie ma zakazu ani zezwolenia. Szlaban / zakaz LP może być w terenie.</string>
+    <string name="moto_details_official_lp">Dojazd do oficjalnego parkingu / postoju LP</string>
     <string name="moto_details_stars">Bliskość drogi: %1$s (tylko odległość, nie prawo wjazdu)</string>
     <string name="moto_details_no_target">Brak celu drogowego OSM — miejsce zostaje na liście, nawigacja idzie na pin BDL.</string>
     <string name="moto_list_uncertain">Cel: droga przy miejscu · %1$s · %2$s · dostęp niepewny</string>
     <string name="moto_list_ok">Cel: droga przy miejscu · %1$s · %2$s</string>
+    <string name="moto_list_official_lp">Cel: droga przy miejscu · %1$s · dojazd do oficjalnego parkingu / postoju LP</string>
     <string name="moto_list_no_target">Brak celu drogowego OSM</string>
     <string name="file_provider_authority">pl.navilas.finder.fileprovider</string>
     <string name="page_labels">WYSZUKIWANIE  ·  MAPA  ·  LISTA</string>

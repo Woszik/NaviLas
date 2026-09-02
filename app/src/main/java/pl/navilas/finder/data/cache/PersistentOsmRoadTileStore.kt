@@ -181,6 +181,7 @@ class PersistentOsmRoadTileStore(
                     .put("surface", road.surface)
                     .put("tracktype", road.tracktype)
                     .put("name", road.name)
+                    .put("operator", road.operator)
                     .put("geometry", geom),
             )
         }
@@ -219,6 +220,7 @@ class PersistentOsmRoadTileStore(
                             surface = item.optNullableString("surface"),
                             tracktype = item.optNullableString("tracktype"),
                             name = item.optNullableString("name"),
+                            operator = item.optNullableString("operator"),
                             geometry = geometry,
                         ),
                     )

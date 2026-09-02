@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-03**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.45-nightly | 56 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.46-nightly | 57 |
 | **Beta** | GitHub Releases | 0.5.44 | 52 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.45-nightly** (versionCode 56): Szczegóły jak karta, dojazd moto z informacją o niepewnym dostępie OSM, „W pobliżu” 200 m z obiektów BDL offline (bez pinów). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.46-nightly** (versionCode 57): dojazd moto do oficjalnego parkingu/postoju LP (BDL 17/19 + operator) i dziedziczenie wzdłuż tej drogi. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
 ## Zakres Beta 0.5.44
 

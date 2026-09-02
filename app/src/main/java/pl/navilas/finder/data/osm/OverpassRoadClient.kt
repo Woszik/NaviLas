@@ -134,6 +134,7 @@ class OverpassRoadClient(
                 surface = tags.optString("surface").takeIf { it.isNotBlank() },
                 tracktype = tags.optString("tracktype").takeIf { it.isNotBlank() },
                 name = tags.optString("name").takeIf { it.isNotBlank() },
+                operator = tags.optString("operator").takeIf { it.isNotBlank() },
                 geometry = points,
             )
         }

@@ -22,6 +22,8 @@ data class Road(
     /** OSM `tracktype` (grade1–5), if present. */
     val tracktype: String? = null,
     val name: String?,
+    /** OSM `operator`, if present (ownership — not a legal-access tag). */
+    val operator: String? = null,
     /** Nearest point on the way to the evaluated POI (WGS84), if computed. */
     val latitude: Double? = null,
     val longitude: Double? = null,
