@@ -521,6 +521,7 @@ class RestSiteRepository(
         const val LAYER_PARKING = 17
         const val LAYER_STOP = 19
         const val LAYER_VIEWPOINT = 25
+        const val LAYER_BOAT = 26
         const val LAYER_OTHER = 27
 
         const val LAYER_NAME_REST = "Miejsca wypoczynku - ob. punktowe"

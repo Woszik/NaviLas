@@ -124,6 +124,8 @@ Wartość **`T`** = tak, **`N`** / brak = nie. Ekstrakcja: `BdlFeatureExtractor`
 
 **Filtr „Źródło naturalne” (od 0.5.33):** osobna logika poza kategoriami wyniku — warstwa **27** z `zrodlo=T` w promieniu 200 m + heurystyka `inne_atr` na miejscu odpoczynku. Klasyfikacja: pewne / niepewne / odrzut (`NaturalSpringClassifier`). W trybie offline wymaga ponownego pobrania BDL (pola `inne_atr`, `zrodlo` w eksporcie).
 
+**Filtr „Nad wodą” (od 0.5.45):** rzeka / jezioro / staw w promieniu 250 m (przy punkcie) albo max 1–9999 m. OSM Overpass (rzeka, strumień, kanał, jezioro, staw, zbiornik) + twarde hity BDL: warstwa **26**, `kapielisko=T`, `marina=T`. Źródło naturalne **nie** wchodzi (osobny filtr). Rowy, baseny i MPHP nie są używane. W przeglądaniu OSM jest liczone dla widocznego obszaru; woda nie jest rysowana na mapie.
+
 ---
 
 ## 4. Reguły wyniku vs obiekt powiązany (NaviLas)

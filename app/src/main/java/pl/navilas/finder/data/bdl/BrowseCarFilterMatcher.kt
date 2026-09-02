@@ -1,6 +1,7 @@
 package pl.navilas.finder.data.bdl
 
 import pl.navilas.finder.domain.BrowseCarFilter
+import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SiteFeature
@@ -24,6 +25,8 @@ object BrowseCarFilterMatcher {
         sites: List<RestSite>,
         filter: BrowseCarFilter,
         excludeSiteIds: Set<String> = emptySet(),
+        overlayWaterPoints: List<LatLon> = emptyList(),
+        osmWaterHits: Set<String> = emptySet(),
     ): Set<String>? {
         if (!filter.isActive) return null
         if (sites.isEmpty()) return emptySet()
@@ -37,6 +40,7 @@ object BrowseCarFilterMatcher {
 
         val amenityRadius = BrowseCarFilter.AMENITY_LINK_METERS
         val parkingRadius = filter.parkingRadiusMeters()
+        val waterRadius = filter.waterRadiusMeters()
         val match = HashSet<String>(sites.size / 4 + 1)
 
         for (site in sites) {
@@ -77,6 +81,15 @@ object BrowseCarFilterMatcher {
                 }
                 if (!hasParkingNearby(nearbyParking, site)) continue
             }
+            if (filter.requireNearWater) {
+                val nearbyWater = if (waterRadius <= amenityRadius) {
+                    nearbyAmenity
+                } else {
+                    nearby(site, byCell, waterRadius)
+                }
+                val bdlWater = hasBdlWater(site, nearbyWater, overlayWaterPoints, waterRadius)
+                if (!bdlWater && site.id !in osmWaterHits) continue
+            }
             match += site.id
         }
         return match
@@ -99,6 +112,29 @@ object BrowseCarFilterMatcher {
     ): Boolean {
         if (feature in self.features) return true
         return nearby.any { feature in it.features }
+    }
+
+    fun hasBdlWaterAmenity(site: RestSite): Boolean =
+        SiteFeature.KAPIELISKO in site.features ||
+            SiteFeature.MARINA in site.features ||
+            site.sourceLayerId == RestSiteRepository.LAYER_BOAT
+
+    private fun hasBdlWater(
+        self: RestSite,
+        nearby: List<RestSite>,
+        overlayWaterPoints: List<LatLon>,
+        radiusMeters: Double,
+    ): Boolean {
+        if (hasBdlWaterAmenity(self)) return true
+        if (nearby.any { hasBdlWaterAmenity(it) }) return true
+        return overlayWaterPoints.any { point ->
+            GeoUtils.distanceMeters(
+                self.latitude,
+                self.longitude,
+                point.latitude,
+                point.longitude,
+            ) <= radiusMeters
+        }
     }
 
     private fun hasParkingNearby(nearby: List<RestSite>, self: RestSite): Boolean {

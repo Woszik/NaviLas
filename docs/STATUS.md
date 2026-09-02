@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-02**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44 | 52 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.45-nightly | 53 |
 | **Beta** | GitHub Releases | 0.5.44 | 52 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). **Nightly 0.5.45** dodaje filtr **Nad wodą** (OSM + BDL 26 / kąpielisko / marina; Źródło nie wchodzi). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
 ## Zakres Beta 0.5.44
 
