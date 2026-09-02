@@ -1,13 +1,13 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-01**.
+Ostatnia aktualizacja dokumentacji: **2026-09-02**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44-nightly | 51 |
-| **Beta** | GitHub Releases | 0.5.42 | 49 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.44 | 52 |
+| **Beta** | GitHub Releases | 0.5.44 | 52 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,17 +20,9 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.42** na urządzeniu testowym: APK z [NaviLas-releases v0.5.42](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.42). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.44** na urządzeniu testowym: APK z [NaviLas-releases v0.5.44](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.44). Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
-## Zakres Nightly 0.5.44
-
-Arkusz **Filtry** na mapie ma belkę **Szukaj** (tylko w wyszukiwaniu): źródło, promień, miejscowość, korytarz, **ZNAJDŹ** i pinezka. Ekran 1 i arkusz używają tego samego układu i `UiState`. W przeglądaniu belka Szukaj jest ukryta; **Odśwież mapę** jest w panelu Tryb.
-
-## Zakres Nightly 0.5.43
-
-Na mapie arkusz **Filtry** ma belki **Tryb** (przeglądanie / wyszukiwanie) i **Profil** (samochód / motocykl) — ten sam wybór co na ekranie 1. Zmiana trybu z mapy zostawia Cię na mapie.
-
-## Zakres Beta 0.5.42
+## Zakres Beta 0.5.44
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:
 
@@ -57,7 +49,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 
 - **Ekran włączony** podczas aktywnego śledzenia pozycji GPS (`FLAG_KEEP_SCREEN_ON`).
 - **Obiekty BDL** (Search i Browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kategorie zaznacza się niezależnie. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
-- **Filtry na mapie:** arkusz **Filtry** ma belki **Filtry miejsc** i **Obiekty BDL** — ten sam wybór co na ekranie wyszukiwania.
+- **Filtry na mapie:** arkusz **Filtry** ma belki **Tryb**, **Szukaj** (w wyszukiwaniu: źródło, promień, miejscowość, korytarz, **ZNAJDŹ**), **Profil**, **Filtry miejsc** i **Obiekty BDL** — ten sam wybór co na ekranie 1. Zmiana trybu z mapy zostawia Cię na mapie. W przeglądaniu belka Szukaj jest ukryta; **Odśwież mapę** jest w panelu Tryb.
 - **Wielozaznaczenie** punktów (max 8) z listą i tabelą **Porównaj**.
 - **Profil moto:** etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych.
 - **Śledzenie GPS:** pauza → play wznawia zapisaną skalę, kierunek i ogniskowy (bez skoku do zoom 13).

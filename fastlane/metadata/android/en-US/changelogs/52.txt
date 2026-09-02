@@ -1,0 +1,1 @@
+Map Filters sheet: Mode, Profile, and Search bars (origin, radius, Find) synced with screen 1; changing mode from the map stays on the map.

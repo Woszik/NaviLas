@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.44 (52) — 2026-09-02
+
+**APK:** [navilas-0.5.44.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.44/navilas-0.5.44.apk)
+
+Arkusz **Filtry** na mapie: belki **Tryb**, **Profil** i **Szukaj** (źródło, promień, miejscowość, korytarz, ZNAJDŹ) zsynchronizowane z ekranem 1. Zmiana trybu z mapy zostawia Cię na mapie; w przeglądaniu **Odśwież mapę** jest w panelu Tryb.
+
+**Poprzednia wersja:** [0.5.42](#0542-49--2026-09-01)
+
+---
+
 ## 0.5.42 (49) — 2026-09-01
 
 **APK:** [navilas-0.5.42.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.42/navilas-0.5.42.apk)
