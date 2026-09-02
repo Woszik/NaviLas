@@ -22,6 +22,8 @@ import java.io.IOException
 data class RestSearchBundle(
     val sites: List<RestSite>,
     val zanocujPolygons: List<ZanocujPolygon>,
+    /** All 17/19 in the search area; merged into results only when the near-water filter is on. */
+    val vehicleSites: List<RestSite> = emptyList(),
 )
 
 /**
@@ -302,13 +304,74 @@ class RestSiteRepository(
         val sites = (fromLayer15 + amenityExtras).sortedBy {
             GeoUtils.distanceMeters(latitude, longitude, it.latitude, it.longitude)
         }
+        val vehicleSites = buildList {
+            addAll(
+                mapAllVehiclePrimaries(
+                    features = parkingFeatures,
+                    layerId = LAYER_PARKING,
+                    layerName = LAYER_NAME_PARKING,
+                    defaultName = "Parking leśny",
+                    satellites = satellites,
+                    polygons = polygons,
+                    userLat = latitude,
+                    userLon = longitude,
+                    radiusKm = radiusKm,
+                    pointAccept = pointAccept,
+                ),
+            )
+            addAll(
+                mapAllVehiclePrimaries(
+                    features = stopFeatures,
+                    layerId = LAYER_STOP,
+                    layerName = LAYER_NAME_STOP,
+                    defaultName = "Miejsce postoju",
+                    satellites = satellites,
+                    polygons = polygons,
+                    userLat = latitude,
+                    userLon = longitude,
+                    radiusKm = radiusKm,
+                    pointAccept = pointAccept,
+                ),
+            )
+        }
         pipelineLog(
             "primary15 = ${fromLayer15.size}\n" +
                 "amenity17_19 = ${amenityExtras.size}\n" +
+                "vehicle17_19 = ${vehicleSites.size}\n" +
                 "enriched = ${sites.size}\n" +
                 "UI results = ${sites.size}",
         )
-        return RestSearchBundle(sites = sites, zanocujPolygons = polygons)
+        return RestSearchBundle(
+            sites = sites,
+            zanocujPolygons = polygons,
+            vehicleSites = vehicleSites,
+        )
+    }
+
+    private fun mapAllVehiclePrimaries(
+        features: List<JSONObject>,
+        layerId: Int,
+        layerName: String,
+        defaultName: String,
+        satellites: List<SatellitePoint>,
+        polygons: List<ZanocujPolygon>,
+        userLat: Double,
+        userLon: Double,
+        radiusKm: Double,
+        pointAccept: ((Double, Double) -> Boolean)? = null,
+    ): List<RestSite> = features.mapNotNull { feature ->
+        mapPrimarySite(
+            feature = feature,
+            layerId = layerId,
+            layerName = layerName,
+            defaultName = defaultName,
+            satellites = satellites,
+            polygons = polygons,
+            userLat = userLat,
+            userLon = userLon,
+            radiusKm = radiusKm,
+            pointAccept = pointAccept,
+        )
     }
 
     private fun mapAmenityVehiclePrimaries(

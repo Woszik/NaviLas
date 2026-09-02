@@ -124,7 +124,7 @@ Wartość **`T`** = tak, **`N`** / brak = nie. Ekstrakcja: `BdlFeatureExtractor`
 
 **Filtr „Źródło naturalne” (od 0.5.33):** osobna logika poza kategoriami wyniku — warstwa **27** z `zrodlo=T` w promieniu 200 m + heurystyka `inne_atr` na miejscu odpoczynku. Klasyfikacja: pewne / niepewne / odrzut (`NaturalSpringClassifier`). W trybie offline wymaga ponownego pobrania BDL (pola `inne_atr`, `zrodlo` w eksporcie).
 
-**Filtr „Nad wodą” (od 0.5.45):** rzeka / jezioro / staw w promieniu 250 m (przy punkcie) albo max 1–9999 m. OSM Overpass (rzeka, strumień, kanał, jezioro, staw, zbiornik) + twarde hity BDL: warstwa **26**, `kapielisko=T`, `marina=T`. Źródło naturalne **nie** wchodzi (osobny filtr). Rowy, baseny i MPHP nie są używane. W przeglądaniu OSM jest liczone dla widocznego obszaru; woda nie jest rysowana na mapie.
+**Filtr „Nad wodą” (od 0.5.45, peer wiaty od 0.5.46):** rzeka / jezioro / staw w promieniu 250 m (przy punkcie) albo max 1–9999 m. OSM Overpass (rzeka, strumień, kanał, jezioro, staw, zbiornik) + twarde hity BDL: warstwa **26**, `kapielisko=T`, `marina=T`. Źródło naturalne **nie** wchodzi (osobny filtr). Rowy, baseny i MPHP nie są używane. Gdy filtr jest włączony, parkingi / postoje **17/19** nad wodą wchodzą do wyników jak miejsca z wiatą (woda liczona od tego pina). Bez filtra 17/19 zostają satelitą albo samodzielnym wynikiem tylko z wiatą/paleniskiem/ławostołami. W przeglądaniu OSM i 17/19 są liczone dla widocznego obszaru; woda nie jest rysowana na mapie.
 
 ---
 
@@ -133,7 +133,7 @@ Wartość **`T`** = tak, **`N`** / brak = nie. Ekstrakcja: `BdlFeatureExtractor`
 | Warstwa | Kiedy trafia na listę wyników | Kiedy tylko `relatedObjects` |
 |---|---|---|
 | **15** | Zawsze (w promieniu) | — |
-| **17, 19** | `wiata=T` **lub** `palenisko=T` **lub** `lawostoly=T` **oraz** brak miejsca z warstwy 15 w ≤ 100 m | W pozostałych przypadkach — satelita w ≤ 100 m od wyniku |
+| **17, 19** | `wiata=T` **lub** `palenisko=T` **lub** `lawostoly=T` **oraz** brak miejsca z warstwy 15 w ≤ 100 m; **albo** filtr **Nad wodą** i punkt nad wodą | W pozostałych przypadkach — satelita w ≤ 100 m od wyniku |
 | **25, 27** | **Nigdy** samodzielnie | Satelita w ≤ 100 m (nazwa z `nzw_ob`) |
 | **0** | — (poligon) | Status Zanocuj dla punktów 15/17/19 |
 

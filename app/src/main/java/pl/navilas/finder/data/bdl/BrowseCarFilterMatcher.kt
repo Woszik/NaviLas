@@ -18,6 +18,30 @@ object BrowseCarFilterMatcher {
     private const val CELL_DEG = 0.01 // ~1.1 km
 
     /**
+     * When [BrowseCarFilter.requireNearWater] is on, parking/stop points (17/19) join the
+     * candidate set so water is a peer amenity to wiata — not only a filter on rest sites.
+     */
+    fun sitesForWaterFilter(
+        restSites: List<RestSite>,
+        vehicleSites: List<RestSite>,
+        filter: BrowseCarFilter,
+        envelope: GeoUtils.Envelope? = null,
+    ): List<RestSite> {
+        if (!filter.requireNearWater || vehicleSites.isEmpty()) return restSites
+        val known = restSites.mapTo(HashSet(restSites.size * 2)) { it.id }
+        val padDeg = (filter.waterRadiusMeters() / 111_000.0) * 1.2
+        val extras = vehicleSites.filter { site ->
+            if (site.id in known) return@filter false
+            if (!site.latitude.isFinite() || !site.longitude.isFinite()) return@filter false
+            if (envelope == null) return@filter true
+            site.latitude in (envelope.ymin - padDeg)..(envelope.ymax + padDeg) &&
+                site.longitude in (envelope.xmin - padDeg)..(envelope.xmax + padDeg)
+        }
+        if (extras.isEmpty()) return restSites
+        return restSites + extras
+    }
+
+    /**
      * @return `null` when filter inactive (show all); otherwise ids of matching sites.
      * @param excludeSiteIds sites inside a forest-entry ban, used when [BrowseCarFilter.excludeSitesInEntryBan].
      */

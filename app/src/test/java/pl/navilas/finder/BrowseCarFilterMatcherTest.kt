@@ -15,6 +15,7 @@ import pl.navilas.finder.domain.NaturalSpringCertainty
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.ZanocujStatus
+import pl.navilas.finder.util.GeoUtils
 
 class BrowseCarFilterMatcherTest {
     @Test
@@ -284,6 +285,74 @@ class BrowseCarFilterMatcherTest {
             BrowseCarFilter(requireNearWater = true),
         )
         assertEquals(setOf("boat"), ids)
+    }
+
+    @Test
+    fun water_filter_merges_bare_parking_into_candidates() {
+        val rest = site("rest", 52.0, 21.0, emptySet())
+        val park = site("park", 52.1, 21.0, emptySet(), layerId = RestSiteRepository.LAYER_PARKING)
+        val off = BrowseCarFilterMatcher.sitesForWaterFilter(
+            listOf(rest),
+            listOf(park),
+            BrowseCarFilter(),
+        )
+        assertEquals(listOf("rest"), off.map { it.id })
+        val on = BrowseCarFilterMatcher.sitesForWaterFilter(
+            listOf(rest),
+            listOf(park),
+            BrowseCarFilter(requireNearWater = true),
+        )
+        assertEquals(setOf("rest", "park"), on.map { it.id }.toSet())
+    }
+
+    @Test
+    fun water_filter_bare_parking_matches_via_osm_hit() {
+        val park = site("park", 52.0, 21.0, emptySet(), layerId = RestSiteRepository.LAYER_PARKING)
+        val pool = BrowseCarFilterMatcher.sitesForWaterFilter(
+            emptyList(),
+            listOf(park),
+            BrowseCarFilter(requireNearWater = true),
+        )
+        val ids = BrowseCarFilterMatcher.matchingIds(
+            pool,
+            BrowseCarFilter(requireNearWater = true),
+            osmWaterHits = setOf("park"),
+        )
+        assertEquals(setOf("park"), ids)
+    }
+
+    @Test
+    fun water_plus_wiata_drops_bare_parking() {
+        val park = site("park", 52.0, 21.0, emptySet(), layerId = RestSiteRepository.LAYER_PARKING)
+        val pool = BrowseCarFilterMatcher.sitesForWaterFilter(
+            emptyList(),
+            listOf(park),
+            BrowseCarFilter(requireNearWater = true, requireWiata = true),
+        )
+        val ids = BrowseCarFilterMatcher.matchingIds(
+            pool,
+            BrowseCarFilter(requireNearWater = true, requireWiata = true),
+            osmWaterHits = setOf("park"),
+        )
+        assertEquals(emptySet<String>(), ids)
+    }
+
+    @Test
+    fun water_filter_skips_vehicle_outside_envelope() {
+        val park = site("park", 54.0, 18.0, emptySet(), layerId = RestSiteRepository.LAYER_PARKING)
+        val env = GeoUtils.Envelope(
+            xmin = 20.9,
+            ymin = 51.9,
+            xmax = 21.1,
+            ymax = 52.1,
+        )
+        val pool = BrowseCarFilterMatcher.sitesForWaterFilter(
+            emptyList(),
+            listOf(park),
+            BrowseCarFilter(requireNearWater = true),
+            env,
+        )
+        assertTrue(pool.isEmpty())
     }
 
     private fun site(

@@ -48,6 +48,9 @@ object BdlSearchSubsetFilter {
         val sites = context.bundle.sites.filter { site ->
             GeoUtils.distanceKm(latitude, longitude, site.latitude, site.longitude) <= radiusKm
         }
+        val vehicleSites = context.bundle.vehicleSites.filter { site ->
+            GeoUtils.distanceKm(latitude, longitude, site.latitude, site.longitude) <= radiusKm
+        }
         val marginKm = config.zanocujNearZoneMeters / 1000.0
         val polygons = context.bundle.zanocujPolygons.filter { polygon ->
             polygon.rings.flatten().any { point ->
@@ -55,6 +58,6 @@ object BdlSearchSubsetFilter {
                     radiusKm + marginKm
             }
         }
-        return RestSearchBundle(sites = sites, zanocujPolygons = polygons)
+        return RestSearchBundle(sites = sites, zanocujPolygons = polygons, vehicleSites = vehicleSites)
     }
 }

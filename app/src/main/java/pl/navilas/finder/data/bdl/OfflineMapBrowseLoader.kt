@@ -33,6 +33,8 @@ class OfflineMapBrowseLoader(
         val loadMs: Long,
         /** Point features skipped due to missing/invalid coordinates. */
         val skippedInvalidGeometry: Int = 0,
+        /** All 17/19; shown as results only while the near-water filter is on. */
+        val vehicleSites: List<RestSite> = emptyList(),
     )
 
     private data class SpringPoint(val latitude: Double, val longitude: Double)
@@ -94,12 +96,39 @@ class OfflineMapBrowseLoader(
                 ),
             )
         }
+        val vehicleSites = buildList {
+            addAll(
+                mapAllVehicleSites(
+                    parkingFeatures,
+                    RestSiteRepository.LAYER_PARKING,
+                    RestSiteRepository.LAYER_NAME_PARKING,
+                    "Parking / postój",
+                    indexed,
+                    forceParking = true,
+                    springPoints = springPoints,
+                    onInvalidGeometry = onInvalid,
+                ),
+            )
+            addAll(
+                mapAllVehicleSites(
+                    stopFeatures,
+                    RestSiteRepository.LAYER_STOP,
+                    RestSiteRepository.LAYER_NAME_STOP,
+                    "Postój",
+                    indexed,
+                    forceParking = false,
+                    springPoints = springPoints,
+                    onInvalidGeometry = onInvalid,
+                ),
+            )
+        }
 
         Bundle(
             sites = from15 + amenityExtras,
             zanocujIndex = indexed,
             loadMs = System.currentTimeMillis() - started,
             skippedInvalidGeometry = skippedInvalid,
+            vehicleSites = vehicleSites,
         )
     }
 
@@ -146,6 +175,28 @@ class OfflineMapBrowseLoader(
         val key = cellKey(lat, lon)
         if (key in occupied) return@mapNotNull null
         occupied += key
+        mapSimpleSite(
+            feature = feature,
+            layerId = layerId,
+            layerName = layerName,
+            defaultName = defaultName,
+            indexed = indexed,
+            forceParking = forceParking,
+            springPoints = springPoints,
+            onInvalidGeometry = onInvalidGeometry,
+        )
+    }
+
+    private fun mapAllVehicleSites(
+        features: List<JSONObject>,
+        layerId: Int,
+        layerName: String,
+        defaultName: String,
+        indexed: List<ZanocujBoundsPolygon>,
+        forceParking: Boolean,
+        springPoints: Map<Long, List<SpringPoint>>,
+        onInvalidGeometry: () -> Unit,
+    ): List<RestSite> = features.mapNotNull { feature ->
         mapSimpleSite(
             feature = feature,
             layerId = layerId,
