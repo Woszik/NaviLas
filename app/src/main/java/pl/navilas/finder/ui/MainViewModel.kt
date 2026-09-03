@@ -3,6 +3,7 @@ package pl.navilas.finder.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -348,6 +349,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val overlayIndexMutex = Mutex()
     private var entryBanDownloadJob: Job? = null
     private var selectedRoadsJob: Job? = null
+    private val selectedRoadsGeneration = AtomicLong(0L)
+    private var ignoreEmptyMapClickUntilElapsedMs = 0L
     private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
     private var bdlRefreshCheckedThisSession = false
@@ -1911,6 +1914,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         applySelection(if (siteId == null) emptyList() else listOf(siteId))
     }
 
+    /** Empty-map tap: clear browse selection, or drop a search pin. Ignores ghost taps after a marker. */
+    fun onEmptyMapClicked(latitude: Double, longitude: Double) {
+        if (System.currentTimeMillis() < ignoreEmptyMapClickUntilElapsedMs) return
+        if (_state.value.isMapBrowse()) {
+            selectSite(null)
+        } else {
+            setMapSearchPin(latitude, longitude)
+        }
+    }
+
     private fun applySelection(
         nextIds: List<String>,
         cameraSiteId: String? = null,
@@ -1940,13 +1953,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         analyzeSelectedRoadsIfNeeded()
     }
 
-    /** Marker tap on map: toggle selection + show POI camera (no page change, no fitBounds). */
+    /** Marker tap: always open/focus the card. Browse does not move the camera. */
     fun onMarkerSelected(siteId: String) {
         pauseMapTrackingForPoiInteraction()
-        val token = cameraToken.getAndIncrement()
-        val nextIds = SiteSelection.toggle(_state.value.selectedSiteIds, siteId)
-        val cameraId = if (siteId in nextIds) siteId else nextIds.lastOrNull()
-        applySelection(nextIds, cameraSiteId = cameraId, cameraTokenValue = token)
+        ignoreEmptyMapClickUntilElapsedMs =
+            System.currentTimeMillis() + EMPTY_MAP_CLICK_DEBOUNCE_MS
+        val nextIds = SiteSelection.add(_state.value.selectedSiteIds, siteId)
+        val moveCamera = !_state.value.isMapBrowse()
+        val token = if (moveCamera) cameraToken.getAndIncrement() else null
+        applySelection(
+            nextIds,
+            cameraSiteId = if (moveCamera) siteId else null,
+            cameraTokenValue = token,
+        )
     }
 
     /** List row tap: focus site + go to map + show POI camera (no fitBounds). */
@@ -1957,14 +1976,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         applySelection(nextIds, cameraSiteId = siteId, goToMap = true, cameraTokenValue = token)
     }
 
+    private fun cancelSelectedRoadsJob() {
+        selectedRoadsGeneration.incrementAndGet()
+        selectedRoadsJob?.cancel()
+        selectedRoadsJob = null
+        _state.update { current ->
+            if (current.isAnalyzingRoads) current.copy(isAnalyzingRoads = false) else current
+        }
+    }
+
     private fun analyzeSelectedRoadsIfNeeded() {
         val snapshot = _state.value
-        if (snapshot.profile != TravelProfile.MOTORCYCLE) return
+        if (snapshot.profile != TravelProfile.MOTORCYCLE) {
+            cancelSelectedRoadsJob()
+            return
+        }
         val missing = snapshot.selectedSiteIds.filter { it !in snapshot.roadBySiteId }
-        if (missing.isEmpty()) return
+        if (missing.isEmpty()) {
+            if (selectedRoadsJob?.isActive == true) cancelSelectedRoadsJob()
+            return
+        }
         val sites = missing.mapNotNull { resolveSelectedSite(snapshot, it) }
-        if (sites.isEmpty()) return
+        if (sites.isEmpty()) {
+            cancelSelectedRoadsJob()
+            return
+        }
         selectedRoadsJob?.cancel()
+        val generation = selectedRoadsGeneration.incrementAndGet()
         selectedRoadsJob = viewModelScope.launch {
             _state.update {
                 it.copy(
@@ -1976,15 +2014,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val assessed = withContext(Dispatchers.IO) {
                     roadAnalyzer.assessAll(sites.map { it.toPointPoi() }) { completed, total ->
-                        _state.update { current ->
-                            current.copy(
-                                roadAnalysisCompleted = completed,
-                                roadAnalysisTotal = total,
-                            )
+                        if (selectedRoadsGeneration.get() == generation) {
+                            _state.update { current ->
+                                current.copy(
+                                    roadAnalysisCompleted = completed,
+                                    roadAnalysisTotal = total,
+                                )
+                            }
                         }
                     }
                 }
+                if (selectedRoadsGeneration.get() != generation) return@launch
                 _state.update { current ->
+                    if (selectedRoadsGeneration.get() != generation) return@update current
                     val merged = current.roadBySiteId + assessed
                     val next = current.copy(
                         isAnalyzingRoads = false,
@@ -1992,7 +2034,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         roadAnalysisCompleted = sites.size,
                         roadAnalysisTotal = sites.size,
                         results = if (current.isMapBrowse()) {
-                            browseSelectionResults(current.copy(roadBySiteId = merged), current.selectedSiteIds)
+                            browseSelectionResults(
+                                current.copy(roadBySiteId = merged),
+                                current.selectedSiteIds,
+                            )
                         } else {
                             markOfficialApproach(
                                 current.results.map { item ->
@@ -2016,7 +2061,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                     next.copy(savedListResults = buildSavedListResults(next))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (selectedRoadsGeneration.get() != generation) return@launch
                 _state.update {
                     it.copy(
                         isAnalyzingRoads = false,
@@ -3220,6 +3268,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val FOLLOW_MOVE_THRESHOLD_M = 5.0
         private const val MIN_FOLLOW_ZOOM = 3.0
         private const val MAX_FOLLOW_ZOOM = 20.0
+        private const val EMPTY_MAP_CLICK_DEBOUNCE_MS = 400L
     }
 }
 

@@ -323,11 +323,7 @@ class MainActivity : AppCompatActivity() {
                     viewModel.onMarkerSelected(siteId)
                 }
                 mapController.setOnEmptyMapClickListener { lat, lon ->
-                    if (viewModel.state.value.isMapBrowse()) {
-                        viewModel.selectSite(null)
-                    } else {
-                        viewModel.setMapSearchPin(lat, lon)
-                    }
+                    viewModel.onEmptyMapClicked(lat, lon)
                 }
                 mapController.setOnEntryBanClickListener { banId ->
                     val ban = viewModel.state.value.entryBanViewport.firstOrNull { it.id == banId }
@@ -1684,7 +1680,7 @@ class MainActivity : AppCompatActivity() {
     private fun applyUi(state: UiState, forceMarkers: Boolean = false) {
         currentProfile = state.profile
         binding.progress.isVisible = state.isLocating || state.isSearching ||
-            state.isAnalyzingRoads ||
+            (state.isAnalyzingRoads && !state.isMapBrowse()) ||
             state.isFilteringPlaces ||
             state.isMapBrowseLoading ||
             state.offlineBdl.status == OfflineBdlStatus.DOWNLOADING
@@ -2378,6 +2374,7 @@ class MainActivity : AppCompatActivity() {
     private fun bindPoiCard(selected: RestSiteResult?, state: UiState) {
         if (selected == null) {
             mapBinding.poiCard.isVisible = false
+            offsetMapFabsForCard(0)
             return
         }
         mapBinding.poiCard.isVisible = true
@@ -2415,7 +2412,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             mapBinding.cardEntryBan.isVisible = false
         }
-        val motoCard = motoCardLine(selected, state.profile)
+        val analyzingThisSite = state.isAnalyzingRoads &&
+            state.profile == TravelProfile.MOTORCYCLE &&
+            selected.site.id !in state.roadBySiteId
+        val motoCard = if (analyzingThisSite) {
+            getString(R.string.moto_card_analyzing)
+        } else {
+            motoCardLine(selected, state.profile)
+        }
         if (motoCard != null) {
             mapBinding.cardRoad.text = motoCard
             mapBinding.cardRoad.isVisible = true
@@ -2446,6 +2450,18 @@ class MainActivity : AppCompatActivity() {
         } else {
             mapBinding.cardSavedMeta.isVisible = false
         }
+        mapBinding.mapBottomSwipeHost.post {
+            offsetMapFabsForCard(
+                if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.height else 0,
+            )
+        }
+    }
+
+    private fun offsetMapFabsForCard(overlayPx: Int) {
+        val dy = -overlayPx.toFloat()
+        mapBinding.btnMapPlaceFilters.translationY = dy
+        mapBinding.btnMapTrackLocation.translationY = dy
+        mapBinding.btnMapMyLocation.translationY = dy
     }
 
     private fun categoriesLabelFor(

@@ -68,6 +68,7 @@
     <string name="details_nearby_heading">W pobliżu</string>
     <string name="details_nearby_loading">Szukam obiektów BDL w 200 m…</string>
     <string name="details_source_layer">Warstwa BDL: %1$s</string>
+    <string name="moto_card_analyzing">Analizuję drogi OSM…</string>
     <string name="moto_card_uncertain">Dojazd moto: %1$s, %2$s · dostęp niepewny (OSM bez tagu)</string>
     <string name="moto_card_ok">Dojazd moto: %1$s · %2$s</string>
     <string name="moto_card_official_lp">Dojazd moto: %1$s · dojazd do oficjalnego parkingu / postoju LP</string>

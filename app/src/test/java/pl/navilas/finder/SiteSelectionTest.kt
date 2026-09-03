@@ -13,6 +13,11 @@ class SiteSelectionTest {
     }
 
     @Test
+    fun add_on_primary_keeps_selection() {
+        assertEquals(listOf("a"), SiteSelection.add(listOf("a"), "a"))
+    }
+
+    @Test
     fun add_moves_existing_to_primary() {
         assertEquals(listOf("b", "a"), SiteSelection.add(listOf("a", "b"), "a"))
     }
