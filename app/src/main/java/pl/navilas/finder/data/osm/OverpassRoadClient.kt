@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
  */
 class OverpassRoadClient(
     private val client: OkHttpClient = defaultClient(),
-    private val endpoint: String = DEFAULT_ENDPOINT,
+    private val endpoints: List<String> = DEFAULT_ENDPOINTS,
 ) : HighwayAroundFetcher, OverpassBboxFetcher {
     override fun fetchHighwaysAround(
         points: List<LatLon>,
@@ -85,23 +85,32 @@ class OverpassRoadClient(
         val form = FormBody.Builder()
             .add("data", query)
             .build()
-        val request = Request.Builder()
-            .url(endpoint)
-            .header("User-Agent", USER_AGENT)
-            .header("Accept", "application/json")
-            .post(form)
-            .build()
-        client.newCall(request).execute().use { response ->
-            if (response.code == 429) {
-                throw IOException("Overpass limit (HTTP 429) — spróbuj ponownie za chwilę.")
-            }
-            if (!response.isSuccessful) {
-                throw IOException("Overpass HTTP ${response.code}")
-            }
-            return response.body?.string().orEmpty().ifBlank {
-                throw IOException("Pusta odpowiedź Overpass")
+
+        var lastError: IOException? = null
+        for (ep in endpoints) {
+            val request = Request.Builder()
+                .url(ep)
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .post(form)
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.code == 429) {
+                        throw IOException("Overpass limit (HTTP 429) — spróbuj ponownie za chwilę.")
+                    }
+                    if (!response.isSuccessful) {
+                        throw IOException("Overpass HTTP ${response.code}")
+                    }
+                    return response.body?.string().orEmpty().ifBlank {
+                        throw IOException("Pusta odpowiedź Overpass")
+                    }
+                }
+            } catch (e: IOException) {
+                lastError = e
             }
         }
+        throw lastError ?: IOException("Overpass: brak odpowiedzi")
     }
 
     fun parseWays(payload: String): List<Road> {
@@ -145,6 +154,13 @@ class OverpassRoadClient(
 
     companion object {
         const val DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
+        private const val FALLBACK_ENDPOINT_1 = "https://overpass.kumi.systems/api/interpreter"
+        private const val FALLBACK_ENDPOINT_2 = "https://overpass.osm.rambler.ru/api/interpreter"
+        val DEFAULT_ENDPOINTS: List<String> = listOf(
+            DEFAULT_ENDPOINT,
+            FALLBACK_ENDPOINT_1,
+            FALLBACK_ENDPOINT_2,
+        )
         const val DEFAULT_RADIUS_METERS = 400.0
         const val BATCH_SIZE = 20
         val USER_AGENT = "NaviLas/${BuildConfig.VERSION_NAME} (Android; contact: woszi@pm.me)"

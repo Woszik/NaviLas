@@ -2085,11 +2085,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 throw e
             } catch (e: Exception) {
                 if (selectedRoadsGeneration.get() != generation) return@launch
+                val raw = e.message.orEmpty()
+                val userMessage = when {
+                    raw.contains("429") || raw.contains("limit", ignoreCase = true) ->
+                        getApplication<Application>().getString(R.string.road_analysis_overpass_limited)
+                    raw.contains("overpass", ignoreCase = true) ||
+                        raw.contains("Failed to connect", ignoreCase = true) ->
+                        getApplication<Application>().getString(R.string.road_analysis_overpass_failed)
+                    else ->
+                        "Analiza dróg OSM: ${raw.ifBlank { "błąd" }}"
+                }
                 _state.update {
                     it.copy(
                         isAnalyzingRoads = false,
                         message = AppMessage.Error(
-                            "Analiza dróg OSM: ${e.message ?: "błąd"}",
+                            userMessage,
                         ),
                     )
                 }

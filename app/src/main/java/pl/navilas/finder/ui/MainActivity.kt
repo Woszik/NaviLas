@@ -2416,16 +2416,30 @@ class MainActivity : AppCompatActivity() {
         val analyzingThisSite = state.isAnalyzingRoads &&
             state.profile == TravelProfile.MOTORCYCLE &&
             selected.site.id !in state.roadBySiteId
+        val progressTotal = state.roadAnalysisTotal.coerceAtLeast(1)
+        val progressCompleted = state.roadAnalysisCompleted.coerceIn(0, progressTotal)
         val motoCard = if (analyzingThisSite) {
-            getString(R.string.moto_card_analyzing)
+            getString(
+                R.string.moto_card_analyzing_progress,
+                progressCompleted,
+                progressTotal,
+            )
         } else {
             motoCardLine(selected, state.profile)
         }
         if (motoCard != null) {
             mapBinding.cardRoad.text = motoCard
             mapBinding.cardRoad.isVisible = true
+            if (analyzingThisSite) {
+                mapBinding.cardRoadProgress.isVisible = true
+                mapBinding.cardRoadProgress.max = progressTotal
+                mapBinding.cardRoadProgress.progress = progressCompleted
+            } else {
+                mapBinding.cardRoadProgress.isVisible = false
+            }
         } else {
             mapBinding.cardRoad.isVisible = false
+            mapBinding.cardRoadProgress.isVisible = false
         }
         mapBinding.cardNavigate.isVisible = true
         val saved = state.savedPoint(selected.site.id)

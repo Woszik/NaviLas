@@ -196,6 +196,17 @@
                         tools:text="Dojazd moto: 36 m, track · dostęp niepewny (OSM bez tagu)"
                         tools:visibility="visible" />
 
+                    <ProgressBar
+                        android:id="@+id/cardRoadProgress"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="4dp"
+                        android:layout_marginTop="4dp"
+                        android:indeterminate="false"
+                        android:max="1"
+                        android:progress="0"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/cardSavedMeta"
                         android:layout_width="match_parent"

@@ -75,6 +75,9 @@
     <string name="details_admin_outside">Poza PGL LP albo brak poligonu BDL dla tego punktu.</string>
     <string name="details_source_layer">Warstwa BDL: %1$s</string>
     <string name="moto_card_analyzing">Analizuję drogi OSM…</string>
+    <string name="moto_card_analyzing_progress">Analizuję drogi OSM: %1$d/%2$d</string>
+    <string name="road_analysis_overpass_failed">Nie udało się pobrać dróg OSM do analizy (Overpass). Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="road_analysis_overpass_limited">Overpass ma limit na bieżąco — spróbuj za chwilę.</string>
     <string name="moto_card_uncertain">Dojazd moto: %1$s, %2$s · dostęp niepewny (OSM bez tagu)</string>
     <string name="moto_card_ok">Dojazd moto: %1$s · %2$s</string>
     <string name="moto_card_official_lp">Dojazd moto: %1$s · dojazd do oficjalnego parkingu / postoju LP</string>
