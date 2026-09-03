@@ -94,6 +94,34 @@ class BdlArcGisClient(
         return get(builder.build().toString())
     }
 
+    /** Point-in-polygon identify; no geometry in the response. */
+    fun queryIntersectingPoint(
+        layerId: Int,
+        latitude: Double,
+        longitude: Double,
+        outFields: String,
+        resultRecordCount: Int = 25,
+    ): String {
+        val geometry = String.format(
+            java.util.Locale.US,
+            """{"x":%f,"y":%f,"spatialReference":{"wkid":4326}}""",
+            longitude,
+            latitude,
+        )
+        val url = "$baseUrl/$layerId/query".toHttpUrl().newBuilder()
+            .addQueryParameter("where", "1=1")
+            .addQueryParameter("geometry", geometry)
+            .addQueryParameter("geometryType", "esriGeometryPoint")
+            .addQueryParameter("inSR", "4326")
+            .addQueryParameter("spatialRel", "esriSpatialRelIntersects")
+            .addQueryParameter("outFields", outFields)
+            .addQueryParameter("returnGeometry", "false")
+            .addQueryParameter("resultRecordCount", resultRecordCount.toString())
+            .addQueryParameter("f", "json")
+            .build()
+        return get(url.toString())
+    }
+
     private fun get(url: String): String {
         val request = Request.Builder()
             .url(url)

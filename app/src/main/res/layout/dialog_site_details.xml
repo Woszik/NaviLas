@@ -135,6 +135,31 @@
                     tools:visibility="visible" />
 
                 <TextView
+                    android:id="@+id/detailsAdminHeading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/details_admin_heading"
+                    android:textAllCaps="true"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorPrimary" />
+
+                <TextView
+                    android:id="@+id/detailsAdmin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:text="@string/details_admin_hint"
+                    tools:text="Nadleśnictwo Koszęcin\nLeśnictwo Piłka" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/detailsAdminFetch"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/details_admin_fetch" />
+
+                <TextView
                     android:id="@+id/detailsSource"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

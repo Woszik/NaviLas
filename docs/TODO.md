@@ -35,6 +35,10 @@ Dialog i import `.osf` są w Nightly 0.5.47; nie uznajemy za domknięte, dopóki
 
 ## Zrobione
 
+### Zarządca BDL w Szczegółach (Nightly 0.5.49)
+
+Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga sieci.
+
 ### Głuchy klik punktu w przeglądaniu mapy (Nightly 0.5.48)
 
 Klik w pin zawsze otwiera kartę; zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.

@@ -21,6 +21,7 @@ import pl.navilas.finder.data.bdl.BdlOfflineStore
 import pl.navilas.finder.data.bdl.BdlSearchContext
 import pl.navilas.finder.data.bdl.BdlSearchSubsetFilter
 import pl.navilas.finder.data.bdl.BdlOverlayLoader
+import pl.navilas.finder.data.bdl.ForestAdminLoader
 import pl.navilas.finder.data.bdl.NearbyOverlayObjects
 import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.RestSiteRepository
@@ -57,6 +58,7 @@ import pl.navilas.finder.data.bdl.ForestEntryBanStore
 import pl.navilas.finder.domain.EntryBanRefreshOffer
 import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_SNOOZE_MS
 import pl.navilas.finder.domain.ENTRY_BAN_REFRESH_STALE_MS
+import pl.navilas.finder.domain.ForestAdminLookup
 import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.MapTrackingMode
 import pl.navilas.finder.domain.AppExploreMode
@@ -301,6 +303,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         config = SearchConfig.DEFAULT,
     )
     private val forestEntryBanLoader = ForestEntryBanLoader()
+    private val forestAdminLoader = ForestAdminLoader()
+    private val forestAdminCache = LinkedHashMap<String, ForestAdminLookup>()
     private val forestEntryBanStore = ForestEntryBanStore.fromAppFilesDir(application.filesDir)
     private val roadAnalyzer = RoadProximityAnalyzer(
         overpass = CachingOverpassRoadClient(tileCache = osmTileStore),
@@ -1643,6 +1647,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             excludeId = site.id,
             radiusMeters = NearbyOverlayObjects.DETAILS_RADIUS_METERS,
         )
+    }
+
+    fun cachedForestAdmin(siteId: String): ForestAdminLookup? = forestAdminCache[siteId]
+
+    suspend fun fetchForestAdmin(site: RestSite, force: Boolean = false): ForestAdminLookup {
+        if (!force) {
+            val cached = forestAdminCache[site.id]
+            if (cached is ForestAdminLookup.Found || cached is ForestAdminLookup.OutsideLp) {
+                return cached
+            }
+        }
+        val result = withContext(Dispatchers.IO) {
+            forestAdminLoader.lookup(site.latitude, site.longitude)
+        }
+        forestAdminCache[site.id] = result
+        return result
     }
 
     private suspend fun overlayIndexForDetails(): List<BdlOverlayPoint> {

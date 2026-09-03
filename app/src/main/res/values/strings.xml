@@ -67,6 +67,12 @@
     <string name="details_moto_heading">Dojazd motocyklem</string>
     <string name="details_nearby_heading">W pobliżu</string>
     <string name="details_nearby_loading">Szukam obiektów BDL w 200 m…</string>
+    <string name="details_admin_heading">Zarządca</string>
+    <string name="details_admin_hint">Nadleśnictwo z BDL — wymaga sieci.</string>
+    <string name="details_admin_fetch">Dociągnij z BDL</string>
+    <string name="details_admin_loading">Pobieram nadleśnictwo…</string>
+    <string name="details_admin_retry">Spróbuj ponownie</string>
+    <string name="details_admin_outside">Poza PGL LP albo brak poligonu BDL dla tego punktu.</string>
     <string name="details_source_layer">Warstwa BDL: %1$s</string>
     <string name="moto_card_analyzing">Analizuję drogi OSM…</string>
     <string name="moto_card_uncertain">Dojazd moto: %1$s, %2$s · dostęp niepewny (OSM bez tagu)</string>

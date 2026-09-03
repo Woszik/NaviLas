@@ -69,6 +69,7 @@ import pl.navilas.finder.databinding.SearchCriteriaControlsBinding
 import pl.navilas.finder.data.bdl.BdlOverlayCatalog
 import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.domain.BdlOverlayFilter
+import pl.navilas.finder.domain.ForestAdminLookup
 import pl.navilas.finder.domain.ForestEntryBan
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.MapTrackingCamera
@@ -3087,12 +3088,22 @@ class MainActivity : AppCompatActivity() {
         details.detailsNearbyHeading.isVisible = true
         details.detailsNearby.text = getString(R.string.details_nearby_loading)
         details.detailsNearby.isVisible = true
+        bindForestAdminSection(details, viewModel.cachedForestAdmin(site.id))
         details.detailsSave.text = getString(
             if (saved != null) R.string.btn_edit_saved else R.string.btn_save,
         )
         val dialog = AlertDialog.Builder(this)
             .setView(details.root)
             .create()
+        details.detailsAdminFetch.setOnClickListener {
+            details.detailsAdmin.text = getString(R.string.details_admin_loading)
+            details.detailsAdminFetch.isEnabled = false
+            lifecycleScope.launch {
+                val lookup = viewModel.fetchForestAdmin(site, force = true)
+                if (!dialog.isShowing) return@launch
+                bindForestAdminSection(details, lookup)
+            }
+        }
         details.detailsClose.setOnClickListener { dialog.dismiss() }
         details.detailsSave.setOnClickListener {
             dialog.dismiss()
@@ -3122,6 +3133,33 @@ class MainActivity : AppCompatActivity() {
                 details.detailsNearby.text = groups.joinToString("\n") { it.linePl() }
                 details.detailsNearbyHeading.isVisible = true
                 details.detailsNearby.isVisible = true
+            }
+        }
+    }
+
+    private fun bindForestAdminSection(
+        details: DialogSiteDetailsBinding,
+        lookup: ForestAdminLookup?,
+    ) {
+        details.detailsAdminFetch.isEnabled = true
+        when (lookup) {
+            null -> {
+                details.detailsAdmin.text = getString(R.string.details_admin_hint)
+                details.detailsAdminFetch.text = getString(R.string.details_admin_fetch)
+                details.detailsAdminFetch.isVisible = true
+            }
+            is ForestAdminLookup.Found -> {
+                details.detailsAdmin.text = lookup.admin.linesPl().joinToString("\n")
+                details.detailsAdminFetch.isVisible = false
+            }
+            ForestAdminLookup.OutsideLp -> {
+                details.detailsAdmin.text = getString(R.string.details_admin_outside)
+                details.detailsAdminFetch.isVisible = false
+            }
+            is ForestAdminLookup.Failed -> {
+                details.detailsAdmin.text = lookup.message
+                details.detailsAdminFetch.text = getString(R.string.details_admin_retry)
+                details.detailsAdminFetch.isVisible = true
             }
         }
     }

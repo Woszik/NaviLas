@@ -98,6 +98,10 @@ Aktualność **krótsza niż miejsca**: po **7 dniach** monit; **Później** odk
 
 Klik obszaru → dialog (przyczyna, nadleśnictwo, leśnictwo, oddział, data od/do). Miejsce w poligonie: znacznik na karcie i liście. Warstwa 0 (wilgotność ściółki) **nie** jest zakazem. Informacja pomocnicza — obowiązują oficjalne źródła LP / BDL.
 
+### Zarządca miejsca (Nightly 0.5.49)
+
+Czas w Las **nie** ma nadleśnictwa na rekordzie punktu. Szczegóły → **Dociągnij z BDL** pyta osobny MapServer `WMS_BDL` (warstwa 1 Nadleśnictwa, 2 Leśnictwa) o poligon zawierający współrzędne miejsca. Główny wiersz: nadleśnictwo + adres gdy BDL go ma; leśnictwo i RDLP jako dopisek. Wymaga sieci; wynik siedzi w pamięci sesji. Poza PGL LP: komunikat, bez zgadywania z OSM. To **nie** jest to samo co nazwa nadleśnictwa na zakazie wstępu.
+
 ---
 
 ## 3. Cechy punktowe BDL (`SiteFeature`) — flagi T/N na rekordzie
@@ -190,6 +194,7 @@ Szczegóły: [POI_IDENTITY.md](./POI_IDENTITY.md).
 | [POI_IDENTITY.md](./POI_IDENTITY.md) | Klucze `BdlIdentity` |
 | `domain/RestSiteModels.kt` | `SiteFeature`, `RestSite`, `ZanocujStatus` |
 | `data/bdl/RestSiteRepository.kt` | Stałe warstw i nazwy BDL |
+| `data/bdl/ForestAdminLoader.kt` | Identify nadleśnictwa / leśnictwa (`WMS_BDL`) |
 | `data/bdl/ForestEntryBanLoader.kt` | Overlay zakazów wstępu (osobny MapServer) |
 | `data/bdl/ForestEntryBanStore.kt` | Osobna baza offline zakazów (`entry_bans/bans.json`) |
 
