@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-03**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.51-nightly | 63 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.52-nightly | 64 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.52
+
+Opisy OsmAnd moto ujednolicone w aplikacji i docs: dialog Krótka / Kręta / Standardowa z mapowaniem na BRouter / Motocykl; import `.osf` z jasnymi nazwami profili. Checklist NAWIGUJ zamknięty.
 
 ## Nightly 0.5.51
 
@@ -105,25 +109,13 @@ Test ręczny 2026-08-30 na fizycznym urządzeniu:
 
 ## Do dopracowania
 
-Tematy świadomie odłożone — kod lub setup może być częściowo gotowy, ale **nie uznajemy za domknięte**:
+Tematy świadomie odłożone:
 
-### 1. OsmAnd — styl trasy motocyklowej
-
-**Cel:** Po wyborze OsmAnd w profilu MOTOCYKL dialog: **Krótka** / **Kręta** / **Standardowa**, mapowane na profile OsmAnd/BRouter.
-
-| NaviLas | Profil OsmAnd | BRouter |
-|---------|---------------|---------|
-| Krótka | `Brouter[trekking]` | `trekking.brf` |
-| Kręta | `Brouter[moped]` | `moped.brf` |
-| Standardowa | Motocykl (`motorcycle`) | wbudowany OsmAnd |
-
-**Stan:** Dialog, `profile=` i import `.osf` z NaviLas są w Nightly 0.5.47. Wymaga weryfikacji na urządzeniu, czy OsmAnd **faktycznie przełącza** profil po intencie API. Setup: Ustawienia → Wgraj profile, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt).
-
-### 2. (Opcjonalnie później) Integracja Calimoto
+### 1. (Opcjonalnie później) Integracja Calimoto
 
 Zamiast eksportu GPX — **kopiowanie współrzędnych** do schowka (obecne rozwiązanie). Pełna integracja Calimoto nie jest priorytetem.
 
-### 3. Final na GitHub
+### 2. Final na GitHub
 
 Nightly i Beta są w aplikacji i CI. Final (`final.json`) jeszcze nie istnieje.
 

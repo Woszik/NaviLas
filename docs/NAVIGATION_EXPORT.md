@@ -1,6 +1,6 @@
 # Eksport nawigacji (Checkpoint 3)
 
-> **Stan (2026-09-03):** Menu **NAWIGUJ** (5 opcji) jest w **Nightly 0.5.47**. Beta 0.5.46 miała inną kolejność (Google Maps pierwsze) i fallback Cruisera na systemowy chooser.
+> **Stan (2026-09-03):** Menu **NAWIGUJ** (5 opcji) od **Nightly 0.5.47**. Opisy stylu trasy OsmAnd ujednolicone w **Nightly 0.5.52**. Beta 0.5.46 miała inną kolejność (Google Maps pierwsze) i fallback Cruisera na systemowy chooser.
 > Kanały: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md). Stan projektu: [`STATUS.md`](STATUS.md).
 
 ## Menu NAWIGUJ
@@ -36,13 +36,13 @@ Brak OsmAnd: dialog (zalecenie offline w lesie, nie wymóg) → Play Store OsmAn
 
 Mapowanie (po imporcie `NaviLas_osmand_moto_profiles.osf` z assetów aplikacji):
 
-| NaviLas | Parametr `profile=` | Profil OsmAnd | BRouter |
-|---------|----------------------|---------------|---------|
-| Krótka | `brouter_trekking` | `Brouter[trekking]` | `trekking.brf` (zalecany, nie wymagany) |
-| Kręta | `brouter_moped` | `Brouter[moped]` | `moped.brf` (zalecany, nie wymagany) |
-| Standardowa | `motorcycle` | Motocykl | wbudowany OsmAnd |
+| NaviLas (dialog) | Parametr `profile=` | Profil OsmAnd | BRouter |
+|------------------|---------------------|---------------|---------|
+| Krótka — BRouter trekking | `brouter_trekking` | `Brouter[trekking]` | `trekking.brf` (zalecany, nie wymagany) |
+| Kręta — BRouter moped | `brouter_moped` | `Brouter[moped]` | `moped.brf` (zalecany, nie wymagany) |
+| Standardowa — Motocykl OsmAnd | `motorcycle` | Motocykl | wbudowany OsmAnd |
 
-Setup ręczny: [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt). Integracja `profile=` nadal wymaga weryfikacji na urządzeniu.
+Setup: Ustawienia → Wgraj profile NaviLas do OsmAnd, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt). Przed testem Krótka/Kręta uruchom aplikację BRouter.
 
 ## Cruiser (Emux)
 
@@ -70,7 +70,6 @@ Jedyny moment, gdy Android pokazuje listę programów: `Intent.createChooser` na
 7. Współrzędne GPS → snackbar + wklejenie w Calimoto ręcznie.
 8. Profil MOTOCYKL bez odpowiedniej drogi: przycisk NAWIGUJ ukryty.
 9. Ustawienia → Wgraj profile NaviLas do OsmAnd (gdy OsmAnd jest).
+10. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę (BRouter dla Krótka/Kręta).
 
-**Do dopracowania (OsmAnd moto):**
-
-10. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę offline (BRouter dla Krótka/Kręta).
+**Stan checklisty:** potwierdzone (Nightly 0.5.47+ / opisy 0.5.52).

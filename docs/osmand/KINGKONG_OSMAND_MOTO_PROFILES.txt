@@ -1,10 +1,10 @@
 OsmAnd — profile moto dla NaviLas (KINGKONG 8)
 ================================================
-Data: 2026-08-30
+Data: 2026-08-30 (opisy NaviLas: 2026-09-03, Nightly 0.5.52)
 
 CEL
 ---
-3 profile gotowe pod wybór stylu trasy w NaviLas (import .osf wykonany; integracja w aplikacji: DO DOPRACOWANIA — docs/STATUS.md):
+3 profile pod wybór stylu trasy w NaviLas (MOTOCYKL → OsmAnd):
 
   1. Brouter[moped]   — kręta (BRouter moped.brf)
   2. Brouter[trekking] — krótka / szybsza (BRouter trekking.brf)
@@ -22,7 +22,10 @@ IMPORT PROFILI OSMAND (1×, ~30 s)
 ----------------------------------
 Telefon odblokowany. Najpierw uruchom BRouter (ikona aplikacji), potem:
 
-  1. Otwórz Pliki / Downloads → NaviLas_osmand_moto_profiles.osf
+  A) Z NaviLas: Ustawienia → Wgraj profile NaviLas do OsmAnd
+     (albo dialog po pierwszej instalacji OsmAnd z NAWIGUJ)
+
+  B) Ręcznie: Pliki / Downloads → NaviLas_osmand_moto_profiles.osf
      (lub: OsmAnd → Menu ☰ → Ustawienia → Importuj → wybierz plik .osf)
 
   2. Zaznacz do importu:
@@ -42,6 +45,8 @@ WERYFIKACJA (2 min)
   b) OsmAnd, profil Brouter[moped]: dowolny punkt → Nawiguj → trasa liczy się offline.
   c) Przełącz na Brouter[trekking] → inna trasa (mniej „kręta”).
   d) Profil Motocykl → routing OsmAnd (nie BRouter).
+  e) NaviLas MOTOCYKL → NAWIGUJ → OsmAnd → Krótka / Kręta / Standardowa
+     → OsmAnd otwiera się z właściwym profilem (`profile=` w intencie API).
 
 RĘCZNY FALLBACK (gdy import .osf nie zadziała)
 ----------------------------------------------
@@ -57,7 +62,7 @@ Włączenie wbudowanego Motocykl:
 
 MAPOWANIE → NaviLas
 -------------------
-  STATUS: DO DOPRACOWANIA (dialog w kodzie roboczym, wymaga weryfikacji API OsmAnd)
+  STATUS: w aplikacji od Nightly 0.5.47; opisy UI/docs od 0.5.52
 
   Krótka      → Brouter[trekking]  (profile=brouter_trekking)
   Kręta       → Brouter[moped]     (profile=brouter_moped)

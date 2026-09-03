@@ -3440,6 +3440,7 @@ class MainActivity : AppCompatActivity() {
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.nav_osmand_moto_style_title)
+            .setMessage(R.string.nav_osmand_moto_style_message)
             .setItems(options) { _, which ->
                 val profileKey = when (which) {
                     0 -> OsmAndMotoRouteStyle.SHORT.profileKey

@@ -4,25 +4,6 @@ Otwarte sprawy poza bieżącym kodem Nightly / Bety. Stan projektu: [`STATUS.md`
 
 ## Otwarte
 
-### Testy ręczne Nightly 0.5.47+ — NAWIGUJ
-
-Checklist z [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md):
-
-1. Kolejność listy: OsmAnd, Cruiser, Współrzędne GPS, Wybierz nawigację, Google Maps.
-2. OsmAnd zainstalowany → aplikacja, nie przeglądarka (OsmAnd+ i darmowy OsmAnd).
-3. Brak OsmAnd → dialog + Play Store; po instalacji propozycja profili `.osf`.
-4. Cruiser zainstalowany → pin. Brak → dialog, **nie** systemowy chooser.
-5. Wybierz nawigację → systemowa lista aplikacji.
-6. Google Maps → trasa https.
-7. Współrzędne GPS → schowek.
-8. MOTOCYKL bez drogi OSM: NAWIGUJ ukryty.
-9. Ustawienia → Wgraj profile NaviLas do OsmAnd.
-10. MOTOCYKL → OsmAnd → Krótka / Kręta / Standardowa: czy OsmAnd **przełącza profil** i liczy trasę (BRouter dla Krótka/Kręta).
-
-### OsmAnd — weryfikacja `profile=` na urządzeniu
-
-Dialog i import `.osf` są w Nightly 0.5.47; nie uznajemy za domknięte, dopóki nie potwierdzisz przełączania profilu. Setup: Ustawienia → Wgraj profile, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt).
-
 ### Wniosek do DGLP / BDL — sieć drogowa i status udostępnienia
 
 - **Po co:** NaviLas nie ma krajowej warstwy „droga leśna otwarta / zamknięta”. OSM prawie nigdy nie ma tagu prawnego. Heurystyka moto (BDL 17/19 + `operator` LP + korytarz) to tylko przybliżenie UI.
@@ -34,6 +15,14 @@ Dialog i import `.osf` są w Nightly 0.5.47; nie uznajemy za domknięte, dopóki
 - **Stan:** treść gotowa, **nie wysłane**.
 
 ## Zrobione
+
+### Opisy OsmAnd moto + Nightly 0.5.52
+
+Ujednolicone teksty w aplikacji (dialog stylu trasy, import `.osf`) i w docs: mapowanie Krótka/Kręta/Standardowa → `profile=` / BRouter. Checklist NAWIGUJ zamknięty.
+
+### Testy ręczne NAWIGUJ (Nightly 0.5.47+)
+
+Checklist z [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md) potwierdzony na urządzeniu.
 
 ### Wyszukiwanie miejsca po nazwie (Nightly 0.5.51)
 

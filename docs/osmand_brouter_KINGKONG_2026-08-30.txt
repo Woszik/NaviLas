@@ -32,7 +32,7 @@ OSMAND — PROFILE MOTO (NaviLas)
 -------------------------------
 Pełna instrukcja + import .osf: docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt
 Plik importu na telefonie: Download/NaviLas_osmand_moto_profiles.osf
-Stan integracji w aplikacji: DO DOPRACOWANIA — docs/STATUS.md
+Stan integracji w aplikacji: gotowe (Nightly 0.5.47+; opisy 0.5.52) — docs/NAVIGATION_EXPORT.md
 
 Profile docelowe:
   • Brouter[moped]    — kręta (już może istnieć; import .osf ujednolici)
