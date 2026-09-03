@@ -124,7 +124,7 @@ Nightly i Beta są w aplikacji i CI. Final (`final.json`) jeszcze nie istnieje.
 | Plik | Opis |
 |------|------|
 | [`TODO.md`](TODO.md) | Lista do zrobienia (poza bieżącym kodem) |
-| [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md) | Wniosek do BDL/DGLP o sieć drogową (do wysłania) |
+| [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md) | Wniosek o sieć drogową — wysłany 2026-09-03, **BDLPOMOC-3343**, oczekiwanie na odpowiedź |
 | [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) | Nightly / Beta / Final |
 | [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) | Warstwy BDL + overlay browse |
 | [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md) | Intenty, URL-e, checklist testów nawigacji |

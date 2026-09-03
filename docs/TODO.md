@@ -4,17 +4,19 @@ Otwarte sprawy poza bieżącym kodem Nightly / Bety. Stan projektu: [`STATUS.md`
 
 ## Otwarte
 
-### Wniosek do DGLP / BDL — sieć drogowa i status udostępnienia
+### Wniosek do DGLP / BDL — oczekiwanie na odpowiedź merytoryczną
 
-- **Po co:** NaviLas nie ma krajowej warstwy „droga leśna otwarta / zamknięta”. OSM prawie nigdy nie ma tagu prawnego. Heurystyka moto (BDL 17/19 + `operator` LP + korytarz) to tylko przybliżenie UI.
-- **Co LP ma wewnątrz:** sieć drogowa SILP oraz flaga udostępnienia (zarządzenie DG LP **36/2021**: otwarte drogi „ujęte w docelowej sieci”). Publicznie tego nie wystawiają — nadleśnictwa publikują PDF-y, nie GIS.
-- **Co zapytać:** ponowne wykorzystanie geometrii sieci drogowej + statusu udostępnienia do ruchu (cała Polska), na potrzeby aplikacji NaviLas.
-- **Adres:** [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl)
-- **Treść listu:** [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md)
-- **Nieznane do czasu odpowiedzi:** czas, zakres warstwy, licencja.
-- **Stan:** treść gotowa, **nie wysłane**.
+- **Wysłany:** 2026-09-03 na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl).
+- **Numer zgłoszenia:** **BDLPOMOC-3343** (BDL-Pomoc; autoresponder 2026-09-03).
+- **Treść wniosku:** [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md).
+- **Dalej:** odpowiedź BDL/DGLP (zakres, licencja, format, cykl) albo wskazanie właściwego adresata SILP.
+- Oryginał PDF autorespondera: lokalnie `~/Dokumenty/NaviLas/korespondencja-bdl/` (poza GitHub).
 
 ## Zrobione
+
+### Wniosek o sieć drogową LP — wysłany (2026-09-03)
+
+E-mail z wnioskiem o geometrię sieci i status udostępnienia do ruchu; treść zapisana w docs.
 
 ### Opisy OsmAnd moto + Nightly 0.5.52
 
