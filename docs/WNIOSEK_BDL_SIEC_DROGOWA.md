@@ -17,7 +17,7 @@ zwracam się z wnioskiem o ponowne wykorzystanie danych Państwowego Gospodarstw
 
 ## 1. Czym jest NaviLas
 
-NaviLas to aplikacja na telefony z systemem Android, która pomaga znaleźć **oficjalne miejsca odpoczynku i postoju w lasach**: wiaty i inne obiekty warstwy BDL „miejsca wypoczynku”, **parkingi leśne**, **miejsca postoju pojazdów**, obiekty powiązane (m.in. punkty widokowe) oraz strefy programu **„Zanocuj w lesie”**. **Domyślnie** pokazuje na mapie **zakazy wstępu do lasu** z danych BDL i nie proponuje miejsc leżących w tych strefach (użytkownik może to wyłączyć w filtrach).
+NaviLas to aplikacja na telefony z systemem Android, która pomaga znaleźć **oficjalne miejsca odpoczynku i postoju w lasach**: wiaty i inne obiekty warstwy BDL „miejsca wypoczynku”, **parkingi leśne**, **miejsca postoju pojazdów**, obiekty powiązane (m.in. punkty widokowe) oraz strefy programu **„Zanocuj w lesie”**. **Domyślnie** pokazuje na mapie **zakazy wstępu do lasu** z danych BDL i nie proponuje miejsc leżących w tych strefach (użytkownik może to wyłączyć w filtrach). Dane BDL aplikacja **pobiera na telefon** (kopia offline): miejsca odpoczynku i strefy „Zanocuj w lesie” — przypomnienie o aktualizacji po **30 dniach**; zakazy wstępu — osobna, częstsza baza, przypomnienie już po **7 dniach**. Jeśli użytkownik pominie aktualizację zakazów, aplikacja **uporczywie przypomina o niej codziennie**, aż dane zostaną odświeżone. Chodzi o to, żeby nie pokazywać nieaktualnych stref, w których wstęp jest zabroniony.
 
 Aplikacja **nie zastępuje** zarządzeń nadleśniczego ani znaków w terenie. W informacji o aplikacji jest wyraźnie napisane, że NaviLas **nie jest oficjalną aplikacją Lasów Państwowych ani BDL**, a dane mapowe BDL mają charakter poglądowy.
 
