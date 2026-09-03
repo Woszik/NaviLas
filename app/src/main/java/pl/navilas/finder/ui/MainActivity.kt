@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
 import android.content.pm.PackageInstaller
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -37,6 +36,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -70,6 +70,7 @@ import pl.navilas.finder.data.bdl.BdlOverlayCatalog
 import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.domain.BdlOverlayFilter
 import pl.navilas.finder.domain.ForestEntryBan
+import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.MapTrackingCamera
 import pl.navilas.finder.domain.BdlOverlayGroup
 import pl.navilas.finder.domain.BrowseCarFilter
@@ -108,6 +109,7 @@ import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.preferences.UpdateChannelPreference
 import pl.navilas.finder.update.UpdateTrack
+import pl.navilas.finder.nav.ExternalNavApps
 import pl.navilas.finder.nav.NavigationLinks
 import pl.navilas.finder.nav.OsmAndMotoRouteStyle
 import java.io.File
@@ -464,6 +466,9 @@ class MainActivity : AppCompatActivity() {
             },
         )
         keepScreenOn.isChecked = uiPreferences.keepScreenOnWhileTracking
+        dialogView.findViewById<View>(R.id.btnOsmAndProfiles).setOnClickListener {
+            importOsmAndProfiles(fromSettings = true)
+        }
         updateChannelSection.isVisible = BuildConfig.APP_UPDATE_ENABLED
         if (BuildConfig.APP_UPDATE_ENABLED) {
             updateChannelGroup.check(
@@ -3205,26 +3210,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun showNavAppChooser(item: RestSiteResult) {
         val target = item.navigationTarget
+        val osmandInstalled = ExternalNavApps.installedOsmAndPackage(packageManager) != null
+        val cruiserInstalled = ExternalNavApps.isCruiserInstalled(packageManager)
         val options = arrayOf(
-            getString(R.string.nav_google),
-            getString(R.string.nav_osmand),
-            getString(R.string.nav_cruiser),
+            getString(
+                if (osmandInstalled) R.string.nav_osmand_recommended else R.string.nav_osmand_missing_label,
+            ),
+            getString(
+                if (cruiserInstalled) R.string.nav_cruiser else R.string.nav_cruiser_missing_label,
+            ),
             getString(R.string.nav_copy_gps),
+            getString(R.string.nav_choose_app),
+            getString(R.string.nav_google),
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.btn_navigate)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> openUri(NavigationLinks.googleMapsDirUrl(target))
-                    1 -> openOsmAnd(item, currentProfile)
-                    2 -> openCruiser(item)
-                    3 -> copyGpsCoordinates(item)
+                    0 -> openOsmAnd(item, currentProfile)
+                    1 -> openCruiser(item)
+                    2 -> copyGpsCoordinates(item)
+                    3 -> openNavigationChooser(target, item.site.name)
+                    4 -> openUri(NavigationLinks.googleMapsDirUrl(target))
                 }
             }
             .show()
     }
 
     private fun openOsmAnd(item: RestSiteResult, profile: TravelProfile) {
+        if (ExternalNavApps.installedOsmAndPackage(packageManager) == null) {
+            showOsmAndMissingDialog()
+            return
+        }
         if (profile == TravelProfile.MOTORCYCLE) {
             showOsmAndMotoStyleChooser(item)
             return
@@ -3253,21 +3270,149 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchOsmAnd(item: RestSiteResult, profileKey: String) {
+        val pkg = ExternalNavApps.installedOsmAndPackage(packageManager) ?: run {
+            showOsmAndMissingDialog()
+            return
+        }
         val target = item.navigationTarget
         val navigate = NavigationLinks.osmAndNavigateUri(target, item.site.name, profileKey)
-        if (openViewInPackage(navigate, OSMAND_PACKAGE)) return
+        if (openViewInPackage(navigate, pkg)) return
         val geo = NavigationLinks.osmAndGeoUri(target, item.site.name)
-        val geoIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geo)).apply {
-            setClassName(OSMAND_PACKAGE, OSMAND_GEO_ACTIVITY)
+        if (pkg == ExternalNavApps.OSMAND_PLUS) {
+            val geoIntent = Intent(Intent.ACTION_VIEW, Uri.parse(geo)).apply {
+                setClassName(pkg, ExternalNavApps.OSMAND_PLUS_GEO_ACTIVITY)
+            }
+            if (startIntentSafely(geoIntent)) return
         }
-        if (startIntentSafely(geoIntent)) return
+        if (openViewInPackage(geo, pkg)) return
         Snackbar.make(binding.root, R.string.nav_osmand_missing, Snackbar.LENGTH_LONG).show()
     }
 
+    private fun showOsmAndMissingDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.nav_osmand_missing_title)
+            .setMessage(R.string.nav_osmand_missing_body)
+            .setPositiveButton(R.string.nav_osmand_install) { _, _ ->
+                uiPreferences.pendingOsmAndSetup = true
+                openPlayStore(ExternalNavApps.OSMAND_PLUS)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun maybeOfferOsmAndProfilesAfterInstall() {
+        if (!uiPreferences.pendingOsmAndSetup) return
+        if (ExternalNavApps.installedOsmAndPackage(packageManager) == null) return
+        uiPreferences.pendingOsmAndSetup = false
+        offerOsmAndProfileImport()
+    }
+
+    private fun offerOsmAndProfileImport() {
+        if (ExternalNavApps.installedOsmAndPackage(packageManager) == null) {
+            Snackbar.make(binding.root, R.string.settings_osmand_profiles_need_app, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.nav_osmand_profiles_title)
+            .setMessage(R.string.nav_osmand_profiles_body)
+            .setPositiveButton(R.string.nav_osmand_profiles_import) { _, _ ->
+                importOsmAndProfiles(fromSettings = false)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun importOsmAndProfiles(fromSettings: Boolean) {
+        val pkg = ExternalNavApps.installedOsmAndPackage(packageManager)
+        if (pkg == null) {
+            if (fromSettings) {
+                Snackbar.make(binding.root, R.string.settings_osmand_profiles_need_app, Snackbar.LENGTH_LONG).show()
+            } else {
+                showOsmAndMissingDialog()
+            }
+            return
+        }
+        val file = runCatching { copyOsmAndProfilesToCache() }.getOrNull()
+        if (file == null) {
+            Snackbar.make(binding.root, R.string.nav_osmand_profiles_failed, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val uri = FileProvider.getUriForFile(this, getString(R.string.file_provider_authority), file)
+        grantUriPermission(pkg, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val view = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/octet-stream")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setPackage(pkg)
+        }
+        if (startIntentSafely(view)) {
+            Snackbar.make(binding.root, R.string.nav_osmand_profiles_done, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setPackage(pkg)
+        }
+        if (startIntentSafely(send)) {
+            Snackbar.make(binding.root, R.string.nav_osmand_profiles_done, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        Snackbar.make(binding.root, R.string.nav_osmand_profiles_failed, Snackbar.LENGTH_LONG).show()
+    }
+
+    private fun copyOsmAndProfilesToCache(): File {
+        val dir = File(cacheDir, "osmand").apply { mkdirs() }
+        val out = File(dir, ExternalNavApps.OSMAND_PROFILES_FILE)
+        assets.open(ExternalNavApps.OSMAND_PROFILES_ASSET).use { input ->
+            out.outputStream().use { input.copyTo(it) }
+        }
+        return out
+    }
+
     private fun openCruiser(item: RestSiteResult) {
+        if (!ExternalNavApps.isCruiserInstalled(packageManager)) {
+            showCruiserMissingDialog()
+            return
+        }
         val geo = NavigationLinks.osmAndGeoUri(item.navigationTarget, item.site.name)
-        if (openViewInPackage(geo, CRUISER_PACKAGE)) return
-        openUri(geo)
+        if (!openViewInPackage(geo, ExternalNavApps.CRUISER)) {
+            Snackbar.make(binding.root, R.string.nav_open_failed, Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showCruiserMissingDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.nav_cruiser_missing_title)
+            .setMessage(R.string.nav_cruiser_missing_body)
+            .setPositiveButton(R.string.nav_cruiser_install) { _, _ ->
+                openPlayStore(ExternalNavApps.CRUISER)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun openNavigationChooser(target: LatLon, name: String) {
+        val geo = NavigationLinks.osmAndGeoUri(target, name)
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse(geo))
+        if (!startIntentSafely(Intent.createChooser(view, getString(R.string.nav_choose_app)))) {
+            Snackbar.make(binding.root, R.string.nav_open_failed, Snackbar.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openPlayStore(packageName: String) {
+        val market = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(ExternalNavApps.playStoreMarketUri(packageName)),
+        )
+        if (startIntentSafely(market)) return
+        if (startIntentSafely(
+                Intent(Intent.ACTION_VIEW, Uri.parse(ExternalNavApps.playStoreHttps(packageName))),
+            )
+        ) {
+            return
+        }
+        Snackbar.make(binding.root, R.string.nav_store_failed, Snackbar.LENGTH_LONG).show()
     }
 
     private fun openViewInPackage(uri: String, packageName: String): Boolean {
@@ -3317,6 +3462,7 @@ class MainActivity : AppCompatActivity() {
             ambientLightThemeController.start()
         }
         resumePendingAfterInstallPermission()
+        maybeOfferOsmAndProfilesAfterInstall()
     }
 
     override fun onPause() {
@@ -3351,11 +3497,6 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    companion object {
-        private const val OSMAND_PACKAGE = "net.osmand.plus"
-        private const val OSMAND_GEO_ACTIVITY = "net.osmand.plus.activities.search.GeoIntentActivity"
-        private const val CRUISER_PACKAGE = "gr.talent.cruiser"
-    }
 }
 
 private class MainPagerAdapter(

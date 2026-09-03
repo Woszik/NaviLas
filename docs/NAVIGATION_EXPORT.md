@@ -1,16 +1,19 @@
 # Eksport nawigacji (Checkpoint 3)
 
-> **Stan (2026-08-30):** Menu **NAWIGUJ** (4 opcje) jest dostępne w **Beta 0.5.34**.
+> **Stan (2026-09-03):** Menu **NAWIGUJ** (5 opcji) jest w **Nightly 0.5.47**. Beta 0.5.46 miała inną kolejność (Google Maps pierwsze) i fallback Cruisera na systemowy chooser.
 > Kanały: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md). Stan projektu: [`STATUS.md`](STATUS.md).
 
 ## Menu NAWIGUJ
 
 Wynik → **NAWIGUJ** → wybór:
 
-1. **Google Maps**
-2. **OsmAnd**
-3. **Cruiser**
-4. **Kopiuj współrzędne GPS**
+1. **OsmAnd (zalecane)** — nie wymagane; brak instalacji → dialog ze sklepem
+2. **Cruiser** — brak instalacji → dialog ze sklepem (bez cichego choosera)
+3. **Współrzędne GPS** — schowek
+4. **Wybierz nawigację** — systemowy wybór aplikacji (`Intent.createChooser` na `geo:`)
+5. **Google Maps** — URL https, bez locku na pakiet
+
+Etykiety OsmAnd/Cruiser zmieniają się, gdy aplikacja nie jest zainstalowana. Wykrywanie: OsmAnd+ `net.osmand.plus`, darmowy OsmAnd `net.osmand`, Cruiser `gr.talent.cruiser` (`<queries>` w manifeście).
 
 Profil **MOTOCYKL** bez zakwalifikowanej drogi OSM: przycisk NAWIGUJ ukryty.
 
@@ -23,47 +26,51 @@ Profil **MOTOCYKL** bez zakwalifikowanej drogi OSM: przycisk NAWIGUJ ukryty.
 
 ## OsmAnd
 
-### Działające (zweryfikowane w Beta 0.5.34)
-
-1. **Główna ścieżka:** `osmand.api://navigate?dest_lat=…&dest_lon=…&dest_name=…&profile=…` na pakiet `net.osmand.plus` — [OsmAnd API](https://github.com/osmandapp/osmand-api-demo)
+1. **Główna ścieżka:** `osmand.api://navigate?dest_lat=…&dest_lon=…&dest_name=…&profile=…` na zainstalowany pakiet OsmAnd+ albo darmowy OsmAnd — [OsmAnd API](https://github.com/osmandapp/osmand-api-demo)
    - SAMOCHÓD: `profile=car` (bez dodatkowego dialogu)
-   - MOTOCYKL (bez wyboru stylu): `profile=motorcycle`
-2. **Fallback:** intent `geo:LAT,LON?q=LAT,LON(Nazwa)` na `net.osmand.plus.activities.search.GeoIntentActivity`
+   - MOTOCYKL: dialog stylu trasy, potem `profile=` jak w tabeli
+2. **Fallback:** intent `geo:LAT,LON?q=LAT,LON(Nazwa)` — OsmAnd+ przez `GeoIntentActivity`, darmowy OsmAnd przez `setPackage`
 3. **Nie używać** `https://osmand.net/map/…` bez pakietu — otwiera przeglądarkę zamiast aplikacji
 
-### Do dopracowania — styl trasy motocyklowej
+Brak OsmAnd: dialog (zalecenie offline w lesie, nie wymóg) → Play Store OsmAnd+. Po powrocie, jeśli OsmAnd jest już zainstalowany, NaviLas proponuje import profili `.osf`. Ten sam import jest w Ustawieniach.
 
-Dialog **Styl trasy OsmAnd** (Krótka / Kręta / Standardowa) jest w **Beta 0.5.34**, ale **nie uznajemy integracji za domkniętą** — wymaga testów na urządzeniu i ewentualnej korekty parametrów API.
-
-Planowane mapowanie (po imporcie `NaviLas_osmand_moto_profiles.osf`):
+Mapowanie (po imporcie `NaviLas_osmand_moto_profiles.osf` z assetów aplikacji):
 
 | NaviLas | Parametr `profile=` | Profil OsmAnd | BRouter |
 |---------|----------------------|---------------|---------|
-| Krótka | `brouter_trekking` | `Brouter[trekking]` | `trekking.brf` |
-| Kręta | `brouter_moped` | `Brouter[moped]` | `moped.brf` |
+| Krótka | `brouter_trekking` | `Brouter[trekking]` | `trekking.brf` (zalecany, nie wymagany) |
+| Kręta | `brouter_moped` | `Brouter[moped]` | `moped.brf` (zalecany, nie wymagany) |
 | Standardowa | `motorcycle` | Motocykl | wbudowany OsmAnd |
 
-Setup profili i weryfikacja ręczna: [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt).
+Setup ręczny: [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt). Integracja `profile=` nadal wymaga weryfikacji na urządzeniu.
 
 ## Cruiser (Emux)
 
-- Intent `geo:LAT,LON?q=LAT,LON(Nazwa)` na pakiet `gr.talent.cruiser`
-- Fallback: ten sam `geo:` bez pakietu (chooser)
+- Intent `geo:LAT,LON?q=LAT,LON(Nazwa)` **tylko** na pakiet `gr.talent.cruiser`
+- Brak aplikacji: dialog + Play Store. **Bez** fallbacku na goły `geo:` (to otwierało systemowy chooser)
 - W aplikacji użytkownik planuje trasę i startuje nawigację w Cruiser
 
-## Kopiuj współrzędne GPS
+## Wybierz nawigację
+
+Jedyny moment, gdy Android pokazuje listę programów: `Intent.createChooser` na ten sam `geo:` co wyżej.
+
+## Współrzędne GPS
 
 - Format schowka: `LAT, LON` (6 miejsc po przecinku, np. `52.200000, 21.100000`)
 - Do ręcznego wklejenia w Calimoto i innych nawigacjach bez integracji intent
 
 ## Testy ręczne na urządzeniu (checklist)
 
-1. Wynik → NAWIGUJ → Google Maps otwiera trasę do właściwego celu.
-2. NAWIGUJ → OsmAnd otwiera **aplikację OsmAnd** (plan nawigacji), nie przeglądarkę.
-3. NAWIGUJ → Cruiser otwiera Cruiser z pinem docelowym.
-4. NAWIGUJ → Kopiuj współrzędne GPS → snackbar + wklejenie w Calimoto ręcznie.
-5. Profil MOTOCYKL bez odpowiedniej drogi: przycisk NAWIGUJ ukryty.
+1. NAWIGUJ → lista w kolejności: OsmAnd, Cruiser, Współrzędne GPS, Wybierz nawigację, Google Maps.
+2. OsmAnd zainstalowany → otwiera **aplikację** (plan nawigacji), nie przeglądarkę. OsmAnd+ i darmowy OsmAnd.
+3. OsmAnd brak → dialog, nie snackbar; Play Store; po instalacji propozycja profili `.osf`.
+4. Cruiser zainstalowany → pin w Cruiser. Brak → dialog, **nie** systemowy chooser.
+5. Wybierz nawigację → systemowa lista aplikacji.
+6. Google Maps → trasa https do właściwego celu.
+7. Współrzędne GPS → snackbar + wklejenie w Calimoto ręcznie.
+8. Profil MOTOCYKL bez odpowiedniej drogi: przycisk NAWIGUJ ukryty.
+9. Ustawienia → Wgraj profile NaviLas do OsmAnd (gdy OsmAnd jest).
 
 **Do dopracowania (OsmAnd moto):**
 
-6. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę offline (BRouter dla Krótka/Kręta).
+10. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę offline (BRouter dla Krótka/Kręta).

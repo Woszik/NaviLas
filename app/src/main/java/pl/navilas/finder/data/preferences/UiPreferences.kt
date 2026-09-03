@@ -72,6 +72,10 @@ class UiPreferences(context: Context) {
         get() = parseUpdateChannelPreference(prefs.getString(KEY_UPDATE_CHANNEL, null))
         set(value) = prefs.edit().putString(KEY_UPDATE_CHANNEL, value.name).apply()
 
+    var pendingOsmAndSetup: Boolean
+        get() = prefs.getBoolean(KEY_PENDING_OSMAND_SETUP, false)
+        set(value) = prefs.edit().putBoolean(KEY_PENDING_OSMAND_SETUP, value).apply()
+
     companion object {
         private const val PREFS_NAME = "navilas_ui"
         private const val KEY_THEME_MODE = "theme_mode"
@@ -81,6 +85,7 @@ class UiPreferences(context: Context) {
         private const val KEY_BDL_REFRESH_SNOOZE = "bdl_refresh_snooze_until"
         private const val KEY_ENTRY_BAN_REFRESH_SNOOZE = "entry_ban_refresh_snooze_until"
         private const val KEY_UPDATE_CHANNEL = "update_channel"
+        private const val KEY_PENDING_OSMAND_SETUP = "pending_osmand_setup"
     }
 }
 

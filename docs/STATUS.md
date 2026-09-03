@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-03**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.46 | 58 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.47-nightly | 59 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -22,6 +22,10 @@ Instalacja lokalnego buildu deweloperskiego:
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
+## Nightly 0.5.47
+
+NAWIGUJ: **OsmAnd** (zalecane) → **Cruiser** → **Współrzędne GPS** → **Wybierz nawigację** (systemowy chooser) → **Google Maps**. Brak OsmAnd/Cruisera → dialog, nie cichy fallback na `geo:`. Po instalacji OsmAnd (albo z Ustawień) import profili moto `.osf`. Szczegóły: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
+
 ## Zakres Beta 0.5.46
 
 Funkcje ustabilizowane i opublikowane w kanale Beta:
@@ -30,7 +34,7 @@ Funkcje ustabilizowane i opublikowane w kanale Beta:
 
 Wynik → **NAWIGUJ** → wybór aplikacji:
 
-| Opcja | Zachowanie |
+| Opcja | Zachowanie (Beta 0.5.46; Nightly 0.5.47 ma inną kolejność — wyżej) |
 |-------|------------|
 | Google Maps | URL Directions API do właściwego celu (auto: miejsce, moto: droga OSM) |
 | OsmAnd | `osmand.api://navigate` na `net.osmand.plus`; fallback `geo:` → GeoIntentActivity |
@@ -97,7 +101,7 @@ Tematy świadomie odłożone — kod lub setup może być częściowo gotowy, al
 | Kręta | `Brouter[moped]` | `moped.brf` |
 | Standardowa | Motocykl (`motorcycle`) | wbudowany OsmAnd |
 
-**Stan:** Dialog i parametry `profile=` są w Beta 0.5.34. Wymaga weryfikacji na urządzeniu, czy OsmAnd **faktycznie przełącza** profil po intencie API (możliwa korekta kluczy `brouter_moped` / `brouter_trekking` vs nazwy wyświetlane). Setup telefonu: [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt).
+**Stan:** Dialog, `profile=` i import `.osf` z NaviLas są w Nightly 0.5.47. Wymaga weryfikacji na urządzeniu, czy OsmAnd **faktycznie przełącza** profil po intencie API. Setup: Ustawienia → Wgraj profile, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt).
 
 ### 2. (Opcjonalnie później) Integracja Calimoto
 
