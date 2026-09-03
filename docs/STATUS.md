@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-03**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.50-nightly | 62 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.51-nightly | 63 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.51
+
+Szukanie **miejsca BDL po nazwie** z paczki offline (warstwy 15/17/19). Pole na ekranie Szukaj i w arkusz Filtrów (także w Browse). Od 3 znaków lista podczas wpisywania: polskie znaki, prefiks, 1 literówka (2 przy dłuższym słowie). Wybór skacze na mapę i otwiera kartę — bez ZNAJDŹ.
 
 ## Nightly 0.5.50
 
@@ -65,7 +69,7 @@ Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
 
 - **Ekran włączony** podczas aktywnego śledzenia pozycji GPS (`FLAG_KEEP_SCREEN_ON`).
 - **Obiekty BDL** (Search i Browse, domyślnie OFF): punkty spoza wyników odpoczynku — Widok (25) i Inne (27) z CORE; woda / zabawa / nocleg gdy pełna baza. Kategorie zaznacza się niezależnie. Kolory + karta + NAWIGUJ. Szczegóły: [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) § overlay.
-- **Filtry na mapie:** arkusz **Filtry** ma belki **Tryb**, **Szukaj** (w wyszukiwaniu: źródło, promień, miejscowość, korytarz, **ZNAJDŹ**), **Profil**, **Filtry miejsc** i **Obiekty BDL** — ten sam wybór co na ekranie 1. Zmiana trybu z mapy zostawia Cię na mapie. W przeglądaniu belka Szukaj jest ukryta; **Odśwież mapę** jest w panelu Tryb.
+- **Filtry na mapie:** arkusz **Filtry** ma belki **Tryb**, **Nazwa miejsca BDL** (offline, Search i Browse), **Szukaj** (w wyszukiwaniu: źródło, promień, miejscowość, korytarz, **ZNAJDŹ**), **Profil**, **Filtry miejsc** i **Obiekty BDL**. Zmiana trybu z mapy zostawia Cię na mapie. W przeglądaniu belka Szukaj (promień) jest ukryta; **Odśwież mapę** jest w panelu Tryb.
 - **Wielozaznaczenie** punktów (max 8) z listą i tabelą **Porównaj**.
 - **Profil moto:** etykiety `surface` / `tracktype` (gruntowa, przejezdność); w przeglądaniu analiza OSM tylko dla zaznaczonych. Nietagowany `track`/`service` zostaje w wynikach, ale karta / Szczegóły / lista piszą **dostęp niepewny** (OSM bez zakazu i bez zezwolenia) — bez zaostrzania filtra. BDL 17/19 przy drodze z operatorem LP: **dojazd do oficjalnego parkingu / postoju LP**; ten sam tekst dla innych punktów przy tym korytarzu.
 - **Szczegóły:** okno jak karta miejsca (nie surowy dialog). Cechy BDL na pinie; **W pobliżu** (200 m) z paczki overlay offline, grupowane nazwy, bez rysowania na mapie — piny tylko po włączeniu Obiektów BDL.

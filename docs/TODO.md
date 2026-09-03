@@ -35,6 +35,10 @@ Dialog i import `.osf` są w Nightly 0.5.47; nie uznajemy za domknięte, dopóki
 
 ## Zrobione
 
+### Wyszukiwanie miejsca po nazwie (Nightly 0.5.51)
+
+Offline BDL 15/17/19, propozycje od 3 znaków, fold PL + literówki, skok na mapę.
+
 ### Zarządca BDL w Szczegółach (Nightly 0.5.49)
 
 Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga sieci.

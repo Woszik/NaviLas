@@ -65,7 +65,10 @@ import pl.navilas.finder.databinding.DialogSiteDetailsBinding
 import pl.navilas.finder.databinding.PageListBinding
 import pl.navilas.finder.databinding.PageMapBinding
 import pl.navilas.finder.databinding.PageSearchBinding
+import pl.navilas.finder.databinding.PlaceNameSearchBinding
 import pl.navilas.finder.databinding.SearchCriteriaControlsBinding
+import pl.navilas.finder.data.bdl.PlaceNameHit
+import pl.navilas.finder.data.bdl.PlaceNameSearch
 import pl.navilas.finder.data.bdl.BdlOverlayCatalog
 import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.domain.BdlOverlayFilter
@@ -140,6 +143,7 @@ class MainActivity : AppCompatActivity() {
     private var syncingExploreModeUi = false
     private var syncingProfileUi = false
     private var syncingRadiusUi = false
+    private var syncingPlaceNameUi = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
     private var mapFilterSheetBinding: BottomSheetMapFiltersBinding? = null
     private var sheetExploreExpanded = false
@@ -553,6 +557,11 @@ class MainActivity : AppCompatActivity() {
         mapFilterSheetBinding?.sheetSearchCriteria?.let(block)
     }
 
+    private fun forEachPlaceNameSearch(block: (PlaceNameSearchBinding) -> Unit) {
+        block(searchBinding.placeNameSearch)
+        mapFilterSheetBinding?.sheetPlaceNameSearch?.let(block)
+    }
+
     private fun setupSearchPage() {
         setupRadiusSpinner(pageCriteria())
         searchBinding.profileToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -584,6 +593,7 @@ class MainActivity : AppCompatActivity() {
             searchBinding.btnCheckUpdate.setOnClickListener { viewModel.checkForAppUpdate(force = true) }
         }
         setupSearchOriginSection(pageCriteria())
+        setupPlaceNameSearch(searchBinding.placeNameSearch)
         setupOfflineSection()
     }
 
@@ -614,6 +624,7 @@ class MainActivity : AppCompatActivity() {
         pageCriteria().root.isVisible = true
         searchBinding.btnSearch.isVisible = true
         bindSearchCriteriaUi(state)
+        bindPlaceNameSearchUi(state)
         updateSearchButtonLabel(
             state.searchConfig.searchRadiusKm,
             lineMode = state.searchOriginMode == SearchOriginMode.LINE,
@@ -1004,6 +1015,7 @@ class MainActivity : AppCompatActivity() {
 
         setupRadiusSpinner(sheetBinding.sheetSearchCriteria)
         setupSearchOriginSection(sheetBinding.sheetSearchCriteria)
+        setupPlaceNameSearch(sheetBinding.sheetPlaceNameSearch)
         bindSheetToggles()
         refreshExploreChrome()
         refreshSearchChrome()
@@ -1153,6 +1165,7 @@ class MainActivity : AppCompatActivity() {
         )
         sheetBinding.btnSheetSearch.isEnabled = searchBinding.btnSearch.isEnabled
         sheetBinding.btnSheetBrowseReload.isEnabled = searchBinding.btnSearch.isEnabled
+        bindPlaceNameSearchUi(sheetBinding.sheetPlaceNameSearch, state)
     }
 
     private fun applyBrowseMapFilters(state: UiState) {
@@ -1239,6 +1252,107 @@ class MainActivity : AppCompatActivity() {
             defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_RIGHT_KM) },
             isSyncing = { syncingCorridorUi },
         )
+    }
+
+    private fun setupPlaceNameSearch(controls: PlaceNameSearchBinding) {
+        controls.placeNameInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                viewModel.submitPlaceNameQuery()
+                true
+            } else {
+                false
+            }
+        }
+        controls.placeNameInput.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    if (syncingPlaceNameUi) return
+                    viewModel.setPlaceNameQuery(s?.toString().orEmpty())
+                }
+            },
+        )
+        controls.btnDismissPlaceNameHits.setOnClickListener {
+            viewModel.dismissPlaceNameHits()
+        }
+    }
+
+    private fun bindPlaceNameSearchUi(state: UiState) {
+        forEachPlaceNameSearch { bindPlaceNameSearchUi(it, state) }
+    }
+
+    private fun bindPlaceNameSearchUi(controls: PlaceNameSearchBinding, state: UiState) {
+        syncingPlaceNameUi = true
+        if (controls.placeNameInput.text?.toString() != state.placeNameQuery) {
+            controls.placeNameInput.setText(state.placeNameQuery)
+            controls.placeNameInput.setSelection(state.placeNameQuery.length)
+        }
+        syncingPlaceNameUi = false
+        val queryLongEnough = state.placeNameQuery.trim().length >= PlaceNameSearch.MIN_QUERY_CHARS
+        val showPanel = queryLongEnough && (
+            state.isLoadingPlaceNames ||
+                state.placeNameHits.isNotEmpty() ||
+                !state.placeNameMessage.isNullOrBlank()
+            )
+        controls.placeNameCandidatesPanel.isVisible = showPanel
+        if (!showPanel) {
+            controls.placeNameCandidatesList.removeAllViews()
+            controls.placeNameMessage.isVisible = false
+            return
+        }
+        val message = state.placeNameMessage
+        controls.placeNameMessage.isVisible = !message.isNullOrBlank()
+        controls.placeNameMessage.text = message.orEmpty()
+        bindPlaceNameHits(controls, state.placeNameHits)
+    }
+
+    private fun bindPlaceNameHits(
+        controls: PlaceNameSearchBinding,
+        hits: List<PlaceNameHit>,
+    ) {
+        val list = controls.placeNameCandidatesList
+        val signature = hits.joinToString("|") { "${it.siteId}:${it.distanceKm}" }
+        if (list.tag == signature && list.childCount == hits.size) return
+        list.tag = signature
+        list.removeAllViews()
+        val padH = (12 * resources.displayMetrics.density).toInt()
+        val padV = (10 * resources.displayMetrics.density).toInt()
+        hits.forEach { hit ->
+            val layer = PlaceNameSearch.layerLabelPl(hit.sourceLayerId)
+            val meta = if (hit.distanceKm != null) {
+                getString(R.string.place_name_row_km, layer, hit.distanceKm)
+            } else {
+                layer
+            }
+            val row = com.google.android.material.button.MaterialButton(
+                this,
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            ).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { lp ->
+                    lp.topMargin = (4 * resources.displayMetrics.density).toInt()
+                }
+                text = getString(R.string.place_name_row, hit.name, meta)
+                isAllCaps = false
+                textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                setPadding(padH, padV, padH, padV)
+                setOnClickListener {
+                    hideKeyboard(controls.placeNameInput)
+                    mapFilterBottomSheet?.dismiss()
+                    viewModel.applyPlaceNameChoice(hit.siteId)
+                }
+            }
+            list.addView(row)
+        }
+    }
+
+    private fun hideKeyboard(field: EditText) {
+        getSystemService(InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(field.windowToken, 0)
     }
 
     private fun setupOfflineSection() {
@@ -1713,6 +1827,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             applySearchModeChrome(state)
         }
+        bindPlaceNameSearchUi(state)
         bindOfflineUi(state)
         val mapHintRes = when {
             state.isMapBrowse() -> R.string.map_browse_tap_hint

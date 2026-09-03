@@ -25,8 +25,16 @@
     <string name="list_mode_search">Wyniki wyszukiwania</string>
     <string name="list_mode_browse_selection">Zaznaczenie na mapie</string>
     <string name="list_mode_saved">Zapisane</string>
-    <string name="search_page_hint">Źródło i promień wymagają ZNAJDŹ. Filtr Zanocuj działa od razu na bieżących wynikach.</string>
-    <string name="search_page_hint_browse">Filtry gaszą punkty od razu na mapie. „Odśwież mapę” przeładowuje dane offline.</string>
+    <string name="search_page_hint">Nazwa miejsca — z bazy offline, podczas wpisywania. Źródło i promień wymagają ZNAJDŹ.</string>
+    <string name="search_page_hint_browse">Nazwa miejsca szuka w bazie offline. Filtry gaszą punkty od razu na mapie. „Odśwież mapę” przeładowuje dane.</string>
+    <string name="place_name_hint">Nazwa miejsca BDL</string>
+    <string name="place_name_helper">Z paczki offline, od 3 znaków; literówki OK</string>
+    <string name="place_name_pick_title">Miejsca o tej nazwie</string>
+    <string name="place_name_row">%1$s\n%2$s</string>
+    <string name="place_name_row_km">%1$s · %2$.1f km</string>
+    <string name="place_name_need_offline">Pobierz dane BDL offline, żeby szukać po nazwie.</string>
+    <string name="place_name_empty">Brak miejsc o takiej nazwie w bazie offline.</string>
+    <string name="place_name_loading">Ładuję nazwy z bazy offline…</string>
     <string name="zanocuj_filter_label">Filtr Zanocuj:</string>
     <string name="zanocuj_all">Wszystkie</string>
     <string name="zanocuj_only">Tylko w strefie „Zanocuj w lesie”</string>
@@ -129,7 +137,7 @@
     <string name="explore_mode_label">Tryb:</string>
     <string name="explore_mode_search">Wyszukiwanie</string>
     <string name="explore_mode_browse">Przeglądanie mapy</string>
-    <string name="map_browse_hint">Przeglądanie: miejsca odpoczynku z BDL offline. „Obiekty BDL” dopina widoki, kapliczki i inne warstwy (domyślnie wyłączone; działa też w wyszukiwaniu). Zakazy wstępu to osobna warstwa online. Strefy Zanocuj, overlay i zakazy tylko w widocznym obszarze.</string>
+    <string name="map_browse_hint">Przeglądanie: miejsca odpoczynku z BDL offline. Szukaj też po nazwie (pole powyżej). „Obiekty BDL” dopina widoki, kapliczki i inne warstwy (domyślnie wyłączone; działa też w wyszukiwaniu). Zakazy wstępu to osobna warstwa online. Strefy Zanocuj, overlay i zakazy tylko w widocznym obszarze.</string>
     <string name="map_browse_parking_only">Tylko z parkingiem</string>
     <string name="browse_car_filter_label">Filtry miejsc:</string>
     <string name="browse_car_filter_toggle">Filtry miejsc</string>

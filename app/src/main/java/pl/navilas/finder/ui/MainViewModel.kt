@@ -23,7 +23,10 @@ import pl.navilas.finder.data.bdl.BdlSearchSubsetFilter
 import pl.navilas.finder.data.bdl.BdlOverlayLoader
 import pl.navilas.finder.data.bdl.ForestAdminLoader
 import pl.navilas.finder.data.bdl.NearbyOverlayObjects
+import pl.navilas.finder.data.bdl.BdlPlaceNameCatalog
 import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
+import pl.navilas.finder.data.bdl.PlaceNameHit
+import pl.navilas.finder.data.bdl.PlaceNameSearch
 import pl.navilas.finder.data.bdl.RestSiteRepository
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
 import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
@@ -181,6 +184,11 @@ data class UiState(
     val corridorAwaitMapEnd: Boolean = false,
     /** Nominatim candidates for locality picker (null = no picker). */
     val localityCandidates: List<pl.navilas.finder.data.osm.GeocodedPlace>? = null,
+    /** Offline BDL place-name query (not locality geocode). */
+    val placeNameQuery: String = "",
+    val placeNameHits: List<PlaceNameHit> = emptyList(),
+    val placeNameMessage: String? = null,
+    val isLoadingPlaceNames: Boolean = false,
     /** When set, locality pick seeds corridor instead of radial search. */
     val localityPickPurpose: LocalityPickPurpose = LocalityPickPurpose.SEARCH_ORIGIN,
     val allSites: List<RestSite> = emptyList(),
@@ -355,6 +363,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var selectedRoadsJob: Job? = null
     private val selectedRoadsGeneration = AtomicLong(0L)
     private var ignoreEmptyMapClickUntilElapsedMs = 0L
+    private var placeNameSearchJob: Job? = null
+    private val placeNameGeneration = AtomicLong(0L)
+    private var placeNameCatalog: List<RestSite>? = null
+    private var placeNameById: Map<String, RestSite> = emptyMap()
+    private var placeNameCatalogVersion: Long = -1L
+    private val placeNameResolvedById = LinkedHashMap<String, RestSite>()
     private var filterResultsJob: Job? = null
     private var mapTrackingJob: Job? = null
     private var bdlRefreshCheckedThisSession = false
@@ -445,6 +459,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun invalidateBdlSessionCache() {
         bdlSessionCache.clear()
         lastBdlSearchContext = null
+        invalidatePlaceNameCatalog()
+    }
+
+    private fun invalidatePlaceNameCatalog() {
+        placeNameCatalog = null
+        placeNameById = emptyMap()
+        placeNameCatalogVersion = -1L
+    }
+
+    private fun refreshPlaceNameHitsIfNeeded() {
+        val query = _state.value.placeNameQuery.trim()
+        if (query.length < PlaceNameSearch.MIN_QUERY_CHARS) return
+        val generation = placeNameGeneration.incrementAndGet()
+        placeNameSearchJob?.cancel()
+        placeNameSearchJob = viewModelScope.launch {
+            runPlaceNameSearch(generation, query)
+        }
     }
 
     private fun currentOfflineVersion(): Long =
@@ -540,6 +571,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 invalidateBdlSessionCache()
+                refreshPlaceNameHitsIfNeeded()
                 if (_state.value.isMapBrowse()) {
                     loadMapBrowseLayer(force = true)
                 }
@@ -604,8 +636,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 zanocujPolygons = if (it.isMapBrowse()) emptyList() else it.zanocujPolygons,
                 mapBrowseRevision = if (it.isMapBrowse()) it.mapBrowseRevision + 1 else it.mapBrowseRevision,
                 message = AppMessage.Info("Dane BDL offline usunięte z telefonu."),
+                placeNameHits = emptyList(),
+                placeNameMessage = if (it.placeNameQuery.trim().length >= PlaceNameSearch.MIN_QUERY_CHARS) {
+                    getApplication<Application>().getString(R.string.place_name_need_offline)
+                } else {
+                    null
+                },
+                isLoadingPlaceNames = false,
             )
         }
+        refreshPlaceNameHitsIfNeeded()
     }
 
     fun setCurrentPage(page: Int) {
@@ -941,6 +981,169 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setPlaceNameQuery(query: String) {
+        _state.update { current ->
+            if (current.placeNameQuery == query) current else current.copy(placeNameQuery = query)
+        }
+        val trimmed = query.trim()
+        if (trimmed.length < PlaceNameSearch.MIN_QUERY_CHARS) {
+            placeNameSearchJob?.cancel()
+            placeNameGeneration.incrementAndGet()
+            _state.update {
+                it.copy(
+                    placeNameHits = emptyList(),
+                    placeNameMessage = null,
+                    isLoadingPlaceNames = false,
+                )
+            }
+            return
+        }
+        val generation = placeNameGeneration.incrementAndGet()
+        placeNameSearchJob?.cancel()
+        placeNameSearchJob = viewModelScope.launch {
+            delay(PLACE_NAME_DEBOUNCE_MS)
+            if (placeNameGeneration.get() != generation) return@launch
+            runPlaceNameSearch(generation, trimmed)
+        }
+    }
+
+    fun submitPlaceNameQuery() {
+        val trimmed = _state.value.placeNameQuery.trim()
+        if (trimmed.length < PlaceNameSearch.MIN_QUERY_CHARS) return
+        val hits = _state.value.placeNameHits
+        if (hits.size == 1) {
+            applyPlaceNameChoice(hits[0].siteId)
+            return
+        }
+        val generation = placeNameGeneration.incrementAndGet()
+        placeNameSearchJob?.cancel()
+        placeNameSearchJob = viewModelScope.launch {
+            runPlaceNameSearch(generation, trimmed)
+        }
+    }
+
+    fun dismissPlaceNameHits() {
+        placeNameSearchJob?.cancel()
+        placeNameGeneration.incrementAndGet()
+        _state.update {
+            it.copy(
+                placeNameHits = emptyList(),
+                placeNameMessage = null,
+                isLoadingPlaceNames = false,
+            )
+        }
+    }
+
+    fun applyPlaceNameChoice(siteId: String) {
+        placeNameSearchJob?.cancel()
+        placeNameGeneration.incrementAndGet()
+        val site = _state.value.allSites.firstOrNull { it.id == siteId }
+            ?: placeNameById[siteId]
+            ?: placeNameResolvedById[siteId]
+            ?: return
+        placeNameResolvedById[siteId] = site
+        _state.update {
+            it.copy(
+                placeNameQuery = site.name,
+                placeNameHits = emptyList(),
+                placeNameMessage = null,
+                isLoadingPlaceNames = false,
+            )
+        }
+        onListItemSelected(siteId)
+    }
+
+    private suspend fun runPlaceNameSearch(generation: Long, query: String) {
+        val app = getApplication<Application>()
+        _state.update {
+            if (placeNameGeneration.get() != generation) it
+            else it.copy(isLoadingPlaceNames = true, placeNameMessage = app.getString(R.string.place_name_loading))
+        }
+        try {
+            if (!offlineStore.isReady()) {
+                if (placeNameGeneration.get() != generation) return
+                _state.update {
+                    it.copy(
+                        isLoadingPlaceNames = false,
+                        placeNameHits = emptyList(),
+                        placeNameMessage = app.getString(R.string.place_name_need_offline),
+                    )
+                }
+                return
+            }
+            val sites = ensurePlaceNameCatalog()
+            if (placeNameGeneration.get() != generation) return
+            val origin = _state.value.userPosition ?: _state.value.searchOrigin()
+            val hits = withContext(Dispatchers.Default) {
+                PlaceNameSearch.search(
+                    query = query,
+                    sites = sites,
+                    originLat = origin?.latitude,
+                    originLon = origin?.longitude,
+                )
+            }
+            if (placeNameGeneration.get() != generation) return
+            _state.update {
+                it.copy(
+                    isLoadingPlaceNames = false,
+                    placeNameHits = hits,
+                    placeNameMessage = if (hits.isEmpty()) {
+                        app.getString(R.string.place_name_empty)
+                    } else {
+                        null
+                    },
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (placeNameGeneration.get() != generation) return
+            _state.update {
+                it.copy(
+                    isLoadingPlaceNames = false,
+                    placeNameHits = emptyList(),
+                    placeNameMessage = e.message ?: app.getString(R.string.place_name_empty),
+                )
+            }
+        }
+    }
+
+    private suspend fun ensurePlaceNameCatalog(): List<RestSite> {
+        if (!offlineStore.isReady()) {
+            invalidatePlaceNameCatalog()
+            return emptyList()
+        }
+        val version = currentOfflineVersion()
+        val cached = placeNameCatalog
+        if (cached != null && placeNameCatalogVersion == version) {
+            mergeBrowseSitesIntoCatalog()
+            return placeNameCatalog ?: cached
+        }
+        val loaded = withContext(Dispatchers.IO) {
+            BdlPlaceNameCatalog.load(offlineStore)
+        }
+        val merged = LinkedHashMap<String, RestSite>(loaded.size * 2)
+        loaded.forEach { merged[it.id] = it }
+        _state.value.allSites.forEach { merged[it.id] = it }
+        val list = merged.values.toList()
+        placeNameCatalog = list
+        placeNameById = merged
+        placeNameCatalogVersion = version
+        return list
+    }
+
+    private fun mergeBrowseSitesIntoCatalog() {
+        val browse = _state.value.allSites
+        if (browse.isEmpty()) return
+        val merged = LinkedHashMap<String, RestSite>(
+            (placeNameCatalog?.size ?: 0) + browse.size,
+        )
+        placeNameCatalog?.forEach { merged[it.id] = it }
+        browse.forEach { merged[it.id] = it }
+        placeNameCatalog = merged.values.toList()
+        placeNameById = merged
+    }
+
     fun setProfile(profile: TravelProfile) {
         _state.update { current ->
             val motoBrowseTip = current.isMapBrowse() &&
@@ -1259,6 +1462,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         ),
                     )
                 }
+                mergeBrowseSitesIntoCatalog()
                 if (isActiveMapBrowseLoad(generation)) {
                     scheduleBrowseViewportRefresh(
                         initialBounds,
@@ -1538,11 +1742,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Browse keeps all points on the map; list/card hold the current multi-selection. */
     private fun browseSelectionResults(state: UiState, siteIds: List<String>): List<RestSiteResult> {
         if (siteIds.isEmpty()) return emptyList()
-        val sites = siteIds.mapNotNull { siteId ->
-            state.allSites.firstOrNull { it.id == siteId }
-                ?: browseOverlayById[siteId]?.toRestSite()
-                ?: state.results.firstOrNull { it.site.id == siteId }?.site
-        }
+        val sites = siteIds.mapNotNull { resolveSelectedSite(state, it) }
         if (sites.isEmpty()) return emptyList()
         return buildResults(
             sites,
@@ -1556,6 +1756,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun resolveSelectedSite(state: UiState, siteId: String): RestSite? =
         state.allSites.firstOrNull { it.id == siteId }
+            ?: placeNameResolvedById[siteId]
+            ?: placeNameById[siteId]
             ?: browseOverlayById[siteId]?.toRestSite()
             ?: state.results.firstOrNull { it.site.id == siteId }?.site
 
@@ -3299,6 +3501,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val MIN_FOLLOW_ZOOM = 3.0
         private const val MAX_FOLLOW_ZOOM = 20.0
         private const val EMPTY_MAP_CLICK_DEBOUNCE_MS = 400L
+        private const val PLACE_NAME_DEBOUNCE_MS = 200L
     }
 }
 

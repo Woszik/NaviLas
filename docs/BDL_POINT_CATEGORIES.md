@@ -178,6 +178,12 @@ To **nie** kategoria typu obiektu BDL, ale klasyfikacja **przynależności do pr
 
 ---
 
+## 6a. Wyszukiwanie po nazwie (Nightly 0.5.51)
+
+Pole w UI szuka `nzw_ob` w paczce **offline** (warstwy 15 / 17 / 19). Nominatim (miejscowość) to osobne pole. Implementacja: `data/bdl/PlaceNameSearch.kt`.
+
+---
+
 ## 7. Identyfikator rekordu (odwołania w kodzie)
 
 Format: `bdl:{layerId}:{scheme}:{value}` — priorytet: `foreign_key` → `tur_rec_pnt_id` / `tur_sleep_poly_id` → `objectid`.
@@ -194,6 +200,7 @@ Szczegóły: [POI_IDENTITY.md](./POI_IDENTITY.md).
 | [POI_IDENTITY.md](./POI_IDENTITY.md) | Klucze `BdlIdentity` |
 | `domain/RestSiteModels.kt` | `SiteFeature`, `RestSite`, `ZanocujStatus` |
 | `data/bdl/RestSiteRepository.kt` | Stałe warstw i nazwy BDL |
+| `data/bdl/PlaceNameSearch.kt` | Wyszukiwanie `nzw_ob` w paczce offline |
 | `data/bdl/ForestAdminLoader.kt` | Identify nadleśnictwa / leśnictwa (`WMS_BDL`) |
 | `data/bdl/ForestEntryBanLoader.kt` | Overlay zakazów wstępu (osobny MapServer) |
 | `data/bdl/ForestEntryBanStore.kt` | Osobna baza offline zakazów (`entry_bans/bans.json`) |
