@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-04**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.57-nightly | 69 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.58-nightly | 70 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.58
+
+Parking leśny (17) i miejsce postoju (19) jako samodzielne cele w Browse i Search (także bez wiaty); nadal bez drugiej pinezki przy miejscu 15 w ≤ 100 m.
 
 ## Nightly 0.5.57
 

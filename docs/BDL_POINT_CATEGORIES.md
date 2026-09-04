@@ -135,7 +135,7 @@ Wartość **`T`** = tak, **`N`** / brak = nie. Ekstrakcja: `BdlFeatureExtractor`
 | Warstwa | Kiedy trafia na listę wyników | Kiedy tylko `relatedObjects` |
 |---|---|---|
 | **15** | Zawsze (w promieniu) | — |
-| **17, 19** | `wiata=T` **lub** `palenisko=T` **lub** `lawostoly=T` **oraz** brak miejsca z warstwy 15 w ≤ 100 m | W pozostałych przypadkach — satelita w ≤ 100 m od wyniku |
+| **17, 19** | **Zawsze** jako cel (parking / postój równorzędne), **o ile** brak miejsca z warstwy 15 w ≤ 100 m | Gdy jest 15 w ≤ 100 m — tylko satelita / `relatedObjects` (bez drugiej pinezki) |
 | **25, 27** | **Nigdy** samodzielnie | Satelita w ≤ 100 m (nazwa z `nzw_ob`) |
 | **0** | — (poligon) | Status Zanocuj dla punktów 15/17/19 |
 

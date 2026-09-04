@@ -2,7 +2,6 @@ package pl.navilas.finder
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.navilas.finder.data.bdl.BdlAmenityStopRules
@@ -19,24 +18,15 @@ import pl.navilas.finder.util.GeoUtils
 
 class AmenityStopResultTest {
     @Test
-    fun qualifies_with_wiata_or_palenisko_or_lawostoly() {
-        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"wiata":"T"}""")))
-        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"palenisko":"T"}""")))
-        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"lawostoly":"T"}""")))
+    fun bare_parking_and_stop_qualify_as_standalone() {
         assertTrue(
-            BdlAmenityStopRules.qualifiesAsStandalone(
-                JSONObject("""{"wiata":"T","palenisko":"T","lawostoly":"T"}"""),
-            ),
-        )
-    }
-
-    @Test
-    fun rejects_bare_stop_without_rest_amenities() {
-        assertFalse(
             BdlAmenityStopRules.qualifiesAsStandalone(
                 JSONObject("""{"wiata":"N","palenisko":"N","lawostoly":"N","parking":"N"}"""),
             ),
         )
+        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"wiata":"T"}""")))
+        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"palenisko":"T"}""")))
+        assertTrue(BdlAmenityStopRules.qualifiesAsStandalone(JSONObject("""{"lawostoly":"T"}""")))
     }
 
     @Test

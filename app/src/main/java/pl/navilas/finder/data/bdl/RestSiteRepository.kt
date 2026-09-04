@@ -25,8 +25,8 @@ data class RestSearchBundle(
 )
 
 /**
- * Builds [RestSite] results from BDL layer 15, plus amenity stops/parkings (17/19)
- * with wiata/palenisko/lawostoly when not duplicated by a nearby layer-15 site.
+ * Builds [RestSite] results from BDL layer 15, plus stops/parkings (17/19) as peer
+ * destinations unless covered by a nearby layer-15 site.
  * Enriched with nearby BDL objects and Zanocuj status. OSM is not used here.
  */
 class RestSiteRepository(

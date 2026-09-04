@@ -5,15 +5,14 @@
 **Warstwa 15** — `Miejsca wypoczynku - ob. punktowe`  
 Jeden rekord = jeden wynik wyszukiwania (`RestSite`).
 
-**Dodatkowo (standalone), warstwy 17 / 19** — gdy obiekt ma infrastrukturę odpoczynku:
+**Dodatkowo (standalone), warstwy 17 / 19** — parking leśny i miejsce postoju pojazdów  
+są **równorzędnymi celami** z warstwą 15 (także bez wiaty / paleniska / ławostołów).
 
-- `wiata=T` **lub** `palenisko=T` **lub** `lawostoly=T`
+Samodzielny pin tylko gdy **nie** leży w ≤ `restLinkRadiusMeters` (domyślnie **100 m**)  
+od już wybranego wyniku z warstwy 15 (wtedy pozostaje `relatedObjects` / satelita).
 
-i **nie** leży w ≤ `restLinkRadiusMeters` (domyślnie **100 m**) od już wybranego wyniku z warstwy 15  
-(wtedy pozostaje tylko jako `relatedObjects` / satelita).
-
-Przykład: *Miejsce postoju pojazdów Uroczysko Potempowe* (warstwa 19, wiata+palenisko+ławostoły)  
-→ wynik wyszukiwania, mimo braku rekordu na warstwie 15.
+Przykład: *Na Wypale* (warstwa 19, goły postój) → pin i NAWIGUJ.  
+*Miejsce postoju… Uroczysko Potempowe* z wiatą przy 15 w 100 m → satelita, nie drugi pin.
 
 **Warstwa 27** (pomniki, kapliczki, …) — **nie** tworzy samodzielnych wyników.
 

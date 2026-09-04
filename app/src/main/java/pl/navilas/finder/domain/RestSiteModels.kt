@@ -33,8 +33,9 @@ enum class ZanocujFilterMode {
 
 /**
  * Primary search result: one BDL place to rest / stop with amenities.
- * Usually layer 15; may also be layer 17/19 when those carry wiata/palenisko/lawostoly
- * and are not duplicated by a nearby layer-15 site.
+ * Usually layer 15; may also be layer 17/19 (forest parking / vehicle stop) as a peer
+ * destination. When 17/19 sit within [SearchConfig.restLinkRadiusMeters] of a layer-15
+ * site they stay related satellites instead of a second pin.
  * Amenities and nearby BDL objects enrich this record — they are never separate duplicate rows
  * for the same physical spot within [SearchConfig.restLinkRadiusMeters].
  */

@@ -3,15 +3,16 @@ package pl.navilas.finder.data.bdl
 import org.json.JSONObject
 
 /**
- * Stops/parkings (layers 17/19) that carry rest amenities become standalone search results
- * when they are not already covered by a nearby layer-15 rest site.
+ * Stops/parkings (layers 17/19) are peer destinations with layer-15 rest sites.
  *
- * Rule: `wiata=T` OR `palenisko=T` OR `lawostoly=T`.
- * Layer 27 monuments/etc. stay satellites only.
+ * Callers still suppress a duplicate pin when a layer-15 primary is within
+ * [pl.navilas.finder.domain.SearchConfig.restLinkRadiusMeters] (search) or the
+ * same browse cell (offline browse) — then 17/19 stay satellites / related only.
+ *
+ * Amenity flags (`wiata` / `palenisko` / `lawostoly`) enrich the site but are
+ * **not** required for a standalone pin.
  */
 object BdlAmenityStopRules {
-    fun qualifiesAsStandalone(attrs: JSONObject): Boolean =
-        BdlFeatureExtractor.yes(attrs, "wiata") ||
-            BdlFeatureExtractor.yes(attrs, "palenisko") ||
-            BdlFeatureExtractor.yes(attrs, "lawostoly")
+    @Suppress("UNUSED_PARAMETER")
+    fun qualifiesAsStandalone(attrs: JSONObject): Boolean = true
 }
