@@ -3,7 +3,8 @@
 Dotyczy wyłącznie buildu **`github`** (`BuildConfig.APP_UPDATE_ENABLED = true`).  
 Flavor **`fdroid`** nie łączy się z GitHub — aktualizacje tylko przez klienta F-Droid.
 
-**Kanały:** Nightly / Beta / Final — model: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
+**Kanały:** Nightly / Beta / Final — model i obietnice: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
+Tekst dla instalujących: [NaviLas-releases — Wybierz kanał](https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie).
 
 **Dziś ten dokument opisuje updater GitHub z wyborem kanału.**
 

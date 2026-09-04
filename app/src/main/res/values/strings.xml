@@ -348,6 +348,7 @@
     <string name="settings_startup_browse">Przeglądanie mapy</string>
     <string name="settings_keep_screen_on">Nie wygaszaj ekranu podczas śledzenia pozycji na mapie</string>
     <string name="settings_update_channel_label">Aktualizacje (GitHub)</string>
+    <string name="settings_update_channel_hint">Nightly: testowanie pomysłów — może być niestabilne; mile widziane opinie i sugestie.\nBeta: użytkowanie testowe na zasadach bety.\nFinal: docelowo wersja stabilna; po zgłoszeniu błędy naprawiane priorytetowo (jeszcze niedostępny).</string>
     <string name="settings_update_channel_nightly">Nightly i nowsze</string>
     <string name="settings_update_channel_beta">Beta i nowsze</string>
     <string name="settings_update_channel_final">Tylko Final</string>

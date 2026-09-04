@@ -90,8 +90,19 @@ jobs:
             "${{ steps.appmeta.outputs.apk_name }}" \
             --repo Woszik/NaviLas-releases \
             --prerelease \
-            --title "NaviLas Nightly ${{ steps.appmeta.outputs.version_name }}" \
-            --notes "Automatyczny Nightly z main (${{ github.sha }})"
+            --title "Nightly ${{ steps.appmeta.outputs.version_name }} — kanał testowy" \
+            --notes "$(cat <<EOF
+## Kanał Nightly
+
+Świeży build do **testowania pomysłów**. Może być niestabilny i szybko się zmieniać.
+Zachęcamy do instalacji, „pobawienia się” i **opinii / sugestii**: https://github.com/Woszik/NaviLas/issues
+
+Dla codziennego użytku testowego wybierz **Beta**: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
+
+---
+Commit: ${{ github.sha }}
+EOF
+)"
 
       - name: Publish nightly.json
         env:

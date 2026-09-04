@@ -99,8 +99,20 @@ jobs:
             gh release create "v${{ steps.version.outputs.tag }}" \
               "${{ steps.version.outputs.apk_name }}" \
               --repo Woszik/NaviLas-releases \
-              --title "NaviLas v${{ steps.version.outputs.tag }}" \
-              --notes "Automatyczny release z tagu ${GITHUB_REF_NAME}"
+              --title "Beta ${{ steps.version.outputs.tag }}" \
+              --notes "$(cat <<EOF
+## Kanał Beta
+
+Wersja do **publikowania i użytkowania testowego** na ogólnych zasadach bety:
+może zawierać błędy; funkcje mogą się jeszcze zmieniać.
+
+Opinie / sugestie: https://github.com/Woszik/NaviLas/issues  
+Opis kanałów: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
+
+---
+Tag: ${GITHUB_REF_NAME}
+EOF
+)"
           fi
 
       - name: Publish latest.json

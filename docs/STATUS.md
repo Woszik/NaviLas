@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-04**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.53-nightly | 65 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.54-nightly | 66 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.54
+
+Wyraźne rozdzielenie kanałów Nightly / Beta / Final w README `NaviLas-releases`, docs i Ustawieniach (opisy oczekiwań). Body releasów CI z etykietą kanału.
 
 ## Nightly 0.5.53
 

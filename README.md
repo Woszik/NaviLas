@@ -17,19 +17,20 @@ Aplikacja Android do wyszukiwania miejsc odpoczynku w lasach — na podstawie ot
 
 ### Kanały aktualizacji (GitHub)
 
-| Kanał | Status | Opis |
-|-------|--------|------|
-| **Nightly** | aktywny lokalnie | świeże buildy testowe (dziś: `installGithubDebug`) |
-| **Beta** | aktywny | wydania w NaviLas-releases + in-app (`latest.json`) |
-| **Final** | **jeszcze nie** | docelowo osobny track GitHub; F-Droid pozostaje niezależną dystrybucją |
+| Kanał | Status | Obietnica |
+|-------|--------|-----------|
+| **Nightly** | aktywny | Testowanie pomysłów (Pre-release); mile widziane opinie / sugestie |
+| **Beta** | aktywny | Użytkowanie testowe na zasadach bety (`latest.json`) |
+| **Final** | **jeszcze nie** | Docelowo stabilny track; naprawy błędów priorytetowo |
 
-Szczegóły: [`docs/RELEASE_CHANNELS.md`](docs/RELEASE_CHANNELS.md).
+Szczegóły: [`docs/RELEASE_CHANNELS.md`](docs/RELEASE_CHANNELS.md).  
+Instalacja i wybór kanału: [NaviLas-releases](https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie).
 
-### GitHub — Beta (testerzy)
+### GitHub — od czego zacząć
 
 https://github.com/Woszik/NaviLas-releases
 
-Aplikacja (`github`) sprawdza nowszą **Beta** przy starcie. Aktualizację zatwierdzasz samodzielnie.
+Dla większości osób start od **Beta**. **Nightly** tylko jeśli chcesz świeże eksperymenty. Aplikacja (`github`) sprawdza aktualizacje według kanału z Ustawień.
 
 > **Play Protect:** Ostrzeżenie przy instalacji APK spoza Google Play jest normalne — NaviLas nie jest w Sklepie Play. Instaluj wyłącznie z powyższego linku (repozytorium `NaviLas-releases`).
 >
