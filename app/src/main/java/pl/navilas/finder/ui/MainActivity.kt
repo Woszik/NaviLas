@@ -146,6 +146,7 @@ class MainActivity : AppCompatActivity() {
     private var syncingProfileUi = false
     private var syncingRadiusUi = false
     private var syncingPlaceNameUi = false
+    private var placeNameSearchExpanded = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
     private var mapFilterSheetBinding: BottomSheetMapFiltersBinding? = null
     private var sheetExploreExpanded = false
@@ -1284,6 +1285,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupPlaceNameSearch(controls: PlaceNameSearchBinding) {
+        controls.btnTogglePlaceNameSearch.setOnClickListener {
+            val state = viewModel.state.value
+            if (shouldForcePlaceNameExpanded(state) && placeNameSearchExpanded) {
+                // Keep open while query / hits are active (proposal A).
+                return@setOnClickListener
+            }
+            placeNameSearchExpanded = !placeNameSearchExpanded
+            forEachPlaceNameSearch { updatePlaceNameExpandChrome(it, state) }
+        }
         controls.placeNameInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
                 viewModel.submitPlaceNameQuery()
@@ -1305,6 +1315,25 @@ class MainActivity : AppCompatActivity() {
         controls.btnDismissPlaceNameHits.setOnClickListener {
             viewModel.dismissPlaceNameHits()
         }
+        updatePlaceNameExpandChrome(controls, viewModel.state.value)
+    }
+
+    private fun shouldForcePlaceNameExpanded(state: UiState): Boolean {
+        if (state.placeNameQuery.trim().length >= PlaceNameSearch.MIN_QUERY_CHARS) return true
+        return state.isLoadingPlaceNames ||
+            state.placeNameHits.isNotEmpty() ||
+            !state.placeNameMessage.isNullOrBlank()
+    }
+
+    private fun updatePlaceNameExpandChrome(controls: PlaceNameSearchBinding, state: UiState) {
+        if (shouldForcePlaceNameExpanded(state)) {
+            placeNameSearchExpanded = true
+        }
+        val expanded = placeNameSearchExpanded
+        controls.placeNameSearchPanel.isVisible = expanded
+        val chevron = if (expanded) " ▲" else " ▼"
+        controls.btnTogglePlaceNameSearch.text =
+            getString(R.string.place_name_toggle) + chevron
     }
 
     private fun bindPlaceNameSearchUi(state: UiState) {
@@ -1312,6 +1341,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindPlaceNameSearchUi(controls: PlaceNameSearchBinding, state: UiState) {
+        updatePlaceNameExpandChrome(controls, state)
         syncingPlaceNameUi = true
         if (controls.placeNameInput.text?.toString() != state.placeNameQuery) {
             controls.placeNameInput.setText(state.placeNameQuery)

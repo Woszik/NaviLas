@@ -26,9 +26,9 @@ Ujednolicone teksty w aplikacji (dialog stylu trasy, import `.osf`) i w docs: ma
 
 Checklist z [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md) potwierdzony na urządzeniu.
 
-### Wyszukiwanie miejsca po nazwie (Nightly 0.5.51 / UI 0.5.53)
+### Wyszukiwanie miejsca po nazwie (Nightly 0.5.51 / UI 0.5.55)
 
-Offline BDL 15/17/19, propozycje od 3 znaków, fold PL + literówki, skok na mapę. Pole pod belką **Filtry miejsc** (Search + arkusz mapy).
+Offline BDL 15/17/19, propozycje od 3 znaków, fold PL + literówki, skok na mapę. W **Filtrach miejsc** na dole: belka **Szukaj miejsca po nazwie** (domyślnie zwinięta).
 
 ### Zarządca BDL w Szczegółach (Nightly 0.5.49)
 

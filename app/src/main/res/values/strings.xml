@@ -27,8 +27,9 @@
     <string name="list_mode_saved">Zapisane</string>
     <string name="search_page_hint">Nazwa miejsca — z bazy offline, podczas wpisywania. Źródło i promień wymagają ZNAJDŹ.</string>
     <string name="search_page_hint_browse">Nazwa miejsca szuka w bazie offline. Filtry gaszą punkty od razu na mapie. „Odśwież mapę” przeładowuje dane.</string>
-    <string name="place_name_hint">Nazwa miejsca BDL</string>
-    <string name="place_name_helper">Z paczki offline, od 3 znaków; literówki OK</string>
+    <string name="place_name_toggle">Szukaj miejsca po nazwie</string>
+    <string name="place_name_hint">Nazwa miejsca</string>
+    <string name="place_name_helper">Paczka offline · od 3 znaków</string>
     <string name="place_name_pick_title">Miejsca o tej nazwie</string>
     <string name="place_name_row">%1$s\n%2$s</string>
     <string name="place_name_row_km">%1$s · %2$.1f km</string>
