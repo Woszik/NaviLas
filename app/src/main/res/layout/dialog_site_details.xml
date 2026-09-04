@@ -177,6 +177,13 @@
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/detailsWebSearch"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/details_web_search" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/detailsSave"
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"

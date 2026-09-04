@@ -83,6 +83,7 @@
     <string name="details_admin_loading">Pobieram nadleśnictwo…</string>
     <string name="details_admin_retry">Spróbuj ponownie</string>
     <string name="details_admin_outside">Poza PGL LP albo brak poligonu BDL dla tego punktu.</string>
+    <string name="details_web_search">Szukaj informacji</string>
     <string name="details_source_layer">Warstwa BDL: %1$s</string>
     <string name="moto_card_analyzing">Analizuję drogi OSM…</string>
     <string name="moto_card_analyzing_progress">Analizuję drogi OSM: %1$d/%2$d</string>

@@ -88,6 +88,7 @@ import pl.navilas.finder.domain.RestSiteResult
 import pl.navilas.finder.domain.RestSiteTitles
 import pl.navilas.finder.domain.RoadSuitability
 import pl.navilas.finder.domain.SiteFeature
+import pl.navilas.finder.domain.SiteWebSearch
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.TravelProfile
@@ -3293,6 +3294,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
         details.detailsClose.setOnClickListener { dialog.dismiss() }
+        details.detailsWebSearch.setOnClickListener {
+            val adminName = (viewModel.cachedForestAdmin(site.id) as? ForestAdminLookup.Found)
+                ?.admin?.inspectorateName
+            val query = SiteWebSearch.buildQuery(site.name, adminName)
+            if (query.isNotBlank()) {
+                openUri(SiteWebSearch.googleSearchUrl(query))
+            }
+        }
         details.detailsSave.setOnClickListener {
             dialog.dismiss()
             if (saved != null) {
