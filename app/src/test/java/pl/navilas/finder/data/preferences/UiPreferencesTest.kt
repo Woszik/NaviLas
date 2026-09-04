@@ -13,6 +13,8 @@ class UiPreferencesTest {
         assertEquals(StartupMode.REMEMBER_LAST, parseStartupMode("INVALID"))
         assertEquals(UpdateChannelPreference.BETA, parseUpdateChannelPreference(null))
         assertEquals(UpdateChannelPreference.BETA, parseUpdateChannelPreference("INVALID"))
+        assertEquals(NightMapStyle.LIGHT, parseNightMapStyle(null))
+        assertEquals(NightMapStyle.LIGHT, parseNightMapStyle("INVALID"))
     }
 
     @Test
@@ -21,6 +23,8 @@ class UiPreferencesTest {
         assertEquals(AppThemeMode.AMBIENT_LIGHT, parseThemeMode("AMBIENT_LIGHT"))
         assertEquals(StartupMode.MAP_BROWSE, parseStartupMode("MAP_BROWSE"))
         assertEquals(UpdateChannelPreference.NIGHTLY, parseUpdateChannelPreference("NIGHTLY"))
+        assertEquals(NightMapStyle.DARK, parseNightMapStyle("DARK"))
+        assertEquals(NightMapStyle.LIGHT, parseNightMapStyle("LIGHT"))
     }
 
     @Test

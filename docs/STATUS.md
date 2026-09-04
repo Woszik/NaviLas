@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-03**.
+Ostatnia aktualizacja dokumentacji: **2026-09-04**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.52-nightly | 64 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.53-nightly | 65 |
 | **Beta** | GitHub Releases | 0.5.46 | 58 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.53
+
+Auto-pobranie zakazów wstępu po instalacji (bez paczki); cykl 7 dni / snooze 24 h bez zmian. W trybie nocnym mapa domyślnie jasna (Liberty), z opcją ciemnej w Ustawieniach. Szukanie miejsca po nazwie pod belką **Filtry miejsc** (ekran Szukaj i arkusz na mapie).
 
 ## Nightly 0.5.52
 

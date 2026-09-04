@@ -452,7 +452,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             delay(2_000)
             maybeOfferBdlRefresh()
-            maybeOfferEntryBanRefresh()
+            maybeAutoDownloadOrOfferEntryBanRefresh()
         }
     }
 
@@ -2529,6 +2529,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             .map { it.id }
             .toHashSet()
+    }
+
+    /**
+     * First install (no offline pack): quiet background download.
+     * When pack exists: same 7-day refresh offer / 24h snooze as before.
+     */
+    private fun maybeAutoDownloadOrOfferEntryBanRefresh() {
+        if (_state.value.entryBanDownloading) return
+        if (!forestEntryBanStore.isReady()) {
+            downloadEntryBans()
+            return
+        }
+        maybeOfferEntryBanRefresh()
     }
 
     private fun maybeOfferEntryBanRefresh() {

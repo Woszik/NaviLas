@@ -17,6 +17,12 @@ enum class StartupMode {
     MAP_BROWSE,
 }
 
+/** Map tiles while the app UI is in night mode. Day mode always uses the light style. */
+enum class NightMapStyle {
+    LIGHT,
+    DARK,
+}
+
 /** GitHub in-app updates: chosen floor and everything more stable above it. */
 enum class UpdateChannelPreference {
     NIGHTLY,
@@ -40,6 +46,9 @@ internal fun parseStartupMode(value: String?): StartupMode =
 internal fun parseUpdateChannelPreference(value: String?): UpdateChannelPreference =
     UpdateChannelPreference.entries.firstOrNull { it.name == value } ?: UpdateChannelPreference.BETA
 
+internal fun parseNightMapStyle(value: String?): NightMapStyle =
+    NightMapStyle.entries.firstOrNull { it.name == value } ?: NightMapStyle.LIGHT
+
 class UiPreferences(context: Context) {
     private val prefs =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -59,6 +68,11 @@ class UiPreferences(context: Context) {
     var ambientLightNightMode: Boolean
         get() = prefs.getBoolean(KEY_AMBIENT_LIGHT_NIGHT, false)
         set(value) = prefs.edit().putBoolean(KEY_AMBIENT_LIGHT_NIGHT, value).apply()
+
+    /** Base map when app chrome is night: light (Liberty) by default, or OpenFreeMap Dark. */
+    var nightMapStyle: NightMapStyle
+        get() = parseNightMapStyle(prefs.getString(KEY_NIGHT_MAP_STYLE, null))
+        set(value) = prefs.edit().putString(KEY_NIGHT_MAP_STYLE, value.name).apply()
 
     var bdlRefreshSnoozeUntilMs: Long
         get() = prefs.getLong(KEY_BDL_REFRESH_SNOOZE, 0L)
@@ -82,6 +96,7 @@ class UiPreferences(context: Context) {
         private const val KEY_STARTUP_MODE = "startup_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on_tracking"
         private const val KEY_AMBIENT_LIGHT_NIGHT = "ambient_light_night"
+        private const val KEY_NIGHT_MAP_STYLE = "night_map_style"
         private const val KEY_BDL_REFRESH_SNOOZE = "bdl_refresh_snooze_until"
         private const val KEY_ENTRY_BAN_REFRESH_SNOOZE = "entry_ban_refresh_snooze_until"
         private const val KEY_UPDATE_CHANNEL = "update_channel"

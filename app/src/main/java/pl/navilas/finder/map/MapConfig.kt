@@ -1,5 +1,7 @@
 package pl.navilas.finder.map
 
+import pl.navilas.finder.data.preferences.NightMapStyle
+
 /**
  * Separates MapLibre engine, map style, and OSM-derived tile data.
  * Full usage notes: docs/MAP_SOURCE.md
@@ -17,6 +19,13 @@ object MapConfig {
 
     fun styleUrl(darkMode: Boolean): String =
         if (darkMode) STYLE_URL_DARK else STYLE_URL
+
+    /**
+     * Day UI always uses Liberty. In night UI, [nightMapStyle] chooses Liberty (default)
+     * or OpenFreeMap Dark — chrome stays night either way.
+     */
+    fun useDarkMapStyle(appNightMode: Boolean, nightMapStyle: NightMapStyle): Boolean =
+        appNightMode && nightMapStyle == NightMapStyle.DARK
 
     /**
      * Vector tile source referenced by the style (OpenMapTiles schema over OSM data).

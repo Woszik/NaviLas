@@ -73,6 +73,7 @@ class MapController {
     private var lastBrowseZanocujIdsHash: Int = 0
     private var lastOverlayIdsHash: Int = 0
     private var lastEntryBanIdsHash: Int = 0
+    private var darkMode: Boolean = false
 
     /** Diagnostics: last camera command applied (not fitBounds from selection). */
     var lastCameraCommand: String? = null
@@ -80,16 +81,33 @@ class MapController {
 
     fun attach(mapLibreMap: MapLibreMap, darkMode: Boolean, onReady: () -> Unit) {
         map = mapLibreMap
+        this.darkMode = darkMode
         mapLibreMap.uiSettings.isRotateGesturesEnabled = true
         mapLibreMap.uiSettings.isScrollGesturesEnabled = true
         mapLibreMap.uiSettings.isZoomGesturesEnabled = true
         mapLibreMap.setMinZoomPreference(MIN_ZOOM)
         mapLibreMap.setMaxZoomPreference(MAX_ZOOM)
+        loadStyle(mapLibreMap, darkMode, onReady)
+    }
+
+    /** Reload base style when night-map preference changes without Activity recreate. */
+    fun setDarkMode(darkMode: Boolean, onReady: (() -> Unit)? = null) {
+        val mapLibreMap = map ?: return
+        if (this.darkMode == darkMode && style != null) {
+            onReady?.invoke()
+            return
+        }
+        this.darkMode = darkMode
+        loadStyle(mapLibreMap, darkMode, onReady ?: {})
+    }
+
+    private fun loadStyle(mapLibreMap: MapLibreMap, darkMode: Boolean, onReady: () -> Unit) {
         mapLibreMap.setStyle(Style.Builder().fromUri(MapConfig.styleUrl(darkMode))) { loaded ->
             style = loaded
             lastEntryBanIdsHash = 0
             lastOverlayIdsHash = 0
             lastBrowseZanocujCount = -1
+            lastBrowseRevision = -1L
             ensureSourcesAndLayers(loaded)
             ensureClickListener(mapLibreMap)
             ensureCameraIdleListener(mapLibreMap)

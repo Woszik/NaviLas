@@ -109,9 +109,11 @@ import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.preferences.AppThemeApplier
 import pl.navilas.finder.data.preferences.AppThemeMode
+import pl.navilas.finder.data.preferences.NightMapStyle
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.preferences.UpdateChannelPreference
+import pl.navilas.finder.map.MapConfig
 import pl.navilas.finder.update.UpdateTrack
 import pl.navilas.finder.nav.ExternalNavApps
 import pl.navilas.finder.nav.NavigationLinks
@@ -319,10 +321,7 @@ class MainActivity : AppCompatActivity() {
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync { map ->
             map.uiSettings.isAttributionEnabled = true
-            val darkMode =
-                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
-                    Configuration.UI_MODE_NIGHT_YES
-            mapController.attach(map, darkMode) {
+            mapController.attach(map, mapUsesDarkStyle()) {
                 mapReady = true
                 mapController.setOnSiteClickListener { siteId ->
                     viewModel.onMarkerSelected(siteId)
@@ -435,6 +434,7 @@ class MainActivity : AppCompatActivity() {
             dialogView.findViewById<com.google.android.material.radiobutton.MaterialRadioButton>(
                 R.id.themeAmbient,
             )
+        val nightMapGroup = dialogView.findViewById<RadioGroup>(R.id.nightMapGroup)
         val startupGroup = dialogView.findViewById<RadioGroup>(R.id.startupGroup)
         val keepScreenOn =
             dialogView.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
@@ -457,6 +457,12 @@ class MainActivity : AppCompatActivity() {
                 savedThemeMode == AppThemeMode.AMBIENT_LIGHT -> R.id.themeAmbient
                 savedThemeMode == AppThemeMode.DAY -> R.id.themeDay
                 else -> R.id.themeNight
+            },
+        )
+        nightMapGroup.check(
+            when (uiPreferences.nightMapStyle) {
+                NightMapStyle.DARK -> R.id.nightMapDark
+                NightMapStyle.LIGHT -> R.id.nightMapLight
             },
         )
         startupGroup.check(
@@ -487,13 +493,19 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val oldTheme = uiPreferences.themeMode
+                val oldNightMap = uiPreferences.nightMapStyle
                 val newTheme = when (themeGroup.checkedRadioButtonId) {
                     R.id.themeAmbient -> AppThemeMode.AMBIENT_LIGHT
                     R.id.themeDay -> AppThemeMode.DAY
                     R.id.themeNight -> AppThemeMode.NIGHT
                     else -> AppThemeMode.SYSTEM
                 }
+                val newNightMap = when (nightMapGroup.checkedRadioButtonId) {
+                    R.id.nightMapDark -> NightMapStyle.DARK
+                    else -> NightMapStyle.LIGHT
+                }
                 uiPreferences.themeMode = newTheme
+                uiPreferences.nightMapStyle = newNightMap
                 uiPreferences.startupMode = when (startupGroup.checkedRadioButtonId) {
                     R.id.startupSearch -> StartupMode.SEARCH
                     R.id.startupBrowse -> StartupMode.MAP_BROWSE
@@ -521,10 +533,27 @@ class MainActivity : AppCompatActivity() {
                 if (newTheme != oldTheme) {
                     AppThemeApplier.apply(newTheme, uiPreferences.ambientLightNightMode)
                 } else {
+                    if (newNightMap != oldNightMap) {
+                        applyMapStyleFromPreferences()
+                    }
                     Snackbar.make(binding.root, R.string.settings_saved, Snackbar.LENGTH_SHORT).show()
                 }
             }
             .show()
+    }
+
+    private fun appNightModeActive(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    private fun mapUsesDarkStyle(): Boolean =
+        MapConfig.useDarkMapStyle(appNightModeActive(), uiPreferences.nightMapStyle)
+
+    private fun applyMapStyleFromPreferences() {
+        if (!mapReady) return
+        mapController.setDarkMode(mapUsesDarkStyle()) {
+            applyUi(viewModel.state.value, forceMarkers = true)
+        }
     }
 
     private fun openOfflineDataSettings() {

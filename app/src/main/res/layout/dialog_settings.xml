@@ -51,6 +51,32 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:text="@string/settings_night_map_label"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+        <RadioGroup
+            android:id="@+id/nightMapGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/nightMapLight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_night_map_light" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/nightMapDark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_night_map_dark" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="@string/settings_startup_label"
             android:textAppearance="?attr/textAppearanceTitleSmall" />
 

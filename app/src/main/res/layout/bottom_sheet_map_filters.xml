@@ -83,13 +83,6 @@
                 tools:visibility="visible" />
         </LinearLayout>
 
-        <include
-            android:id="@+id/sheetPlaceNameSearch"
-            layout="@layout/place_name_search"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
-
         <LinearLayout
             android:id="@+id/sheetSearchSection"
             android:layout_width="match_parent"
@@ -217,6 +210,13 @@
             android:orientation="vertical"
             android:visibility="gone"
             tools:visibility="visible">
+
+            <include
+                android:id="@+id/sheetPlaceNameSearch"
+                layout="@layout/place_name_search"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp" />
 
             <include
                 android:id="@+id/mapFilterControls"

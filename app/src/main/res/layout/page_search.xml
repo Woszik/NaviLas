@@ -84,23 +84,13 @@
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <include
-            android:id="@+id/placeNameSearch"
-            layout="@layout/place_name_search"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/profileToggle" />
-
-        <include
             android:id="@+id/searchCriteria"
             layout="@layout/search_criteria_controls"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/placeNameSearch" />
+            app:layout_constraintTop_toBottomOf="@id/profileToggle" />
 
         <TextView
             android:id="@+id/zanocujLabel"
@@ -198,6 +188,13 @@
                 android:orientation="vertical"
                 android:visibility="gone"
                 tools:visibility="visible">
+
+                <include
+                    android:id="@+id/placeNameSearch"
+                    layout="@layout/place_name_search"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp" />
 
                 <include
                     android:id="@+id/browseCarFilterControls"

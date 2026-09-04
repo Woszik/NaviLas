@@ -155,7 +155,7 @@
     <string name="bdl_overlay_full_hint">Woda, zabawa i nocleg wymagają pakietu „pełna baza BDL”.</string>
     <string name="bdl_overlay_legend">Kolory: niebieski widok · brąz inne · turkus woda · pomarańcz zabawa · burgund nocleg</string>
     <string name="entry_ban_toggle">Zakazy wstępu BDL</string>
-    <string name="entry_ban_hint">Okresowe zakazy wstępu do lasu (BDL). Pobierz w „Dane BDL offline”. Domyślnie widać czerwone strefy, a miejsca w zakazie nie wchodzą do wyników — filtr można odznaczyć.</string>
+    <string name="entry_ban_hint">Okresowe zakazy wstępu do lasu (BDL). Paczka offline pobiera się sama po instalacji (i możesz odświeżyć tutaj). Domyślnie widać czerwone strefy, a miejsca w zakazie nie wchodzą do wyników — filtr można odznaczyć.</string>
     <string name="entry_ban_loading">Zakazy wstępu: wczytuję…</string>
     <string name="entry_ban_count">Zakazy wstępu: %1$d obszarów</string>
     <string name="entry_ban_count_pack">Zakazy wstępu: %1$d w widoku · baza z %2$s</string>
@@ -339,6 +339,9 @@
     <string name="settings_theme_ambient_unavailable">Automatycznie — brak czujnika światła</string>
     <string name="settings_theme_day">Tryb dzienny</string>
     <string name="settings_theme_night">Tryb nocny</string>
+    <string name="settings_night_map_label">Mapa w trybie nocnym</string>
+    <string name="settings_night_map_light">Jasna (czytelniejsze drogi)</string>
+    <string name="settings_night_map_dark">Ciemna</string>
     <string name="settings_startup_label">Tryb po uruchomieniu</string>
     <string name="settings_startup_remember">Ostatnio używany</string>
     <string name="settings_startup_search">Wyszukiwanie</string>
