@@ -91,25 +91,26 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           cp app/build/outputs/apk/github/release/app-github-release.apk "${{ steps.version.outputs.apk_name }}"
+          # Heredoc must sit at run-block indent (not inside else) so EOF has no leading spaces after YAML strip.
+          cat > release-notes.md <<'EOF'
+          ## Kanał Beta
+
+          Wersja do **publikowania i użytkowania testowego** na ogólnych zasadach bety:
+          może zawierać błędy; funkcje mogą się jeszcze zmieniać.
+
+          Opinie / sugestie: https://github.com/Woszik/NaviLas/issues
+          Opis kanałów: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
+
+          ---
+          Tag: TAG_PLACEHOLDER
+          EOF
+          sed -i 's/^          //' release-notes.md
+          sed -i "s/TAG_PLACEHOLDER/${GITHUB_REF_NAME}/" release-notes.md
           if gh release view "v${{ steps.version.outputs.tag }}" --repo Woszik/NaviLas-releases >/dev/null 2>&1; then
             gh release upload "v${{ steps.version.outputs.tag }}" \
               "${{ steps.version.outputs.apk_name }}" \
               --repo Woszik/NaviLas-releases --clobber
           else
-            cat > release-notes.md <<'EOF'
-            ## Kanał Beta
-
-            Wersja do **publikowania i użytkowania testowego** na ogólnych zasadach bety:
-            może zawierać błędy; funkcje mogą się jeszcze zmieniać.
-
-            Opinie / sugestie: https://github.com/Woszik/NaviLas/issues
-            Opis kanałów: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
-
-            ---
-            Tag: TAG_PLACEHOLDER
-            EOF
-            sed -i 's/^            //' release-notes.md
-            sed -i "s/TAG_PLACEHOLDER/${GITHUB_REF_NAME}/" release-notes.md
             gh release create "v${{ steps.version.outputs.tag }}" \
               "${{ steps.version.outputs.apk_name }}" \
               --repo Woszik/NaviLas-releases \
