@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-06**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.58-nightly | 70 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.59-nightly | 72 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.59
+
+CI: brak heredoców w workflow YAML (szablony release-notes + `write_update_manifest.py` + strażnik); notatki Bety z commita `Release … Beta` nawet po przesunięciu tagu.
 
 ## Zakres Beta 0.5.58
 

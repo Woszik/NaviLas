@@ -1,0 +1,19 @@
+---
+description: No shell heredocs in GitHub Actions workflow YAML
+globs: .github/workflows/**/*.{yml,yaml}
+alwaysApply: false
+---
+
+# GitHub Actions — no shell heredocs
+
+Do **not** use `<<EOF` / `<<'EOF'` inside `run: |` blocks in `.github/workflows/`.
+
+After YAML common-indent stripping, a closing `EOF` nested under `if`/`else` often keeps leading spaces. Bash then fails with `here-document delimited by end-of-file` and the release is not published.
+
+**Use instead:**
+
+- Body of GitHub Release: copy `.github/release-notes/beta.md` or `nightly.md`, then `sed` placeholders (`{{TAG}}`, `{{COMMIT}}`), then `gh … --notes-file`
+- Manifest JSON: `python3 .github/scripts/write_update_manifest.py …`
+- Guard: `bash .github/scripts/check_no_workflow_heredocs.sh` (also in CI)
+
+`##` headings belong in the markdown templates, not as bare lines that YAML might treat oddly in nested blocks.

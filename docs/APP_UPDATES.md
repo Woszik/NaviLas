@@ -88,7 +88,7 @@ Nightly nie nadpisuje `latest.json`. Beta tylko z czystego tagu `vX.Y.Z`.
    - `versionCode` — zawsze +1 względem poprzedniej Beta (i wyżej niż zainstalowany Nightly, jeśli ma ten sam podpis i ma się dać nadpisać)
    - `versionName` — np. `0.5.34` (krótka nazwa, bez sufiksu roboczego Nightly)
 2. Uzupełnij [`CHANGELOG.md`](../CHANGELOG.md) — wpis Beta + link do APK.
-3. Commit — **pierwszy akapit** commita trafia do `releaseNotes` w `latest.json` (dialog aktualizacji w aplikacji). Bez pustej linii w środku — CI bierze tylko do pierwszej pustej linii.
+3. Commit z tematem zaczynającym się od `Release X.Y.Z Beta: …` — **pierwszy akapit** trafia do `releaseNotes` w `latest.json` (dialog w aplikacji). Bez pustej linii w środku. CI szuka tego commita po tytule, więc ewentualny późniejszy fix CI na tagu nie nadpisze notatek.
 4. Tag + push:
 
 ```bash
@@ -101,13 +101,19 @@ git push origin main --tags
    - liczy SHA-256,
    - publikuje release w `NaviLas-releases`,
    - aktualizuje `latest.json` na `main`.
-6. Ręcznie: README w repo `NaviLas-releases` — tabela historii wersji (patrz [`CHANGELOG.md`](../CHANGELOG.md)).
+6. Ręcznie: README w repo `NaviLas-releases` — aktualna Beta (patrz [`CHANGELOG.md`](../CHANGELOG.md)).
+
+### CI — bez heredoców w YAML
+
+W `.github/workflows/*.yml` **nie** używaj `<<EOF` / `<<'EOF'` w `run: |`. Po stripie wcięć YAML zamykający `EOF` w `if`/`else` często zostaje ze spacjami i bash kończy się błędem `here-document delimited by end-of-file` (release się nie publikuje).
+
+Zamiast tego: szablony [`.github/release-notes/`](../.github/release-notes/), skrypt [`.github/scripts/write_update_manifest.py`](../.github/scripts/write_update_manifest.py), strażnik [`.github/scripts/check_no_workflow_heredocs.sh`](../.github/scripts/check_no_workflow_heredocs.sh) (job w nightly/release + workflow `ci-guards.yml`).
 
 ### Release notes — dwa miejsca
 
 | Gdzie | Źródło | Długość |
 |-------|--------|---------|
-| Dialog aktualizacji w aplikacji | Pierwszy akapit commita release → `latest.json` | 1–3 zdania |
+| Dialog aktualizacji w aplikacji | Pierwszy akapit commita `Release X.Y.Z Beta: …` → `latest.json` | 1–3 zdania |
 | Pełny opis po wdrożeniu | [`CHANGELOG.md`](../CHANGELOG.md) | Kilka punktów + link APK |
 
 ## Powrót do starszej wersji (downgrade)

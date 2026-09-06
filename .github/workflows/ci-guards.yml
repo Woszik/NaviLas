@@ -1,0 +1,22 @@
+name: CI guards
+
+on:
+  push:
+    paths:
+      - ".github/**"
+  pull_request:
+    paths:
+      - ".github/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-workflow-heredocs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Reject shell heredocs in workflows
+        run: bash .github/scripts/check_no_workflow_heredocs.sh

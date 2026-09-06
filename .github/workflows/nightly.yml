@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard — no workflow heredocs
+        run: bash .github/scripts/check_no_workflow_heredocs.sh
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -59,24 +62,18 @@ jobs:
 
       - name: Build nightly.json
         run: |
-          NOTES=$(git log -1 --pretty=%B | sed '/^Co-authored-by:/Id' | sed '/^$/q' | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/[[:space:]]*$//')
+          NOTES=$(bash .github/scripts/first_paragraph_notes.sh HEAD)
           if [ -z "$NOTES" ]; then
             NOTES="NaviLas Nightly ${{ steps.appmeta.outputs.version_name }}"
           fi
-          cat > nightly.json <<EOF
-          {
-            "versionCode": ${{ steps.appmeta.outputs.version_code }},
-            "versionName": "${{ steps.appmeta.outputs.version_name }}",
-            "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/nightly/${{ steps.appmeta.outputs.apk_name }}",
-            "sha256": "${{ steps.sha.outputs.sha256 }}",
-            "releaseNotes": "${NOTES}",
-            "channel": "nightly",
-            "minVersionCode": 1,
-            "minAndroidSdk": 26,
-            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          cat nightly.json
+          python3 .github/scripts/write_update_manifest.py \
+            --out nightly.json \
+            --version-code "${{ steps.appmeta.outputs.version_code }}" \
+            --version-name "${{ steps.appmeta.outputs.version_name }}" \
+            --apk-url "https://github.com/Woszik/NaviLas-releases/releases/download/nightly/${{ steps.appmeta.outputs.apk_name }}" \
+            --sha256 "${{ steps.sha.outputs.sha256 }}" \
+            --release-notes "$NOTES" \
+            --channel nightly
 
       - name: Publish Nightly APK
         env:
@@ -86,19 +83,8 @@ jobs:
           if gh release view nightly --repo Woszik/NaviLas-releases >/dev/null 2>&1; then
             gh release delete nightly --repo Woszik/NaviLas-releases --yes
           fi
-          cat > release-notes.md <<'EOF'
-          ## Kanał Nightly
-
-          Świeży build do **testowania pomysłów**. Może być niestabilny i szybko się zmieniać.
-          Zachęcamy do instalacji, „pobawienia się” i **opinii / sugestii**: https://github.com/Woszik/NaviLas/issues
-
-          Dla codziennego użytku testowego wybierz **Beta**: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
-
-          ---
-          Commit: COMMIT_SHA_PLACEHOLDER
-          EOF
-          sed -i 's/^          //' release-notes.md
-          sed -i "s/COMMIT_SHA_PLACEHOLDER/${{ github.sha }}/" release-notes.md
+          cp .github/release-notes/nightly.md release-notes.md
+          sed -i "s/{{COMMIT}}/${{ github.sha }}/" release-notes.md
           gh release create nightly \
             "${{ steps.appmeta.outputs.apk_name }}" \
             --repo Woszik/NaviLas-releases \

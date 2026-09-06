@@ -15,6 +15,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard — no workflow heredocs
+        run: bash .github/scripts/check_no_workflow_heredocs.sh
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -66,46 +71,33 @@ jobs:
 
       - name: Build latest.json
         run: |
-          # User-facing notes: first paragraph of tag commit, without Co-authored-by trailers.
-          NOTES=$(git log -1 --pretty=%B | sed '/^Co-authored-by:/Id' | sed '/^$/q' | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/[[:space:]]*$//')
+          # Prefer the "Release X.Y.Z Beta" commit so retagging onto a CI fix keeps correct notes.
+          TAG="${{ steps.version.outputs.tag }}"
+          RELEASE_COMMIT=$(git log --grep="^Release ${TAG} Beta" -1 --format=%H || true)
+          if [ -n "$RELEASE_COMMIT" ]; then
+            NOTES=$(bash .github/scripts/first_paragraph_notes.sh "$RELEASE_COMMIT")
+          else
+            NOTES=$(bash .github/scripts/first_paragraph_notes.sh HEAD)
+          fi
           if [ -z "$NOTES" ]; then
             NOTES="NaviLas ${{ steps.appmeta.outputs.version_name }}"
           fi
-          cat > latest.json <<EOF
-          {
-            "versionCode": ${{ steps.appmeta.outputs.version_code }},
-            "versionName": "${{ steps.appmeta.outputs.version_name }}",
-            "apkUrl": "https://github.com/Woszik/NaviLas-releases/releases/download/v${{ steps.version.outputs.tag }}/${{ steps.version.outputs.apk_name }}",
-            "sha256": "${{ steps.sha.outputs.sha256 }}",
-            "releaseNotes": "${NOTES}",
-            "channel": "beta",
-            "minVersionCode": 1,
-            "minAndroidSdk": 26,
-            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          cat latest.json
+          python3 .github/scripts/write_update_manifest.py \
+            --out latest.json \
+            --version-code "${{ steps.appmeta.outputs.version_code }}" \
+            --version-name "${{ steps.appmeta.outputs.version_name }}" \
+            --apk-url "https://github.com/Woszik/NaviLas-releases/releases/download/v${{ steps.version.outputs.tag }}/${{ steps.version.outputs.apk_name }}" \
+            --sha256 "${{ steps.sha.outputs.sha256 }}" \
+            --release-notes "$NOTES" \
+            --channel beta
 
       - name: Publish APK release
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           cp app/build/outputs/apk/github/release/app-github-release.apk "${{ steps.version.outputs.apk_name }}"
-          # Heredoc must sit at run-block indent (not inside else) so EOF has no leading spaces after YAML strip.
-          cat > release-notes.md <<'EOF'
-          ## Kanał Beta
-
-          Wersja do **publikowania i użytkowania testowego** na ogólnych zasadach bety:
-          może zawierać błędy; funkcje mogą się jeszcze zmieniać.
-
-          Opinie / sugestie: https://github.com/Woszik/NaviLas/issues
-          Opis kanałów: https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie
-
-          ---
-          Tag: TAG_PLACEHOLDER
-          EOF
-          sed -i 's/^          //' release-notes.md
-          sed -i "s/TAG_PLACEHOLDER/${GITHUB_REF_NAME}/" release-notes.md
+          cp .github/release-notes/beta.md release-notes.md
+          sed -i "s/{{TAG}}/${GITHUB_REF_NAME}/" release-notes.md
           if gh release view "v${{ steps.version.outputs.tag }}" --repo Woszik/NaviLas-releases >/dev/null 2>&1; then
             gh release upload "v${{ steps.version.outputs.tag }}" \
               "${{ steps.version.outputs.apk_name }}" \
