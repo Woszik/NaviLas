@@ -1,6 +1,6 @@
 # Eksport nawigacji (Checkpoint 3)
 
-> **Stan (2026-09-03):** Menu **NAWIGUJ** (5 opcji) od **Nightly 0.5.47**. Opisy stylu trasy OsmAnd ujednolicone w **Nightly 0.5.52**. Beta 0.5.46 miała inną kolejność (Google Maps pierwsze) i fallback Cruisera na systemowy chooser.
+> **Stan (2026-09-06):** Menu **NAWIGUJ** (5 opcji) w **Beta 0.5.58** (kolejność od OsmAnd). Opisy stylu trasy OsmAnd ujednolicone od Nightly 0.5.52.
 > Kanały: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md). Stan projektu: [`STATUS.md`](STATUS.md).
 
 ## Menu NAWIGUJ

@@ -1,13 +1,13 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-04**.
+Ostatnia aktualizacja dokumentacji: **2026-09-06**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
 | **Nightly** | GitHub (prerelease `nightly`) | 0.5.58-nightly | 70 |
-| **Beta** | GitHub Releases | 0.5.46 | 58 |
+| **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,72 +20,34 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.46** (versionCode 58): APK z [NaviLas-releases v0.5.46](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.46). Zakazy wstępu włączone od startu; dojazd moto do oficjalnego parkingu/postoju LP. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
-## Nightly 0.5.58
+## Zakres Beta 0.5.58
 
-Parking leśny (17) i miejsce postoju (19) jako samodzielne cele w Browse i Search (także bez wiaty); nadal bez drugiej pinezki przy miejscu 15 w ≤ 100 m.
+Funkcje ustabilizowane i opublikowane w kanale Beta (względem 0.5.46 m.in.):
 
-## Nightly 0.5.57
-
-Szczegóły → **Szukaj informacji**: Google z zapytaniem od nazwy BDL (strip prefiksów; bogaty rdzeń bez dodatków; chudy + ewentualnie Nadleśnictwo z cache).
-
-## Nightly 0.5.56
-
-Naprawa CI: heredoc w `nightly.yml` / `release.yml` psuł YAML (maile „Run failed… No jobs were run”). Publikuje też UI 0.5.55 (belka nazwy miejsca).
-
-## Nightly 0.5.55
-
-Szukanie miejsca po nazwie: zagnieżdżona belka **„Szukaj miejsca po nazwie”** na dole Filtrów miejsc (domyślnie zwinięta; otwiera się przy aktywnym zapytaniu).
-
-## Nightly 0.5.54
-
-Wyraźne rozdzielenie kanałów Nightly / Beta / Final w README `NaviLas-releases`, docs i Ustawieniach (opisy oczekiwań). Body releasów CI z etykietą kanału.
-
-## Nightly 0.5.53
-
-Auto-pobranie zakazów wstępu po instalacji (bez paczki); cykl 7 dni / snooze 24 h bez zmian. W trybie nocnym mapa domyślnie jasna (Liberty), z opcją ciemnej w Ustawieniach. Szukanie miejsca po nazwie pod belką **Filtry miejsc** (ekran Szukaj i arkusz na mapie).
-
-## Nightly 0.5.52
-
-Opisy OsmAnd moto ujednolicone w aplikacji i docs: dialog Krótka / Kręta / Standardowa z mapowaniem na BRouter / Motocykl; import `.osf` z jasnymi nazwami profili. Checklist NAWIGUJ zamknięty.
-
-## Nightly 0.5.51
-
-Szukanie **miejsca BDL po nazwie** z paczki offline (warstwy 15/17/19). Pole na ekranie Szukaj i w arkusz Filtrów (także w Browse). Od 3 znaków lista podczas wpisywania: polskie znaki, prefiks, 1 literówka (2 przy dłuższym słowie). Wybór skacze na mapę i otwiera kartę — bez ZNAJDŹ.
-
-## Nightly 0.5.50
-
-Karta „Szczegóły” podczas analizy dróg: widać postęp w karcie (pasek) oraz używamy alternatywnych endpointów Overpass przy braku łączności z `overpass-api.de`.
-
-## Nightly 0.5.49
-
-Szczegóły → **Zarządca** → **Dociągnij z BDL**: nadleśnictwo (główny kontakt) i leśnictwo z poligonów `WMS_BDL`, na żądanie, z sieci. Nie wchodzi do paczki miejsc offline.
-
-## Nightly 0.5.48
-
-Klik w punkt w przeglądaniu mapy zawsze otwiera kartę (bez toggle i bez zoomu kamery). Karta leży na mapie, nie ściska MapView. Analiza OSM moto na karcie, nie na pasku nad mapą. Nightly 0.5.47 (NAWIGUJ) bez zmian w kolejności aplikacji.
-
-## Nightly 0.5.47
-
-NAWIGUJ: **OsmAnd** (zalecane) → **Cruiser** → **Współrzędne GPS** → **Wybierz nawigację** (systemowy chooser) → **Google Maps**. Brak OsmAnd/Cruisera → dialog, nie cichy fallback na `geo:`. Po instalacji OsmAnd (albo z Ustawień) import profili moto `.osf`. Szczegóły: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
-
-## Zakres Beta 0.5.46
-
-Funkcje ustabilizowane i opublikowane w kanale Beta:
-
-### Nawigacja zewnętrzna (Checkpoint 3)
+### Nawigacja zewnętrzna
 
 Wynik → **NAWIGUJ** → wybór aplikacji:
 
-| Opcja | Zachowanie (Beta 0.5.46; Nightly 0.5.47 ma inną kolejność — wyżej) |
+| Opcja | Zachowanie (Beta 0.5.58) |
 |-------|------------|
-| Google Maps | URL Directions API do właściwego celu (auto: miejsce, moto: droga OSM) |
-| OsmAnd | `osmand.api://navigate` na `net.osmand.plus`; fallback `geo:` → GeoIntentActivity |
+| OsmAnd (zalecane) | `osmand.api://navigate` na `net.osmand.plus`; fallback `geo:` → GeoIntentActivity; import profili moto `.osf` |
 | Cruiser | `geo:` na `gr.talent.cruiser` |
-| Kopiuj współrzędne GPS | Schowek `lat, lon` (6 miejsc) + snackbar |
+| Współrzędne GPS | Schowek `lat, lon` (6 miejsc) + snackbar |
+| Wybierz nawigację | systemowy chooser |
+| Google Maps | URL Directions API do właściwego celu (auto: miejsce, moto: droga OSM) |
 
-Szczegóły techniczne: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
+Brak OsmAnd/Cruisera → dialog, nie cichy fallback na `geo:`. Szczegóły: [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md).
+
+### Nowości względem Beta 0.5.46
+
+- Parking leśny (17) i miejsce postoju (19) jako **samodzielne cele** (Browse i Search), także bez wiaty; dedup vs warstwa 15 w ≤100 m bez zmian.
+- Szukanie **miejsca BDL po nazwie** (offline); belka w Filtrach miejsc.
+- Szczegóły → **Szukaj informacji** (Google od nazwy BDL); **Zarządca → Dociągnij z BDL** (nadleśnictwo / leśnictwo).
+- Auto-pobranie zakazów wstępu po instalacji; w nocy mapa domyślnie **Liberty**, opcja Dark w Ustawieniach.
+- Klik w Browse zawsze otwiera kartę; postęp analizy OSM w karcie + failover Overpass.
+- Opisy kanałów Nightly / Beta / Final w Ustawieniach i README releases.
 
 ### Wyszukiwanie miejscowości
 

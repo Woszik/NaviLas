@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.58 (71) — 2026-09-06
+
+**APK:** [navilas-0.5.58.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.58/navilas-0.5.58.apk)
+
+Parking leśny (17) i miejsce postoju (19) jako samodzielne cele w Browse i Search (także bez wiaty; nadal dedup vs Miejsce postoju 15 w ≤100 m). **NAWIGUJ:** OsmAnd (zalecane) → Cruiser → Współrzędne GPS → Wybierz nawigację → Google Maps; dialogi instalacji i import profili OsmAnd. Szukanie miejsca BDL po nazwie (offline); **Szukaj informacji** (Google od nazwy BDL); Szczegóły → Zarządca → dociągnięcie nadleśnictwa/leśnictwa z BDL. Auto-pobranie zakazów wstępu po instalacji; w nocy domyślnie jasna mapa (opcja Dark). Klik w Browse zawsze otwiera kartę; postęp analizy OSM w karcie + failover Overpass. Wyraźne kanały Nightly / Beta / Final.
+
+**Poprzednia wersja:** [0.5.46](#0546-58--2026-09-03)
+
+---
+
 ## 0.5.46 (58) — 2026-09-03
 
 **APK:** [navilas-0.5.46.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.46/navilas-0.5.46.apk)

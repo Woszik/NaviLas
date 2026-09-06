@@ -2,7 +2,7 @@
 
 Model dystrybucji **GitHub** (flavor `github`): **Nightly**, **Beta**, **Final**.
 
-Ostatnia aktualizacja: **2026-09-04**.
+Ostatnia aktualizacja: **2026-09-06**.
 
 Publiczny opis dla instalacji: [NaviLas-releases README](https://github.com/Woszik/NaviLas-releases#wybierz-kanał-świadomie).
 
@@ -66,7 +66,7 @@ Brak pliku (404) jest pomijany. Flavor `fdroid` nie łączy się z GitHub.
 | versionName | czysta, np. `0.5.46` |
 | Podpis | release keystore |
 
-Przykład bieżącej Beta: **0.5.46** (versionCode 58), tag `v0.5.46`.
+Przykład bieżącej Beta: **0.5.58** (versionCode 71), tag `v0.5.58`.
 
 Procedura: [`APP_UPDATES.md`](APP_UPDATES.md).
 
@@ -82,11 +82,11 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 
 ---
 
-## Mapowanie obecnego stanu (2026-09-04)
+## Mapowanie obecnego stanu (2026-09-06)
 
 | Co masz | Kanał |
 |---------|-------|
-| 0.5.46 / `latest.json` | **Beta** (versionCode 58) |
-| 0.5.58-nightly / `nightly.json` | **Nightly** (versionCode 70) |
+| 0.5.58 / `latest.json` | **Beta** (versionCode 71) |
+| 0.5.58-nightly / `nightly.json` | **Nightly** (versionCode 70; Beta jest nowsza) |
 | F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
 | Final | **jeszcze nie** |
