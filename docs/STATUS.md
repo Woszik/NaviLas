@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.63-nightly | 76 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.64-nightly | 77 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -22,9 +22,13 @@ Instalacja lokalnego buildu deweloperskiego:
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
 
+## Nightly 0.5.64
+
+Lista → Porównaj w bottom sheet (scroll pion + poziom, sticky etykiety, klik nazwy → mapa). Play Protect: po skanowaniu „Możesz ją zainstalować” → Zainstaluj (docs + O aplikacji GitHub).
+
 ## Nightly 0.5.63
 
-Landscape: jedna belka (menu ⋮ + Szukaj/Mapa/Lista), bez nazwy aplikacji i bez dolnego paska. **Następny Nightly: C** (Porównaj w sheet, 2D scroll).
+Landscape: jedna belka (menu ⋮ + Szukaj/Mapa/Lista), bez nazwy aplikacji i bez dolnego paska.
 
 ## Nightly 0.5.62
 
@@ -121,7 +125,7 @@ Zapis: [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md). Testy: KINGKONG 8 +
 |------|------|
 | **A+B** chrome + mapa landscape | Nightly **0.5.62** |
 | **1** jedna belka w poziomie | Nightly **0.5.63** |
-| **C** Porównaj sheet + 2D scroll | **kolejny Nightly** |
+| **C** Porównaj sheet + 2D scroll | Nightly **0.5.64** |
 | **D** split dwukolumnowy | odłożone |
 
 ## Do dopracowania

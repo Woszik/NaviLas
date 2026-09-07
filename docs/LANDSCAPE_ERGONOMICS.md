@@ -11,7 +11,7 @@ Testy ręczne: **Cubot KINGKONG 8** (wzorzec „wystarczająco duży”) i **Bla
 | **A** | Landscape: niższy toolbar, stopka bez ◀▶ (zostają zakładki + gest) | **zrobione** Nightly **0.5.62** |
 | **A′ / 1** | Landscape: **jedna belka** (⋮ + Szukaj/Mapa/Lista), bez tytułu, bez dolnego paska | **zrobione** Nightly **0.5.63** |
 | **B** | Landscape mapa: pełna wysokość, hint overlay, karta POI z boku | **zrobione** Nightly **0.5.62** |
-| **C** | Lista: Porównaj jako **sheet** z scrollem **pion + poziom** (sticky etykiety, klik nazwy → mapa); kompaktowy nagłówek listy opcjonalnie później | **kolejny Nightly** — dokończyć, nie odkładać |
+| **C** | Lista: Porównaj jako **sheet** z scrollem **pion + poziom** (sticky etykiety, klik nazwy → mapa) | **zrobione** Nightly **0.5.64** |
 | **D** | Landscape dwukolumnowy | **odłożone** |
 
 Portret: dwa paski jak dotychczas.
@@ -19,7 +19,7 @@ Portret: dwa paski jak dotychczas.
 ## Kolejka Nightly (nie Compact)
 
 1. ~~Jedna belka chrome w poziomie~~ **0.5.63**
-2. **C** — Porównaj w bottom sheet + 2D scroll (wchłania dawny punkt „2”). Test BV6900 + KINGKONG 8.
+2. ~~**C** — Porównaj w bottom sheet + 2D scroll~~ **0.5.64**
 3. Compact — nadal **pomysł na przyszłość** (poniżej Otwarte w TODO).
 
 ## Gęstość Compact — pomysł na przyszłość

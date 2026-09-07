@@ -4,10 +4,6 @@ Otwarte sprawy poza bieżącym kodem Nightly / Bety. Stan projektu: [`STATUS.md`
 
 ## Otwarte
 
-### Kolejny Nightly: C — Porównaj w sheet (2D scroll)
-
-Dokończenie po **0.5.63** (jedna belka w poziomie). Porównaj zaznaczone → bottom sheet, scroll pion + poziom, sticky etykiety, klik nazwy → mapa. Bez D i bez Compact. [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md).
-
 ### Wniosek do DGLP / BDL — oczekiwanie na odpowiedź merytoryczną
 
 - **Wysłany:** 2026-09-03 na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl).
@@ -41,6 +37,10 @@ Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga
 ### Głuchy klik punktu w przeglądaniu mapy (Nightly 0.5.48 → 0.5.60)
 
 Od **0.5.60**: drugi klik w zaznaczony pin odznacza. Zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.
+
+### Porównaj w sheet (Nightly 0.5.64)
+
+Lista → Porównaj zaznaczone otwiera bottom sheet: scroll pion + poziom, sticky etykiety, klik nazwy → mapa.
 
 ## Pomysły na przyszłość
 

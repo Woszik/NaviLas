@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="about_distribution">Kanał: Beta (GitHub)\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić dostępność nowszej Bety. Pobranie i instalację zawsze zatwierdzasz Ty. Ręcznie: menu ⋮ → Sprawdź aktualizacje albo przycisk na ekranie Wyszukiwanie.\n\nZmiana źródła instalacji (np. na F-Droid) wymaga reinstalacji: najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia → Eksportuj).</string>
+    <string name="about_distribution">Kanał: GitHub\nhttps://github.com/Woszik/NaviLas-releases\n\nPrzy starcie aplikacja może sprawdzić nowszą wersję (kanał w Ustawieniach). Pobranie i instalację zawsze zatwierdzasz Ty. Ręcznie: menu ⋮ → Sprawdź aktualizacje albo przycisk na ekranie Wyszukiwanie.\n\nPlay Protect może ostrzec przy APK spoza Sklepu Play — to normalne (NaviLas nie jest w Play). Instaluj tylko z NaviLas-releases. Po skanowaniu: „Możesz ją zainstalować” → Zainstaluj.\n\nZmiana źródła instalacji (np. na F-Droid) wymaga reinstalacji: najpierw wyeksportuj zapisane miejsca (Lista → Zapisane → Kopia → Eksportuj).</string>
 </resources>

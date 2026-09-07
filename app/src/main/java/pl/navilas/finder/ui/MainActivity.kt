@@ -44,6 +44,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.snackbar.Snackbar
@@ -58,6 +59,7 @@ import pl.navilas.finder.update.AppUpdateInstaller
 import pl.navilas.finder.update.AppUpdateOffer
 import pl.navilas.finder.data.osm.RoadClassifier
 import pl.navilas.finder.databinding.ActivityMainBinding
+import pl.navilas.finder.databinding.BottomSheetCompareBinding
 import pl.navilas.finder.databinding.BottomSheetMapFiltersBinding
 import pl.navilas.finder.databinding.BdlOverlayControlsBinding
 import pl.navilas.finder.databinding.BrowseCarFilterControlsBinding
@@ -152,6 +154,8 @@ class MainActivity : AppCompatActivity() {
     private var placeNameSearchExpanded = false
     private var mapFilterBottomSheet: BottomSheetDialog? = null
     private var mapFilterSheetBinding: BottomSheetMapFiltersBinding? = null
+    private var compareBottomSheet: BottomSheetDialog? = null
+    private var compareSheetBinding: BottomSheetCompareBinding? = null
     private var sheetExploreExpanded = false
     private var sheetSearchExpanded = false
     private var sheetProfileExpanded = false
@@ -2432,30 +2436,64 @@ class MainActivity : AppCompatActivity() {
             state.selectedSiteIds.size >= 2
         listBinding.btnCompareSelection.isVisible = canCompare
         if (!canCompare) {
-            listBinding.comparePanel.isVisible = false
+            compareBottomSheet?.dismiss()
             return
         }
         listBinding.btnCompareSelection.text =
             getString(R.string.compare_selection) + " (${state.selectedSiteIds.size})"
-        listBinding.btnCompareSelection.setOnClickListener {
-            listBinding.comparePanel.isVisible = !listBinding.comparePanel.isVisible
-            if (listBinding.comparePanel.isVisible) {
-                fillCompareTable(viewModel.displayedListResults(state).filter {
-                    it.site.id in state.selectedSiteIds
-                }, state)
-            }
-        }
-        if (listBinding.comparePanel.isVisible) {
-            fillCompareTable(
-                viewModel.displayedListResults(state).filter { it.site.id in state.selectedSiteIds },
-                state,
-            )
-        }
+        listBinding.btnCompareSelection.setOnClickListener { showCompareBottomSheet() }
+        compareSheetBinding?.let { fillCompareTable(it, state) }
     }
 
-    private fun fillCompareTable(items: List<RestSiteResult>, state: UiState) {
-        val labelTable = listBinding.compareLabelTable
-        val valueTable = listBinding.compareTable
+    private fun showCompareBottomSheet() {
+        val state = viewModel.state.value
+        val items = viewModel.displayedListResults(state).filter {
+            it.site.id in state.selectedSiteIds
+        }
+        if (items.size < 2) return
+        if (compareBottomSheet?.isShowing == true) {
+            compareSheetBinding?.let { fillCompareTable(it, state) }
+            return
+        }
+        compareBottomSheet?.dismiss()
+        val sheetBinding = BottomSheetCompareBinding.inflate(layoutInflater)
+        compareSheetBinding = sheetBinding
+        val dialog = BottomSheetDialog(this)
+        dialog.setContentView(sheetBinding.root)
+        compareBottomSheet = dialog
+        dialog.setOnDismissListener {
+            if (compareBottomSheet === dialog) {
+                compareBottomSheet = null
+                compareSheetBinding = null
+            }
+        }
+        dialog.setOnShowListener {
+            val sheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+                ?: return@setOnShowListener
+            val targetH = (resources.displayMetrics.heightPixels * 0.78f).toInt()
+            sheet.layoutParams = sheet.layoutParams.apply { height = targetH }
+            sheet.requestLayout()
+            BottomSheetBehavior.from(sheet).apply {
+                skipCollapsed = true
+                state = BottomSheetBehavior.STATE_EXPANDED
+            }
+        }
+        fillCompareTable(sheetBinding, state)
+        dialog.show()
+    }
+
+    private fun fillCompareTable(sheet: BottomSheetCompareBinding, state: UiState) {
+        val items = viewModel.displayedListResults(state).filter {
+            it.site.id in state.selectedSiteIds
+        }
+        if (items.size < 2) {
+            compareBottomSheet?.dismiss()
+            return
+        }
+        sheet.compareSheetTitle.text =
+            getString(R.string.compare_selection) + " (${items.size})"
+        val labelTable = sheet.compareLabelTable
+        val valueTable = sheet.compareTable
         labelTable.removeAllViews()
         valueTable.removeAllViews()
         val labelWidth = wrapContentDp(96)
@@ -2510,6 +2548,7 @@ class MainActivity : AppCompatActivity() {
 
         fun yesNo(value: Boolean) = if (value) "tak" else "—"
         addRow(getString(R.string.compare_name), items.map { it.site.name }) { index ->
+            compareBottomSheet?.dismiss()
             viewModel.onListItemSelected(items[index].site.id)
         }
         addRow(
@@ -2549,7 +2588,7 @@ class MainActivity : AppCompatActivity() {
             items.map { if (state.isSaved(it.site.id)) "tak" else "—" },
         )
 
-        listBinding.comparePanel.post { syncCompareRowHeights(labelTable, valueTable) }
+        sheet.compareVerticalScroll.post { syncCompareRowHeights(labelTable, valueTable) }
     }
 
     private fun syncCompareRowHeights(

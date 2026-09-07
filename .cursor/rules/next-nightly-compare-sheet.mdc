@@ -1,11 +1,9 @@
 ---
-description: Next Nightly is compare sheet (C); do not skip
-globs:
-alwaysApply: true
+description: Landscape C (Porównaj sheet) jest w 0.5.64; nie wracać do tabeli w nagłówku listy
+globs: app/src/main/res/layout/page_list.xml
+alwaysApply: false
 ---
 
-# Landscape C — kolejny Nightly
+# Porównaj — sheet, nie nagłówek listy
 
-Po **0.5.63** (jedna belka w poziomie) **następna zmiana w Nightly** to krok **C**: lista → Porównaj jako bottom sheet ze scrollem pion + poziom (sticky etykiety, klik nazwy → mapa). Nie wdrażać D ani Compact, dopóki C nie jest na `main`.
-
-Szczegóły: `docs/LANDSCAPE_ERGONOMICS.md`, `docs/TODO.md` (Otwarte).
+Od Nightly **0.5.64** tabela Porównaj jest w `bottom_sheet_compare.xml` (scroll pion + poziom). Nie wstawiaj jej z powrotem do `page_list.xml`. Compact i D nadal odłożone.

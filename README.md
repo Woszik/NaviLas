@@ -32,9 +32,7 @@ https://github.com/Woszik/NaviLas-releases
 
 Dla większości osób start od **Beta**. **Nightly** tylko jeśli chcesz świeże eksperymenty. Aplikacja (`github`) sprawdza aktualizacje według kanału z Ustawień.
 
-> **Play Protect:** Ostrzeżenie przy instalacji APK spoza Google Play jest normalne — NaviLas nie jest w Sklepie Play. Instaluj wyłącznie z powyższego linku (repozytorium `NaviLas-releases`).
->
-> Typowa ścieżka na telefonie: w oknie Play Protect wybierz **Więcej szczegółów**, a potem **Zainstaluj bez skanowania**.
+> **Play Protect:** Ostrzeżenie przy APK spoza Sklepu Play jest normalne — NaviLas nie jest w Play. Instaluj wyłącznie z powyższego repozytorium. Po skanowaniu: **Możesz ją zainstalować** → **Zainstaluj**.
 
 ## Kopia zapisanych miejsc
 
