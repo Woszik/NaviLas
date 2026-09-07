@@ -2430,20 +2430,20 @@ class MainActivity : AppCompatActivity() {
             state.selectedSiteIds.size >= 2
         listBinding.btnCompareSelection.isVisible = canCompare
         if (!canCompare) {
-            listBinding.compareScroll.isVisible = false
+            listBinding.comparePanel.isVisible = false
             return
         }
         listBinding.btnCompareSelection.text =
             getString(R.string.compare_selection) + " (${state.selectedSiteIds.size})"
         listBinding.btnCompareSelection.setOnClickListener {
-            listBinding.compareScroll.isVisible = !listBinding.compareScroll.isVisible
-            if (listBinding.compareScroll.isVisible) {
+            listBinding.comparePanel.isVisible = !listBinding.comparePanel.isVisible
+            if (listBinding.comparePanel.isVisible) {
                 fillCompareTable(viewModel.displayedListResults(state).filter {
                     it.site.id in state.selectedSiteIds
                 }, state)
             }
         }
-        if (listBinding.compareScroll.isVisible) {
+        if (listBinding.comparePanel.isVisible) {
             fillCompareTable(
                 viewModel.displayedListResults(state).filter { it.site.id in state.selectedSiteIds },
                 state,
@@ -2452,41 +2452,73 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun fillCompareTable(items: List<RestSiteResult>, state: UiState) {
-        val table = listBinding.compareTable
-        table.removeAllViews()
-        fun row(label: String, values: List<String>) {
-            val row = android.widget.TableRow(this).apply {
+        val labelTable = listBinding.compareLabelTable
+        val valueTable = listBinding.compareTable
+        labelTable.removeAllViews()
+        valueTable.removeAllViews()
+        val labelWidth = wrapContentDp(96)
+        val valueWidth = wrapContentDp(120)
+
+        fun addRow(
+            label: String,
+            values: List<String>,
+            onValueClick: ((Int) -> Unit)? = null,
+        ) {
+            val labelRow = android.widget.TableRow(this).apply {
                 setPadding(0, 6, 0, 6)
             }
-            val header = TextView(this).apply {
-                text = label
-                setPadding(8, 4, 12, 4)
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelMedium)
+            labelRow.addView(
+                TextView(this).apply {
+                    text = label
+                    setPadding(8, 4, 12, 4)
+                    setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelMedium)
+                },
+                android.widget.TableRow.LayoutParams(labelWidth, -2),
+            )
+            labelTable.addView(labelRow)
+
+            val valueRow = android.widget.TableRow(this).apply {
+                setPadding(0, 6, 0, 6)
             }
-            row.addView(header, android.widget.TableRow.LayoutParams(wrapContentDp(96), -2))
-            values.forEach { value ->
-                row.addView(
+            values.forEachIndexed { index, value ->
+                valueRow.addView(
                     TextView(this).apply {
                         text = value
                         setPadding(8, 4, 8, 4)
                         setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                        if (onValueClick != null) {
+                            val typed = android.util.TypedValue()
+                            theme.resolveAttribute(
+                                com.google.android.material.R.attr.colorPrimary,
+                                typed,
+                                true,
+                            )
+                            setTextColor(typed.data)
+                            paint.isUnderlineText = true
+                            isClickable = true
+                            isFocusable = true
+                            setOnClickListener { onValueClick(index) }
+                        }
                     },
-                    android.widget.TableRow.LayoutParams(wrapContentDp(120), -2),
+                    android.widget.TableRow.LayoutParams(valueWidth, -2),
                 )
             }
-            table.addView(row)
+            valueTable.addView(valueRow)
         }
+
         fun yesNo(value: Boolean) = if (value) "tak" else "—"
-        row(getString(R.string.compare_name), items.map { it.site.name })
-        row(
+        addRow(getString(R.string.compare_name), items.map { it.site.name }) { index ->
+            viewModel.onListItemSelected(items[index].site.id)
+        }
+        addRow(
             getString(R.string.compare_distance),
             items.map { formatPoiDistance(state, it.distanceKm) },
         )
-        row("Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
-        row("Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
-        row("Woda pitna", items.map { yesNo(SiteFeature.WODA_PITNA in it.site.features) })
-        row("Parking", items.map { yesNo(SiteFeature.PARKING in it.site.features) })
-        row(
+        addRow("Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
+        addRow("Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
+        addRow("Woda pitna", items.map { yesNo(SiteFeature.WODA_PITNA in it.site.features) })
+        addRow("Parking", items.map { yesNo(SiteFeature.PARKING in it.site.features) })
+        addRow(
             getString(R.string.compare_zanocuj),
             items.map {
                 when (it.site.zanocujStatus) {
@@ -2496,25 +2528,44 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
-        row(
+        addRow(
             getString(R.string.entry_ban_toggle),
             items.map { item ->
                 state.entryBanAt(item.site.latitude, item.site.longitude)?.summaryPl() ?: "—"
             },
         )
         if (state.profile == TravelProfile.MOTORCYCLE) {
-            row(
+            addRow(
                 getString(R.string.compare_moto),
                 items.map { item ->
-                    val road = item.roadAssessment?.nearestRoad
                     motoListLine(item, state.profile) ?: "—"
                 },
             )
         }
-        row(
+        addRow(
             getString(R.string.compare_saved),
             items.map { if (state.isSaved(it.site.id)) "tak" else "—" },
         )
+
+        listBinding.comparePanel.post { syncCompareRowHeights(labelTable, valueTable) }
+    }
+
+    private fun syncCompareRowHeights(
+        labelTable: android.widget.TableLayout,
+        valueTable: android.widget.TableLayout,
+    ) {
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        val count = minOf(labelTable.childCount, valueTable.childCount)
+        for (i in 0 until count) {
+            val labelRow = labelTable.getChildAt(i)
+            val valueRow = valueTable.getChildAt(i)
+            labelRow.measure(widthSpec, heightSpec)
+            valueRow.measure(widthSpec, heightSpec)
+            val h = maxOf(labelRow.measuredHeight, valueRow.measuredHeight)
+            labelRow.minimumHeight = h
+            valueRow.minimumHeight = h
+        }
     }
 
     private fun wrapContentDp(dp: Int): Int =

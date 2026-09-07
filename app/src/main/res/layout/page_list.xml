@@ -82,21 +82,35 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
-        <HorizontalScrollView
-            android:id="@+id/compareScroll"
+        <LinearLayout
+            android:id="@+id/comparePanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:fillViewport="true"
+            android:orientation="horizontal"
             android:visibility="gone"
             tools:visibility="visible">
 
             <TableLayout
-                android:id="@+id/compareTable"
+                android:id="@+id/compareLabelTable"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:stretchColumns="*" />
-        </HorizontalScrollView>
+                android:background="?attr/colorSurface" />
+
+            <HorizontalScrollView
+                android:id="@+id/compareScroll"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fillViewport="false"
+                android:scrollbars="horizontal">
+
+                <TableLayout
+                    android:id="@+id/compareTable"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </HorizontalScrollView>
+        </LinearLayout>
     </LinearLayout>
 
     <pl.navilas.finder.ui.NestedScrollableHost
