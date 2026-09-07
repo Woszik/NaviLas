@@ -113,85 +113,129 @@
         </pl.navilas.finder.ui.NestedScrollableHost>
     </LinearLayout>
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/compareOverlay"
+    <FrameLayout
+        android:id="@+id/compareLayer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="8dp"
-        android:clickable="true"
-        android:focusable="true"
         android:visibility="gone"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="8dp"
         tools:visibility="visible">
 
-        <LinearLayout
+        <View
+            android:id="@+id/compareScrim"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingHorizontal="12dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="12dp">
+            android:background="#66000000"
+            android:clickable="true"
+            android:contentDescription="@string/close_compare_card"
+            android:focusable="true" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/compareOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/compareSheetTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/compare_selection"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <ImageButton
-                    android:id="@+id/btnCloseCompare"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/close_compare_card"
-                    android:padding="8dp"
-                    android:src="@android:drawable/ic_menu_close_clear_cancel" />
-            </LinearLayout>
-
-            <androidx.core.widget.NestedScrollView
-                android:id="@+id/compareVerticalScroll"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:fillViewport="false"
-                android:scrollbars="vertical">
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <TableLayout
-                        android:id="@+id/compareLabelTable"
-                        android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/compareSheetTitle"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:background="?attr/colorSurface" />
+                        android:layout_weight="1"
+                        android:text="@string/compare_selection"
+                        android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                    <ImageButton
+                        android:id="@+id/btnCloseCompare"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/close_compare_card"
+                        android:padding="8dp"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/compareNameHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/colorSurface"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+
+                    <TableLayout
+                        android:id="@+id/compareNameLabelTable"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
 
                     <HorizontalScrollView
-                        android:id="@+id/compareScroll"
+                        android:id="@+id/compareNameScroll"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fillViewport="false"
-                        android:nestedScrollingEnabled="true"
-                        android:scrollbars="horizontal">
+                        android:scrollbars="none">
 
                         <TableLayout
-                            android:id="@+id/compareTable"
+                            android:id="@+id/compareNameTable"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content" />
                     </HorizontalScrollView>
                 </LinearLayout>
-            </androidx.core.widget.NestedScrollView>
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+
+                <pl.navilas.finder.ui.MaxHeightNestedScrollView
+                    android:id="@+id/compareVerticalScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fillViewport="false"
+                    android:scrollbars="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TableLayout
+                            android:id="@+id/compareLabelTable"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/colorSurface" />
+
+                        <HorizontalScrollView
+                            android:id="@+id/compareScroll"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fillViewport="false"
+                            android:nestedScrollingEnabled="true"
+                            android:scrollbars="horizontal">
+
+                            <TableLayout
+                                android:id="@+id/compareTable"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </HorizontalScrollView>
+                    </LinearLayout>
+                </pl.navilas.finder.ui.MaxHeightNestedScrollView>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
 </FrameLayout>

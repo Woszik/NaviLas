@@ -159,6 +159,7 @@ class MainActivity : AppCompatActivity() {
     private var lastBrowseCarFilterToken: Int = 0
     private var syncingCorridorUi = false
     private var syncingListUi = false
+    private var syncingCompareHScroll = false
     private var offlineSectionExpanded = false
     private var lastRenderedResultsToken: Int = -1
     private var lastAppliedCameraToken: Long = -1L
@@ -369,6 +370,7 @@ class MainActivity : AppCompatActivity() {
                 if (syncingPager) return
                 viewModel.setCurrentPage(position)
                 updatePageIndicator(position)
+                syncPagerSwipeLock()
             }
         })
         binding.pageTabs.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -1470,6 +1472,8 @@ class MainActivity : AppCompatActivity() {
         listBinding.btnManageCategories.setOnClickListener { showManageCategoriesDialog() }
         listBinding.btnSavedBackup.setOnClickListener { showSavedBackupMenu(it) }
         listBinding.btnCloseCompare.setOnClickListener { hideCompareOverlay() }
+        listBinding.compareScrim.setOnClickListener { hideCompareOverlay() }
+        setupCompareHScrollSync()
         listBinding.savedCategoryFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
@@ -1674,7 +1678,7 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (listBinding.compareOverlay.isVisible) {
+                    if (listBinding.compareLayer.isVisible) {
                         hideCompareOverlay()
                         return
                     }
@@ -1925,6 +1929,7 @@ class MainActivity : AppCompatActivity() {
             syncingPager = false
         }
         updatePageIndicator(state.currentPage)
+        syncPagerSwipeLock()
 
         val selectedItems = listItems.filter { it.site.id in state.selectedSiteIds }
         val selected = selectedItems.lastOrNull { it.site.id == state.selectedSiteId }
@@ -2443,13 +2448,15 @@ class MainActivity : AppCompatActivity() {
         listBinding.btnCompareSelection.text =
             getString(R.string.compare_selection) + " (${state.selectedSiteIds.size})"
         listBinding.btnCompareSelection.setOnClickListener { showCompareOverlay() }
-        if (listBinding.compareOverlay.isVisible) {
+        if (listBinding.compareLayer.isVisible) {
             fillCompareTable(state)
         }
     }
 
     private fun hideCompareOverlay() {
-        listBinding.compareOverlay.isVisible = false
+        listBinding.compareLayer.isVisible = false
+        listBinding.compareVerticalScroll.maxHeightPx = Int.MAX_VALUE
+        syncPagerSwipeLock()
     }
 
     private fun showCompareOverlay() {
@@ -2458,8 +2465,42 @@ class MainActivity : AppCompatActivity() {
             it.site.id in state.selectedSiteIds
         }
         if (count < 2) return
-        listBinding.compareOverlay.isVisible = true
+        listBinding.compareLayer.isVisible = true
         fillCompareTable(state)
+        syncPagerSwipeLock()
+    }
+
+    private fun syncPagerSwipeLock() {
+        val lock = listBinding.compareLayer.isVisible &&
+            viewModel.state.value.currentPage == AppPages.LIST
+        binding.pager.isUserInputEnabled = !lock
+    }
+
+    private fun setupCompareHScrollSync() {
+        val names = listBinding.compareNameScroll
+        val body = listBinding.compareScroll
+        names.setOnScrollChangeListener { _, scrollX, _, _, _ ->
+            if (syncingCompareHScroll || body.scrollX == scrollX) return@setOnScrollChangeListener
+            syncingCompareHScroll = true
+            body.scrollTo(scrollX, 0)
+            syncingCompareHScroll = false
+        }
+        body.setOnScrollChangeListener { _, scrollX, _, _, _ ->
+            if (syncingCompareHScroll || names.scrollX == scrollX) return@setOnScrollChangeListener
+            syncingCompareHScroll = true
+            names.scrollTo(scrollX, 0)
+            syncingCompareHScroll = false
+        }
+    }
+
+    private fun capCompareBodyHeight() {
+        val layerH = listBinding.compareLayer.height
+        if (layerH <= 0) return
+        val card = listBinding.compareOverlay
+        val body = listBinding.compareVerticalScroll
+        val reserved = card.height - body.height
+        val maxBody = (layerH - reserved).coerceAtLeast(wrapContentDp(72))
+        body.maxHeightPx = maxBody
     }
 
     private fun fillCompareTable(state: UiState) {
@@ -2472,14 +2513,20 @@ class MainActivity : AppCompatActivity() {
         }
         listBinding.compareSheetTitle.text =
             getString(R.string.compare_selection) + " (${items.size})"
+        val nameLabelTable = listBinding.compareNameLabelTable
+        val nameTable = listBinding.compareNameTable
         val labelTable = listBinding.compareLabelTable
         val valueTable = listBinding.compareTable
+        nameLabelTable.removeAllViews()
+        nameTable.removeAllViews()
         labelTable.removeAllViews()
         valueTable.removeAllViews()
         val labelWidth = wrapContentDp(96)
         val valueWidth = wrapContentDp(120)
 
         fun addRow(
+            labels: android.widget.TableLayout,
+            valuesTable: android.widget.TableLayout,
             label: String,
             values: List<String>,
             onValueClick: ((Int) -> Unit)? = null,
@@ -2495,7 +2542,7 @@ class MainActivity : AppCompatActivity() {
                 },
                 android.widget.TableRow.LayoutParams(labelWidth, -2),
             )
-            labelTable.addView(labelRow)
+            labels.addView(labelRow)
 
             val valueRow = android.widget.TableRow(this).apply {
                 setPadding(0, 6, 0, 6)
@@ -2523,23 +2570,32 @@ class MainActivity : AppCompatActivity() {
                     android.widget.TableRow.LayoutParams(valueWidth, -2),
                 )
             }
-            valueTable.addView(valueRow)
+            valuesTable.addView(valueRow)
         }
 
         fun yesNo(value: Boolean) = if (value) "tak" else "—"
-        addRow(getString(R.string.compare_name), items.map { it.site.name }) { index ->
+        addRow(
+            nameLabelTable,
+            nameTable,
+            getString(R.string.compare_name),
+            items.map { it.site.name },
+        ) { index ->
             hideCompareOverlay()
             viewModel.onListItemSelected(items[index].site.id)
         }
         addRow(
+            labelTable,
+            valueTable,
             getString(R.string.compare_distance),
             items.map { formatPoiDistance(state, it.distanceKm) },
         )
-        addRow("Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
-        addRow("Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
-        addRow("Woda pitna", items.map { yesNo(SiteFeature.WODA_PITNA in it.site.features) })
-        addRow("Parking", items.map { yesNo(SiteFeature.PARKING in it.site.features) })
+        addRow(labelTable, valueTable, "Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
+        addRow(labelTable, valueTable, "Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
+        addRow(labelTable, valueTable, "Woda pitna", items.map { yesNo(SiteFeature.WODA_PITNA in it.site.features) })
+        addRow(labelTable, valueTable, "Parking", items.map { yesNo(SiteFeature.PARKING in it.site.features) })
         addRow(
+            labelTable,
+            valueTable,
             getString(R.string.compare_zanocuj),
             items.map {
                 when (it.site.zanocujStatus) {
@@ -2550,6 +2606,8 @@ class MainActivity : AppCompatActivity() {
             },
         )
         addRow(
+            labelTable,
+            valueTable,
             getString(R.string.entry_ban_toggle),
             items.map { item ->
                 state.entryBanAt(item.site.latitude, item.site.longitude)?.summaryPl() ?: "—"
@@ -2557,6 +2615,8 @@ class MainActivity : AppCompatActivity() {
         )
         if (state.profile == TravelProfile.MOTORCYCLE) {
             addRow(
+                labelTable,
+                valueTable,
                 getString(R.string.compare_moto),
                 items.map { item ->
                     motoListLine(item, state.profile) ?: "—"
@@ -2564,11 +2624,17 @@ class MainActivity : AppCompatActivity() {
             )
         }
         addRow(
+            labelTable,
+            valueTable,
             getString(R.string.compare_saved),
             items.map { if (state.isSaved(it.site.id)) "tak" else "—" },
         )
 
-        listBinding.compareVerticalScroll.post { syncCompareRowHeights(labelTable, valueTable) }
+        listBinding.compareVerticalScroll.post {
+            syncCompareRowHeights(nameLabelTable, nameTable)
+            syncCompareRowHeights(labelTable, valueTable)
+            capCompareBodyHeight()
+        }
     }
 
     private fun syncCompareRowHeights(

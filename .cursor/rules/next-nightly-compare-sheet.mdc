@@ -1,9 +1,9 @@
 ---
-description: Porównaj is an overlay card on the list (0.5.65), not a BottomSheet
+description: Porównaj is a wrap-content overlay with sticky names (0.5.66)
 globs: app/src/main/res/layout/page_list.xml
 alwaysApply: false
 ---
 
-# Porównaj — karta overlay, nie sheet
+# Porównaj — karta overlay
 
-Od Nightly **0.5.65** tabela jest w `compareOverlay` na ekranie listy (X / wstecz). Nie wracać do `BottomSheetDialog` ani do nagłówka listy. Compact i D odłożone.
+Od Nightly **0.5.66**: `compareLayer` (scrim + karta wrap_content), nazwy poza pionowym scrollem, pager `isUserInputEnabled=false` na liście gdy otwarte. Nie wracać do BottomSheet ani do pełnoekranowej karty bez scrimu.

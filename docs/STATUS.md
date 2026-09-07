@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.65-nightly | 78 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.66-nightly | 79 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.66
+
+Porównaj: karta na wysokość treści + scrim; nazwy przyklejone u góry; swipe pagera wyłączony, dopóki karta otwarta na liście.
 
 ## Nightly 0.5.65
 
@@ -129,7 +133,7 @@ Zapis: [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md). Testy: KINGKONG 8 +
 |------|------|
 | **A+B** chrome + mapa landscape | Nightly **0.5.62** |
 | **1** jedna belka w poziomie | Nightly **0.5.63** |
-| **C** Porównaj overlay + 2D scroll; mapa klik pod kartą | Nightly **0.5.65** |
+| **C** Porównaj overlay (treść, sticky nazwy, bez swipe pagera) | Nightly **0.5.66** |
 | **D** split dwukolumnowy | odłożone |
 
 ## Do dopracowania
