@@ -2601,10 +2601,13 @@ class MainActivity : AppCompatActivity() {
     private fun bindPoiCard(selected: RestSiteResult?, state: UiState) {
         if (selected == null) {
             mapBinding.poiCard.isVisible = false
+            mapBinding.mapBottomSwipeHost.isVisible = false
             offsetMapFabsForCard(0)
+            offsetMapFabsForSidePanel(0)
             return
         }
         mapBinding.poiCard.isVisible = true
+        mapBinding.mapBottomSwipeHost.isVisible = true
         val overlayGroup = BdlOverlayCatalog.groupForLayer(selected.site.sourceLayerId)
         val title = if (overlayGroup != null) {
             getString(R.string.bdl_overlay_card_title, overlayGroup.labelPl, selected.site.name)
@@ -2692,17 +2695,36 @@ class MainActivity : AppCompatActivity() {
             mapBinding.cardSavedMeta.isVisible = false
         }
         mapBinding.mapBottomSwipeHost.post {
-            offsetMapFabsForCard(
-                if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.height else 0,
-            )
+            if (isLandscape()) {
+                offsetMapFabsForCard(0)
+                val panelW = if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.width else 0
+                offsetMapFabsForSidePanel(panelW)
+            } else {
+                offsetMapFabsForSidePanel(0)
+                offsetMapFabsForCard(
+                    if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.height else 0,
+                )
+            }
         }
     }
+
+    private fun isLandscape(): Boolean =
+        resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     private fun offsetMapFabsForCard(overlayPx: Int) {
         val dy = -overlayPx.toFloat()
         mapBinding.btnMapPlaceFilters.translationY = dy
         mapBinding.btnMapTrackLocation.translationY = dy
         mapBinding.btnMapMyLocation.translationY = dy
+    }
+
+    /** Landscape side panel: shift end FABs left so they stay on the map. */
+    private fun offsetMapFabsForSidePanel(panelPx: Int) {
+        val dx = -panelPx.toFloat()
+        mapBinding.btnMapTrackLocation.translationX = dx
+        mapBinding.btnMapMyLocation.translationX = dx
+        // Filters stay bottom-start; no horizontal shift.
+        mapBinding.btnMapPlaceFilters.translationX = 0f
     }
 
     private fun categoriesLabelFor(

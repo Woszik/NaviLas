@@ -19,4 +19,9 @@
         <item name="android:textColorPrimary">@color/black</item>
         <item name="android:textColorSecondary">@color/black</item>
     </style>
+
+    <style name="TextAppearance.NaviLas.ToolbarTitleCompact" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/forest_on_primary</item>
+    </style>
 </resources>

@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.61-nightly | 74 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.62-nightly | 75 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.62
+
+Landscape A+B: niższy toolbar i stopka bez ◀▶; mapa na pełną wysokość, hint jako overlay, karta POI z boku (scroll), FAB-y nie nachodzą na panel.
 
 ## Nightly 0.5.61
 

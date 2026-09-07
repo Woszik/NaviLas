@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Landscape: map fills height; hint overlays map; POI card is a side panel. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <pl.navilas.finder.ui.MapPagerTouchBridge
+        android:id="@+id/mapTouchBridge"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <org.maplibre.android.maps.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/mapZoomScale"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="8dp"
+            android:background="#CC212121"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="z —"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="#FFFFFF"
+            tools:text="z 11.2" />
+
+        <TextView
+            android:id="@+id/mapSearchHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:layout_marginHorizontal="48dp"
+            android:layout_marginTop="8dp"
+            android:alpha="0.95"
+            android:background="#CC212121"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:text="@string/map_search_pin_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="#FFFFFF"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/btnMapPlaceFilters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="10dp"
+            android:contentDescription="@string/map_filter_fab"
+            android:text="@string/map_filter_fab"
+            app:backgroundTint="?attr/colorSecondaryContainer"
+            app:icon="@drawable/ic_filter_list"
+            app:iconPadding="6dp"
+            app:iconTint="?attr/colorOnSecondaryContainer" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMapTrackLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="62dp"
+            android:contentDescription="@string/map_tracking_cd"
+            app:backgroundTint="?attr/colorSecondaryContainer"
+            app:fabSize="mini"
+            app:srcCompat="@android:drawable/ic_media_play"
+            app:tint="?attr/colorOnSecondaryContainer" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMapMyLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="10dp"
+            android:contentDescription="@string/map_my_location_cd"
+            app:backgroundTint="?attr/colorSecondaryContainer"
+            app:fabSize="mini"
+            app:srcCompat="@android:drawable/ic_menu_mylocation"
+            app:tint="?attr/colorOnSecondaryContainer" />
+    </pl.navilas.finder.ui.MapPagerTouchBridge>
+
+    <pl.navilas.finder.ui.NestedScrollableHost
+        android:id="@+id/mapBottomSwipeHost"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:layout_marginVertical="4dp"
+        android:layout_marginEnd="4dp">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="false"
+            android:scrollbars="vertical">
+
+            <include layout="@layout/poi_card" />
+        </androidx.core.widget.NestedScrollView>
+    </pl.navilas.finder.ui.NestedScrollableHost>
+</FrameLayout>
