@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchBinding: PageSearchBinding
     private lateinit var mapBinding: PageMapBinding
     /** Included POI card (portrait bottom / landscape side panel). */
-    private val poi get() = poi.poiCardInclude
+    private val poi get() = mapBinding.poiCardInclude
     private lateinit var listBinding: PageListBinding
     private lateinit var mapView: MapView
     private val viewModel: MainViewModel by viewModels()
