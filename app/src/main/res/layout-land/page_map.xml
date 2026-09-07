@@ -91,14 +91,15 @@
     <pl.navilas.finder.ui.NestedScrollableHost
         android:id="@+id/mapBottomSwipeHost"
         android:layout_width="300dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:layout_marginVertical="4dp"
-        android:layout_marginEnd="4dp">
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginBottom="4dp">
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:fillViewport="false"
             android:scrollbars="vertical">
 

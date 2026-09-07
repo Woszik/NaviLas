@@ -1,9 +1,9 @@
 ---
-description: Landscape C (Porównaj sheet) jest w 0.5.64; nie wracać do tabeli w nagłówku listy
+description: Porównaj is an overlay card on the list (0.5.65), not a BottomSheet
 globs: app/src/main/res/layout/page_list.xml
 alwaysApply: false
 ---
 
-# Porównaj — sheet, nie nagłówek listy
+# Porównaj — karta overlay, nie sheet
 
-Od Nightly **0.5.64** tabela Porównaj jest w `bottom_sheet_compare.xml` (scroll pion + poziom). Nie wstawiaj jej z powrotem do `page_list.xml`. Compact i D nadal odłożone.
+Od Nightly **0.5.65** tabela jest w `compareOverlay` na ekranie listy (X / wstecz). Nie wracać do `BottomSheetDialog` ani do nagłówka listy. Compact i D odłożone.

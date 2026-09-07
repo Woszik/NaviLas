@@ -214,6 +214,7 @@
     <string name="map_tracking_active">Śledzenie pozycji włączone.</string>
     <string name="map_tracking_paused">Śledzenie wstrzymane — naciśnij ▶, aby wznowić.</string>
     <string name="close_poi_card">Zamknij kartę miejsca</string>
+    <string name="close_compare_card">Zamknij porównanie</string>
     <string name="poi_distance_no_gps">Włącz GPS, by zobaczyć odległość</string>
     <string name="location_updated">Lokalizacja GPS zaktualizowana.</string>
     <string name="location_updated_search">Lokalizacja GPS zaktualizowana. Wyszukiwanie od GPS.</string>

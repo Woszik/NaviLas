@@ -38,9 +38,9 @@ Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga
 
 Od **0.5.60**: drugi klik w zaznaczony pin odznacza. Zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.
 
-### Porównaj w sheet (Nightly 0.5.64)
+### Porównaj overlay (Nightly 0.5.65)
 
-Lista → Porównaj zaznaczone otwiera bottom sheet: scroll pion + poziom, sticky etykiety, klik nazwy → mapa.
+Lista → Porównaj: karta nad listą, **X** / wstecz zamyka. Scroll pion + poziom, sticky etykiety, klik nazwy → mapa.
 
 ## Pomysły na przyszłość
 
