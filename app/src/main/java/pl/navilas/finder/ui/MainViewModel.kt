@@ -217,6 +217,8 @@ data class UiState(
     val searchConfig: SearchConfig = SearchConfig.DEFAULT,
     val offlineBdl: OfflineBdlState = OfflineBdlState(),
     val listViewMode: ListViewMode = ListViewMode.SEARCH,
+    /** Lista → Porównaj overlay; survives rotation via ViewModel. */
+    val compareOverlayOpen: Boolean = false,
     val savedPoints: Map<String, SavedPoint> = emptyMap(),
     val savedCategories: List<SavedPointCategory> = emptyList(),
     /** null = all categories in saved list. */
@@ -256,6 +258,12 @@ data class UiState(
     }
 
     val selectedSiteId: String? get() = selectedSiteIds.lastOrNull()
+
+    fun canShowCompareOverlay(): Boolean =
+        listViewMode == ListViewMode.SEARCH && selectedSiteIds.size >= 2
+
+    fun withCompareOverlaySanitized(): UiState =
+        if (compareOverlayOpen && !canShowCompareOverlay()) copy(compareOverlayOpen = false) else this
 
     fun isSaved(siteId: String): Boolean = savedPoints.containsKey(siteId)
 
@@ -1885,7 +1893,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setListViewMode(mode: ListViewMode) {
         _state.update { current ->
-            current.copy(listViewMode = mode)
+            current.copy(listViewMode = mode).withCompareOverlaySanitized()
+        }
+    }
+
+    fun setCompareOverlayOpen(open: Boolean) {
+        _state.update { current ->
+            val next = open && current.canShowCompareOverlay()
+            if (current.compareOverlayOpen == next) current
+            else current.copy(compareOverlayOpen = next)
         }
     }
 
@@ -2170,7 +2186,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     current.mapCameraRequest
                 },
-            )
+            ).withCompareOverlaySanitized()
         }
         analyzeSelectedRoadsIfNeeded()
     }

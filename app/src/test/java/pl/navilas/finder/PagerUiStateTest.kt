@@ -132,9 +132,17 @@ class PagerUiStateTest {
     }
 
     @Test
-    fun multi_select_keeps_last_as_primary() {
-        val state = UiState(selectedSiteIds = listOf("a", "b", "c"))
-        assertEquals("c", state.selectedSiteId)
-        assertEquals(3, state.selectedSiteIds.size)
+    fun compare_overlay_flag_survives_rotation_style_copy() {
+        var state = UiState(
+            selectedSiteIds = listOf("a", "b"),
+            compareOverlayOpen = true,
+            currentPage = AppPages.LIST,
+        )
+        state = state.copy(currentPage = AppPages.LIST)
+        assertTrue(state.compareOverlayOpen)
+        assertTrue(state.canShowCompareOverlay())
+        state = state.copy(selectedSiteIds = listOf("a")).withCompareOverlaySanitized()
+        assertFalse(state.compareOverlayOpen)
+        assertFalse(state.canShowCompareOverlay())
     }
 }

@@ -1471,7 +1471,6 @@ class MainActivity : AppCompatActivity() {
         }
         listBinding.btnManageCategories.setOnClickListener { showManageCategoriesDialog() }
         listBinding.btnSavedBackup.setOnClickListener { showSavedBackupMenu(it) }
-        listBinding.btnCloseCompare.setOnClickListener { hideCompareOverlay() }
         listBinding.compareScrim.setOnClickListener { hideCompareOverlay() }
         setupCompareHScrollSync()
         listBinding.savedCategoryFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -1678,7 +1677,7 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (listBinding.compareLayer.isVisible) {
+                    if (viewModel.state.value.compareOverlayOpen) {
                         hideCompareOverlay()
                         return
                     }
@@ -2438,36 +2437,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindCompareUi(state: UiState) {
-        val canCompare = state.listViewMode == ListViewMode.SEARCH &&
-            state.selectedSiteIds.size >= 2
+        val canCompare = state.canShowCompareOverlay()
         listBinding.btnCompareSelection.isVisible = canCompare
         if (!canCompare) {
-            hideCompareOverlay()
+            applyCompareLayerVisible(false)
+            if (state.compareOverlayOpen) viewModel.setCompareOverlayOpen(false)
             return
         }
         listBinding.btnCompareSelection.text =
             getString(R.string.compare_selection) + " (${state.selectedSiteIds.size})"
         listBinding.btnCompareSelection.setOnClickListener { showCompareOverlay() }
-        if (listBinding.compareLayer.isVisible) {
+        if (state.compareOverlayOpen) {
+            applyCompareLayerVisible(true)
             fillCompareTable(state)
+        } else {
+            applyCompareLayerVisible(false)
         }
+    }
+
+    private fun applyCompareLayerVisible(visible: Boolean) {
+        if (listBinding.compareLayer.isVisible != visible) {
+            listBinding.compareLayer.isVisible = visible
+            if (!visible) {
+                listBinding.compareVerticalScroll.maxHeightPx = Int.MAX_VALUE
+            }
+        }
+        syncPagerSwipeLock()
     }
 
     private fun hideCompareOverlay() {
-        listBinding.compareLayer.isVisible = false
-        listBinding.compareVerticalScroll.maxHeightPx = Int.MAX_VALUE
-        syncPagerSwipeLock()
+        applyCompareLayerVisible(false)
+        viewModel.setCompareOverlayOpen(false)
     }
 
     private fun showCompareOverlay() {
-        val state = viewModel.state.value
-        val count = viewModel.displayedListResults(state).count {
-            it.site.id in state.selectedSiteIds
-        }
-        if (count < 2) return
-        listBinding.compareLayer.isVisible = true
-        fillCompareTable(state)
-        syncPagerSwipeLock()
+        viewModel.setCompareOverlayOpen(true)
     }
 
     private fun syncPagerSwipeLock() {
@@ -2511,8 +2515,6 @@ class MainActivity : AppCompatActivity() {
             hideCompareOverlay()
             return
         }
-        listBinding.compareSheetTitle.text =
-            getString(R.string.compare_selection) + " (${items.size})"
         val nameLabelTable = listBinding.compareNameLabelTable
         val nameTable = listBinding.compareNameTable
         val labelTable = listBinding.compareLabelTable
