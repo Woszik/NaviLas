@@ -2582,7 +2582,6 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.compare_name),
             items.map { it.site.name },
         ) { index ->
-            hideCompareOverlay()
             viewModel.onListItemSelected(items[index].site.id)
         }
         addRow(

@@ -1,9 +1,9 @@
 ---
-description: Porównaj overlay without title bar; open state in ViewModel (0.5.67)
+description: Porównaj overlay stays open after name click to map (0.5.68)
 globs: app/src/main/res/layout/page_list.xml
 alwaysApply: false
 ---
 
 # Porównaj — karta overlay
 
-Od Nightly **0.5.67**: `compareLayer` bez belki tytułu/X; `UiState.compareOverlayOpen` (obrót). Zamykanie: scrim / wstecz. Nie wracać do BottomSheet ani do paska z X.
+Od Nightly **0.5.68**: `compareOverlayOpen` zostaje przy kliku nazwy (skok na mapę). Zamykanie: scrim / wstecz. Bez belki tytułu/X.

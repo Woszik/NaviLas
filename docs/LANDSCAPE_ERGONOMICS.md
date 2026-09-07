@@ -11,7 +11,7 @@ Testy ręczne: **Cubot KINGKONG 8** (wzorzec „wystarczająco duży”) i **Bla
 | **A** | Landscape: niższy toolbar, stopka bez ◀▶ (zostają zakładki + gest) | **zrobione** Nightly **0.5.62** |
 | **A′ / 1** | Landscape: **jedna belka** (⋮ + Szukaj/Mapa/Lista), bez tytułu, bez dolnego paska | **zrobione** Nightly **0.5.63** |
 | **B** | Landscape mapa: pełna wysokość, hint overlay, karta POI z boku | **zrobione** Nightly **0.5.62** |
-| **C** | Lista: Porównaj overlay — treść, sticky nazwy, bez belki, zostaje po obrocie | **zrobione** Nightly **0.5.67** |
+| **C** | Lista: Porównaj overlay — treść, sticky nazwy, bez belki, zostaje po obrocie i po skoku na mapę | **zrobione** Nightly **0.5.68** |
 | **D** | Landscape dwukolumnowy | **odłożone** |
 
 Portret: dwa paski jak dotychczas.
@@ -19,7 +19,7 @@ Portret: dwa paski jak dotychczas.
 ## Kolejka Nightly (nie Compact)
 
 1. ~~Jedna belka chrome w poziomie~~ **0.5.63**
-2. ~~**C** — Porównaj overlay (treść, sticky nazwy, bez belki, obrót)~~ **0.5.67**
+2. ~~**C** — Porównaj overlay (treść, sticky nazwy, bez belki, obrót, klik nazwy)~~ **0.5.68**
 3. Compact — nadal **pomysł na przyszłość** (poniżej Otwarte w TODO).
 
 ## Gęstość Compact — pomysł na przyszłość

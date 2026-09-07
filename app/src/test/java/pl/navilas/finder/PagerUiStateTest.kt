@@ -145,4 +145,16 @@ class PagerUiStateTest {
         assertFalse(state.compareOverlayOpen)
         assertFalse(state.canShowCompareOverlay())
     }
+
+    @Test
+    fun compare_overlay_stays_open_after_name_click_goes_to_map() {
+        var state = UiState(
+            selectedSiteIds = listOf("a", "b"),
+            compareOverlayOpen = true,
+            currentPage = AppPages.LIST,
+        )
+        state = state.copy(currentPage = AppPages.MAP).withCompareOverlaySanitized()
+        assertTrue(state.compareOverlayOpen)
+        assertEquals(AppPages.MAP, state.currentPage)
+    }
 }
