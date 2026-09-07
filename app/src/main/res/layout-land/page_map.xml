@@ -102,7 +102,9 @@
             android:fillViewport="false"
             android:scrollbars="vertical">
 
-            <include layout="@layout/poi_card" />
+            <include
+                android:id="@+id/poiCardInclude"
+                layout="@layout/poi_card" />
         </androidx.core.widget.NestedScrollView>
     </pl.navilas.finder.ui.NestedScrollableHost>
 </FrameLayout>

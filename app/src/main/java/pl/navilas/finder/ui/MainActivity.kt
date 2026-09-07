@@ -126,6 +126,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var searchBinding: PageSearchBinding
     private lateinit var mapBinding: PageMapBinding
+    /** Included POI card (portrait bottom / landscape side panel). */
+    private val poi get() = poi.poiCardInclude
     private lateinit var listBinding: PageListBinding
     private lateinit var mapView: MapView
     private val viewModel: MainViewModel by viewModels()
@@ -1651,17 +1653,17 @@ class MainActivity : AppCompatActivity() {
             requestLocationPermissions(forceCenter = false, forTrackingToggle = true)
         }
         mapBinding.btnMapPlaceFilters.setOnClickListener { showMapFilterBottomSheet() }
-        mapBinding.btnCloseCard.setOnClickListener { viewModel.closeSelectedSite() }
-        mapBinding.btnSaveCard.setOnClickListener {
+        poi.btnCloseCard.setOnClickListener { viewModel.closeSelectedSite() }
+        poi.btnSaveCard.setOnClickListener {
             selectedResult()?.let { onSaveClicked(it) }
         }
-        mapBinding.cardEditSaved.setOnClickListener {
+        poi.cardEditSaved.setOnClickListener {
             selectedResult()?.let { showEditSavedDialog(it.site.id) }
         }
-        mapBinding.cardDetails.setOnClickListener {
+        poi.cardDetails.setOnClickListener {
             selectedResult()?.let { showDetails(it) }
         }
-        mapBinding.cardNavigate.setOnClickListener {
+        poi.cardNavigate.setOnClickListener {
             selectedResult()?.let { showNavigateChooser(it) }
         }
     }
@@ -2600,13 +2602,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindPoiCard(selected: RestSiteResult?, state: UiState) {
         if (selected == null) {
-            mapBinding.poiCard.isVisible = false
+            poi.poiCard.isVisible = false
             mapBinding.mapBottomSwipeHost.isVisible = false
             offsetMapFabsForCard(0)
             offsetMapFabsForSidePanel(0)
             return
         }
-        mapBinding.poiCard.isVisible = true
+        poi.poiCard.isVisible = true
         mapBinding.mapBottomSwipeHost.isVisible = true
         val overlayGroup = BdlOverlayCatalog.groupForLayer(selected.site.sourceLayerId)
         val title = if (overlayGroup != null) {
@@ -2614,19 +2616,19 @@ class MainActivity : AppCompatActivity() {
         } else {
             RestSiteTitles.cardTitle(selected.site.name)
         }
-        mapBinding.cardTitle.text = if (state.selectedSiteIds.size > 1) {
+        poi.cardTitle.text = if (state.selectedSiteIds.size > 1) {
             title + " · " + getString(R.string.selection_count, state.selectedSiteIds.size)
         } else {
             title
         }
-        mapBinding.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
-        mapBinding.cardFeatures.text = if (overlayGroup != null) {
+        poi.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
+        poi.cardFeatures.text = if (overlayGroup != null) {
             selected.site.description?.replace("\n", " · ")
                 ?: selected.site.featureSummaryPl()
         } else {
             selected.site.featureSummaryPl()
         }
-        mapBinding.cardZanocuj.text = when (selected.site.zanocujStatus) {
+        poi.cardZanocuj.text = when (selected.site.zanocujStatus) {
             ZanocujStatus.IN_ZONE -> getString(R.string.zanocuj_in_zone_emoji)
             ZanocujStatus.NEAR_ZONE -> getString(R.string.zanocuj_near_zone_emoji)
             ZanocujStatus.OUTSIDE_ZONE -> zanocujLabel(
@@ -2634,13 +2636,13 @@ class MainActivity : AppCompatActivity() {
                 selected.site.distanceToZanocujBoundaryMeters,
             )
         }
-        mapBinding.cardZanocuj.isVisible = selected.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
+        poi.cardZanocuj.isVisible = selected.site.zanocujStatus != ZanocujStatus.OUTSIDE_ZONE
         val entryBan = state.entryBanAt(selected.site.latitude, selected.site.longitude)
         if (entryBan != null) {
-            mapBinding.cardEntryBan.text = getString(R.string.entry_ban_on_site, entryBan.summaryPl())
-            mapBinding.cardEntryBan.isVisible = true
+            poi.cardEntryBan.text = getString(R.string.entry_ban_on_site, entryBan.summaryPl())
+            poi.cardEntryBan.isVisible = true
         } else {
-            mapBinding.cardEntryBan.isVisible = false
+            poi.cardEntryBan.isVisible = false
         }
         val analyzingThisSite = state.isAnalyzingRoads &&
             state.profile == TravelProfile.MOTORCYCLE &&
@@ -2657,26 +2659,26 @@ class MainActivity : AppCompatActivity() {
             motoCardLine(selected, state.profile)
         }
         if (motoCard != null) {
-            mapBinding.cardRoad.text = motoCard
-            mapBinding.cardRoad.isVisible = true
+            poi.cardRoad.text = motoCard
+            poi.cardRoad.isVisible = true
             if (analyzingThisSite) {
-                mapBinding.cardRoadProgress.isVisible = true
-                mapBinding.cardRoadProgress.max = progressTotal
-                mapBinding.cardRoadProgress.progress = progressCompleted
+                poi.cardRoadProgress.isVisible = true
+                poi.cardRoadProgress.max = progressTotal
+                poi.cardRoadProgress.progress = progressCompleted
             } else {
-                mapBinding.cardRoadProgress.isVisible = false
+                poi.cardRoadProgress.isVisible = false
             }
         } else {
-            mapBinding.cardRoad.isVisible = false
-            mapBinding.cardRoadProgress.isVisible = false
+            poi.cardRoad.isVisible = false
+            poi.cardRoadProgress.isVisible = false
         }
-        mapBinding.cardNavigate.isVisible = true
+        poi.cardNavigate.isVisible = true
         val saved = state.savedPoint(selected.site.id)
         val isSaved = saved != null
-        mapBinding.btnSaveCard.setImageResource(
+        poi.btnSaveCard.setImageResource(
             if (isSaved) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off,
         )
-        mapBinding.cardEditSaved.isVisible = isSaved
+        poi.cardEditSaved.isVisible = isSaved
         if (saved != null) {
             val categoryLabel = categoriesLabelFor(saved.categoryIds, state.savedCategories)
             val parts = buildList {
@@ -2689,20 +2691,20 @@ class MainActivity : AppCompatActivity() {
                 )
                 saved.userComment?.let { add(getString(R.string.saved_item_comment, it)) }
             }
-            mapBinding.cardSavedMeta.text = parts.joinToString(" · ")
-            mapBinding.cardSavedMeta.isVisible = true
+            poi.cardSavedMeta.text = parts.joinToString(" · ")
+            poi.cardSavedMeta.isVisible = true
         } else {
-            mapBinding.cardSavedMeta.isVisible = false
+            poi.cardSavedMeta.isVisible = false
         }
         mapBinding.mapBottomSwipeHost.post {
             if (isLandscape()) {
                 offsetMapFabsForCard(0)
-                val panelW = if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.width else 0
+                val panelW = if (poi.poiCard.isVisible) mapBinding.mapBottomSwipeHost.width else 0
                 offsetMapFabsForSidePanel(panelW)
             } else {
                 offsetMapFabsForSidePanel(0)
                 offsetMapFabsForCard(
-                    if (mapBinding.poiCard.isVisible) mapBinding.mapBottomSwipeHost.height else 0,
+                    if (poi.poiCard.isVisible) mapBinding.mapBottomSwipeHost.height else 0,
                 )
             }
         }

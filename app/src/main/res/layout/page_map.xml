@@ -101,7 +101,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <include layout="@layout/poi_card" />
+                <include
+                    android:id="@+id/poiCardInclude"
+                    layout="@layout/poi_card" />
             </FrameLayout>
         </pl.navilas.finder.ui.NestedScrollableHost>
     </FrameLayout>
