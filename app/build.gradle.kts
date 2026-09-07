@@ -11,8 +11,8 @@ android {
         applicationId = "pl.navilas.finder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 72
-        versionName = "0.5.59-nightly"
+        versionCode = 73
+        versionName = "0.5.60-nightly"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

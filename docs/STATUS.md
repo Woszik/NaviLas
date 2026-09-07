@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-06**.
+Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.59-nightly | 72 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.60-nightly | 73 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.60
+
+Klik w pin na mapie: niezaznaczony → zaznacza (jak dotąd); już zaznaczony → odznacza. Lista / X / puste tło bez zmian.
 
 ## Nightly 0.5.59
 
@@ -50,7 +54,7 @@ Brak OsmAnd/Cruisera → dialog, nie cichy fallback na `geo:`. Szczegóły: [`NA
 - Szukanie **miejsca BDL po nazwie** (offline); belka w Filtrach miejsc.
 - Szczegóły → **Szukaj informacji** (Google od nazwy BDL); **Zarządca → Dociągnij z BDL** (nadleśnictwo / leśnictwo).
 - Auto-pobranie zakazów wstępu po instalacji; w nocy mapa domyślnie **Liberty**, opcja Dark w Ustawieniach.
-- Klik w Browse zawsze otwiera kartę; postęp analizy OSM w karcie + failover Overpass.
+- Klik w pin: zaznacza / drugi klik odznacza; postęp analizy OSM w karcie + failover Overpass.
 - Opisy kanałów Nightly / Beta / Final w Ustawieniach i README releases.
 
 ### Wyszukiwanie miejscowości

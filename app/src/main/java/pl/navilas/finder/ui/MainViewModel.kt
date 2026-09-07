@@ -2175,13 +2175,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         analyzeSelectedRoadsIfNeeded()
     }
 
-    /** Marker tap: always open/focus the card. Browse does not move the camera. */
+    /** Marker tap: select if new; deselect if already selected. Browse does not move the camera. */
     fun onMarkerSelected(siteId: String) {
         pauseMapTrackingForPoiInteraction()
         ignoreEmptyMapClickUntilElapsedMs =
             System.currentTimeMillis() + EMPTY_MAP_CLICK_DEBOUNCE_MS
-        val nextIds = SiteSelection.add(_state.value.selectedSiteIds, siteId)
-        val moveCamera = !_state.value.isMapBrowse()
+        val wasSelected = siteId in _state.value.selectedSiteIds
+        val nextIds = SiteSelection.toggle(_state.value.selectedSiteIds, siteId)
+        val selecting = !wasSelected
+        val moveCamera = selecting && !_state.value.isMapBrowse()
         val token = if (moveCamera) cameraToken.getAndIncrement() else null
         applySelection(
             nextIds,

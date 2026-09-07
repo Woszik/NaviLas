@@ -34,6 +34,6 @@ Offline BDL 15/17/19, propozycje od 3 znaków, fold PL + literówki, skok na map
 
 Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga sieci.
 
-### Głuchy klik punktu w przeglądaniu mapy (Nightly 0.5.48)
+### Głuchy klik punktu w przeglądaniu mapy (Nightly 0.5.48 → 0.5.60)
 
-Klik w pin zawsze otwiera kartę; zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.
+Od **0.5.60**: drugi klik w zaznaczony pin odznacza. Zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.

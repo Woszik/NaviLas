@@ -13,6 +13,17 @@ class SiteSelectionTest {
     }
 
     @Test
+    fun toggle_removes_non_primary_from_multi() {
+        assertEquals(listOf("b"), SiteSelection.toggle(listOf("a", "b"), "a"))
+        assertEquals(listOf("a"), SiteSelection.toggle(listOf("a", "b"), "b"))
+    }
+
+    @Test
+    fun toggle_adds_as_primary_when_absent() {
+        assertEquals(listOf("a", "b"), SiteSelection.toggle(listOf("a"), "b"))
+    }
+
+    @Test
     fun add_on_primary_keeps_selection() {
         assertEquals(listOf("a"), SiteSelection.add(listOf("a"), "a"))
     }
