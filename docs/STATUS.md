@@ -6,8 +6,8 @@ Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.68-nightly | 81 |
-| **Beta** | GitHub Releases | 0.5.58 | 71 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.68 | 81 |
+| **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
 Model i mapowanie: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).  
@@ -20,7 +20,17 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.68** (versionCode 81): APK z [NaviLas-releases v0.5.68](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.68). Promocja Nightly 0.5.59–0.5.68. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nowości Beta 0.5.68
+
+Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
+
+- **Poziom:** jedna belka (⋮ + Szukaj/Mapa/Lista); mapa na pełną wysokość; karta miejsca z boku, wysokość treści (klik pod kartą idzie w mapę).
+- **Porównaj:** karta nad listą (nie sheet), scrim, przyklejone nazwy, bez tytułu/X; zostaje po obrocie i po kliku nazwy na mapę. Zamykanie: tło / wstecz. Na otwartej karcie swipe nie zmienia ekranów.
+- **Mapa:** drugi klik w zaznaczony pin odznacza.
+
+Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
 
 ## Nightly 0.5.68
 
@@ -139,9 +149,9 @@ Zapis: [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md). Testy: KINGKONG 8 +
 
 | Krok | Stan |
 |------|------|
-| **A+B** chrome + mapa landscape | Nightly **0.5.62** |
-| **1** jedna belka w poziomie | Nightly **0.5.63** |
-| **C** Porównaj overlay (klik nazwy nie zamyka) | Nightly **0.5.68** |
+| **A+B** chrome + mapa landscape | Beta **0.5.68** |
+| **1** jedna belka w poziomie | Beta **0.5.68** |
+| **C** Porównaj overlay (klik nazwy nie zamyka) | Beta **0.5.68** |
 | **D** split dwukolumnowy | odłożone |
 
 ## Do dopracowania

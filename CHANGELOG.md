@@ -9,6 +9,16 @@ Format: `versionName` (versionCode) — data — krótki opis. Link do APK na Gi
 
 ---
 
+## 0.5.68 (81) — 2026-09-07
+
+**APK:** [navilas-0.5.68.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.68/navilas-0.5.68.apk)
+
+Poziom: jedna belka (⋮ + Szukaj/Mapa/Lista), mapa na pełną wysokość, karta miejsca z boku tylko na treść (klik pod kartą idzie w mapę). Lista → **Porównaj**: karta nad listą na wysokość treści, scrim, przyklejone nazwy, bez belki tytułu/X; zostaje po obrocie i po kliku nazwy (skok na mapę). Zamykanie: tap w tło albo wstecz. Drugi klik w zaznaczony pin na mapie odznacza.
+
+**Poprzednia wersja:** [0.5.58](#0558-71--2026-09-06)
+
+---
+
 ## 0.5.58 (71) — 2026-09-06
 
 **APK:** [navilas-0.5.58.apk](https://github.com/Woszik/NaviLas-releases/releases/download/v0.5.58/navilas-0.5.58.apk)
