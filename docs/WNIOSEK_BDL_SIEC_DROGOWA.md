@@ -1,10 +1,16 @@
 # Wniosek do BDL / DGLP — sieć drogowa i status udostępnienia
 
-**Stan:** **wysłany** e-mailem **2026-09-03** na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl).  
+**Stan:** **wysłany** e-mailem **2026-09-03** na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl); **odpowiedź 2026-09-07**.  
 **Temat:** Wniosek o ponowne wykorzystanie danych sieci drogowej LP (status udostępnienia do ruchu) — aplikacja NaviLas  
 **Numer zgłoszenia (BDL-Pomoc):** **BDLPOMOC-3343**  
 **Autoresponder:** 2026-09-03, 23:34 — zgłoszenie zarejestrowane, status *To Do*.  
-**Odpowiedź merytoryczna:** brak (oczekiwanie).
+**Odpowiedź merytoryczna (2026-09-07):** BDL / Lasy Państwowe **nie są w posiadaniu** geometrii sieci drogowej LP ani informacji o statusie udostępnienia dróg do ruchu kołowego.
+
+Cytat:
+
+> w odpowiedzi na zapytanie uprzejmie informujemy, że nie jesteśmy w posiadaniu geometrii sieci drogowej Lasów Państwowych ani informacji dotyczących statusu udostępnienia dróg do ruchu kołowego.
+
+**Skutek dla NaviLas:** bez oficjalnej warstwy źródłowej. Aplikacja zostaje przy heurystykach OSM: **dostęp niepewny** oraz **dojazd do oficjalnego parkingu / postoju LP** tam, gdzie to już działa. Treść wysłanego wniosku poniżej **bez zmian**.
 
 Oryginał PDF autorespondera i dane osobowe ze stopki maila są **tylko lokalnie** (poza tym repozytorium):  
 `~/Dokumenty/NaviLas/korespondencja-bdl/`.

@@ -4,15 +4,13 @@ Otwarte sprawy poza bieżącym kodem Nightly / Bety. Stan projektu: [`STATUS.md`
 
 ## Otwarte
 
-### Wniosek do DGLP / BDL — oczekiwanie na odpowiedź merytoryczną
-
-- **Wysłany:** 2026-09-03 na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl).
-- **Numer zgłoszenia:** **BDLPOMOC-3343** (BDL-Pomoc; autoresponder 2026-09-03).
-- **Treść wniosku:** [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md).
-- **Dalej:** odpowiedź BDL/DGLP (zakres, licencja, format, cykl) albo wskazanie właściwego adresata SILP.
-- Oryginał PDF autorespondera: lokalnie `~/Dokumenty/NaviLas/korespondencja-bdl/` (poza GitHub).
+Brak spraw poza pomysłami na przyszłość (Compact poniżej).
 
 ## Zrobione
+
+### Wniosek o sieć drogową LP — odpowiedź BDL (2026-09-07)
+
+**BDLPOMOC-3343.** BDL: LP **nie posiada** geometrii sieci drogowej ani statusu udostępnienia dróg do ruchu kołowego. NaviLas zostaje przy heurystykach OSM („dostęp niepewny”, dojazd do parkingu / postoju LP). BDL nie wskazał innego adresata. Ewentualny wniosek do DGLP / SILP — tylko jeśli zdecydujesz. Treść: [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md). Oryginał korespondencji lokalnie `~/Dokumenty/NaviLas/korespondencja-bdl/`.
 
 ### Wniosek o sieć drogową LP — wysłany (2026-09-03)
 

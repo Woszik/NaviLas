@@ -12,6 +12,8 @@
 **Nie** pobieramy całej Polski ani pełnego extractu.  
 **Nie** używamy `tile.openstreetmap.org` do analizy dróg.
 
+BDL / LP (**2026-09-07**, **BDLPOMOC-3343**) nie posiadają geometrii sieci drogowej LP ani statusu udostępnienia dróg do ruchu kołowego. Ranking dojazdu zostaje na OSM. [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md).
+
 ## Sposób zapytania
 
 Dla zbioru punktowych POI BDL budujemy lokalne zapytanie Overpass QL:
