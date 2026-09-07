@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Landscape: compact toolbar + tab bar without ◀▶ (gestures / tabs remain). -->
+<!-- Landscape: one chrome row (overflow + tabs). No app title, no bottom bar. -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -11,29 +11,104 @@
     <pl.navilas.finder.ui.PageSwipeZone
         android:id="@+id/toolbarSwipeZone"
         android:layout_width="0dp"
-        android:layout_height="48dp"
+        android:layout_height="40dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
             android:background="@color/toolbar_green"
-            android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
-            app:contentInsetStartWithNavigation="0dp"
-            app:menu="@menu/main_toolbar"
-            app:popupTheme="@style/Theme.NaviLas.ToolbarPopup"
-            app:title="@string/app_name"
-            app:titleTextAppearance="@style/TextAppearance.NaviLas.ToolbarTitleCompact" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolbar"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:background="@color/toolbar_green"
+                android:minWidth="40dp"
+                android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+                app:contentInsetEnd="0dp"
+                app:contentInsetStart="0dp"
+                app:contentInsetStartWithNavigation="0dp"
+                app:menu="@menu/main_toolbar"
+                app:popupTheme="@style/Theme.NaviLas.ToolbarPopup"
+                app:title=""
+                app:titleEnabled="false" />
+
+            <ImageButton
+                android:id="@+id/btnPagePrev"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:contentDescription="@string/page_prev"
+                android:src="@drawable/ic_chevron_left"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/pageTabs"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageSearch"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_search_short"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageMap"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_map"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPageList"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/page_list"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <ImageButton
+                android:id="@+id/btnPageNext"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:contentDescription="@string/page_next"
+                android:src="@drawable/ic_chevron_right"
+                android:visibility="gone" />
+        </LinearLayout>
     </pl.navilas.finder.ui.PageSwipeZone>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/pager"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/pageIndicatorBar"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbarSwipeZone" />
@@ -49,86 +124,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbarSwipeZone" />
 
+    <!-- Binding + swipe hook; no height in landscape (tabs live in the top bar). -->
     <pl.navilas.finder.ui.PageSwipeZone
         android:id="@+id/pageIndicatorBar"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        android:elevation="2dp"
-        android:minHeight="40dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="2dp">
-
-            <!-- Kept for ViewBinding / swipe handlers; hidden in landscape. -->
-            <ImageButton
-                android:id="@+id/btnPagePrev"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:visibility="gone"
-                android:contentDescription="@string/page_prev"
-                android:src="@drawable/ic_chevron_left" />
-
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/pageTabs"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPageSearch"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="0dp"
-                    android:text="@string/page_search_short"
-                    android:textSize="12sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPageMap"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="0dp"
-                    android:text="@string/page_map"
-                    android:textSize="12sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPageList"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="0dp"
-                    android:text="@string/page_list"
-                    android:textSize="12sp" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-
-            <ImageButton
-                android:id="@+id/btnPageNext"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:visibility="gone"
-                android:contentDescription="@string/page_next"
-                android:src="@drawable/ic_chevron_right" />
-        </LinearLayout>
-    </pl.navilas.finder.ui.PageSwipeZone>
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

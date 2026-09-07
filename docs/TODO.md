@@ -4,6 +4,10 @@ Otwarte sprawy poza bieżącym kodem Nightly / Bety. Stan projektu: [`STATUS.md`
 
 ## Otwarte
 
+### Kolejny Nightly: C — Porównaj w sheet (2D scroll)
+
+Dokończenie po **0.5.63** (jedna belka w poziomie). Porównaj zaznaczone → bottom sheet, scroll pion + poziom, sticky etykiety, klik nazwy → mapa. Bez D i bez Compact. [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md).
+
 ### Wniosek do DGLP / BDL — oczekiwanie na odpowiedź merytoryczną
 
 - **Wysłany:** 2026-09-03 na [bdl@bdl.lasy.gov.pl](mailto:bdl@bdl.lasy.gov.pl).
@@ -37,3 +41,13 @@ Szczegóły → Dociągnij z BDL: nadleśnictwo + leśnictwo z `WMS_BDL`. Wymaga
 ### Głuchy klik punktu w przeglądaniu mapy (Nightly 0.5.48 → 0.5.60)
 
 Od **0.5.60**: drugi klik w zaznaczony pin odznacza. Zamknięcie X albo puste tło (debounce). Browse bez zoomu kamery. Job OSM z tokenem pokolenia. Karta overlay na mapie; postęp analizy na karcie.
+
+## Pomysły na przyszłość
+
+Niższy priorytet niż **Otwarte** powyżej. Nie startować, dopóki nie polecisz.
+
+### Gęstość Compact (małe ekrany)
+
+Jeden APK, nie osobna aplikacja. Standard vs Compact; Ustawienia Auto / zawsze standard / zawsze zwarty. Auto: przekątna fizyczna **&lt; 6,0″** (BV6900 i ~5″ → Compact; KINGKONG 8 → Standard). Compact: ciaśniejszy chrome, w poziomie karta POI jako dolny sheet zamiast panelu bocznego; lista C (Porównaj w sheet) opcjonalnie w tym samym pakiecie.
+
+Szacunek: **3–4,5 dnia** z testami na BV6900 + KINGKONG 8. Bez D (split). Szczegóły i kolejność A–D: [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md).

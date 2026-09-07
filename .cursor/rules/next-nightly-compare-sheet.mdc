@@ -1,0 +1,11 @@
+---
+description: Next Nightly is compare sheet (C); do not skip
+globs:
+alwaysApply: true
+---
+
+# Landscape C — kolejny Nightly
+
+Po **0.5.63** (jedna belka w poziomie) **następna zmiana w Nightly** to krok **C**: lista → Porównaj jako bottom sheet ze scrollem pion + poziom (sticky etykiety, klik nazwy → mapa). Nie wdrażać D ani Compact, dopóki C nie jest na `main`.
+
+Szczegóły: `docs/LANDSCAPE_ERGONOMICS.md`, `docs/TODO.md` (Otwarte).

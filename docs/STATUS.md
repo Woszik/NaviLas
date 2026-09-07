@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-07**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.62-nightly | 75 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.63-nightly | 76 |
 | **Beta** | GitHub Releases | 0.5.58 | 71 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -21,6 +21,10 @@ Instalacja lokalnego buildu deweloperskiego:
 ```
 
 Oficjalna **Beta 0.5.58** (versionCode 71): APK z [NaviLas-releases v0.5.58](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.58). Promocja Nightly 0.5.47–0.5.58. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+
+## Nightly 0.5.63
+
+Landscape: jedna belka (menu ⋮ + Szukaj/Mapa/Lista), bez nazwy aplikacji i bez dolnego paska. **Następny Nightly: C** (Porównaj w sheet, 2D scroll).
 
 ## Nightly 0.5.62
 
@@ -109,6 +113,17 @@ Test ręczny 2026-08-30 na fizycznym urządzeniu:
 - kontrast zielonych przycisków i tekstu statusu sprawdzony w trybie nocnym,
 - w trybie dziennym tekst overflow menu jest czarny.
 
+## Ergonomia landscape (kolejność)
+
+Zapis: [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md). Testy: KINGKONG 8 + BV6900.
+
+| Krok | Stan |
+|------|------|
+| **A+B** chrome + mapa landscape | Nightly **0.5.62** |
+| **1** jedna belka w poziomie | Nightly **0.5.63** |
+| **C** Porównaj sheet + 2D scroll | **kolejny Nightly** |
+| **D** split dwukolumnowy | odłożone |
+
 ## Do dopracowania
 
 Tematy świadomie odłożone:
@@ -121,11 +136,16 @@ Zamiast eksportu GPX — **kopiowanie współrzędnych** do schowka (obecne rozw
 
 Nightly i Beta są w aplikacji i CI. Final (`final.json`) jeszcze nie istnieje.
 
+### 3. Gęstość Compact (małe ekrany)
+
+Pomysł na przyszłość, **poniżej** listy Otwarte w [`TODO.md`](TODO.md). Jeden APK, Auto/ręcznie, próg ~6″. [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md).
+
 ## Dokumentacja powiązana
 
 | Plik | Opis |
 |------|------|
 | [`TODO.md`](TODO.md) | Lista do zrobienia (poza bieżącym kodem) |
+| [`LANDSCAPE_ERGONOMICS.md`](LANDSCAPE_ERGONOMICS.md) | Landscape A–D; Compact = pomysł na przyszłość |
 | [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md) | Wniosek o sieć drogową — wysłany 2026-09-03, **BDLPOMOC-3343**, oczekiwanie na odpowiedź |
 | [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) | Nightly / Beta / Final |
 | [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) | Warstwy BDL + overlay browse |
