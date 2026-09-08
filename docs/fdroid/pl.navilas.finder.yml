@@ -16,13 +16,13 @@ RepoType: git
 Repo: https://github.com/Woszik/NaviLas
 
 Builds:
-  - versionName: '0.5.35'
-    versionCode: 39
-    commit: 3e94b518542d64a0ce34aa8cd154078dc0f7c03d
+  - versionName: '0.5.68'
+    versionCode: 81
+    commit: 624c89e3cfc51b81f8c216a850682f8744647b00
     gradle:
       - fdroidRelease
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.5.35
-CurrentVersionCode: 39
+CurrentVersion: 0.5.68
+CurrentVersionCode: 81

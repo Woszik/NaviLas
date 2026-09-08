@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.68** (versionCode 81): APK z [NaviLas-releases v0.5.68](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.68). Promocja Nightly 0.5.59–0.5.68. Propozycja F-Droid bez zmian: [`FDROID.md`](FDROID.md) / MR !46612.
+Oficjalna **Beta 0.5.68** (versionCode 81): APK z [NaviLas-releases v0.5.68](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.68). Promocja Nightly 0.5.59–0.5.68. Propozycja F-Droid: ta sama Beta, MR [!46612](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46612) — [`FDROID.md`](FDROID.md).
 
 ## Nowości Beta 0.5.68
 

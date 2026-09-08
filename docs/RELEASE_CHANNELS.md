@@ -19,7 +19,7 @@ F-Droid: niezależna dystrybucja flavoru `fdroid`; tylko na wyraźne polecenie, 
 | **Beta** | aktywny | tagi `vX.Y.Z` + `latest.json` | Publikacja i użytkowanie testowe **na zasadach bety**. |
 | **Final** | **jeszcze nie** | przyszły `final.json` | Docelowo kanał produkcyjny; błędy po zgłoszeniu — **naprawy priorytetowe**. |
 
-**F-Droid** to osobna dystrybucja (flavor `fdroid`, inny podpis). MR !46612 zostaje przy ostatniej uzgodnionej propozycji, dopóki nie polecisz aktualizacji.
+**F-Droid** to osobna dystrybucja (flavor `fdroid`, inny podpis). MR !46612 proponuje **Beta 0.5.68** (tag `v0.5.68`).
 
 **Ważne:** APK GitHub i F-Droid mają **różne podpisy** — zmiana źródła dystrybucji wymaga reinstalacji (najpierw eksport zapisanych miejsc). Nightly / Beta / Final na GitHubie mają **ten sam podpis**.
 
@@ -88,5 +88,5 @@ F-Droid pozostaje niezależny i aktualizowany wyłącznie na polecenie.
 |---------|-------|
 | 0.5.68 / `latest.json` | **Beta** (versionCode 81) |
 | 0.5.69-nightly / `nightly.json` | **Nightly** (versionCode 82) |
-| F-Droid MR | osobna dystrybucja; nie ruszana przy Nightly |
+| F-Droid MR !46612 | kandydat **0.5.68** (ten sam co Beta GitHub) |
 | Final | **jeszcze nie** |

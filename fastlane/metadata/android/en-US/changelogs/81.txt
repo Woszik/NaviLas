@@ -1,0 +1,1 @@
+Landscape: one bar, side place card; Compare overlay on the list (sticky names, stays after rotation and map jump). Second tap on a selected pin deselects it.

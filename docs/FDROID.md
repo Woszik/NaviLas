@@ -1,10 +1,10 @@
 # F-Droid — NaviLas
 
-Stan: **MR otwarty, po pierwszej rundzie recenzji — czekamy na kolejne spojrzenie maintainera** (2026-08-30).
+Stan: **MR otwarty — kandydat podbity do Beta 0.5.68** (2026-09-08). Czekamy na kolejne spojrzenie maintainera.
 
 Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/)
 
-**Relacja do kanałów GitHub:** F-Droid to osobna dystrybucja (inny podpis, flavor `fdroid`). Do otwartego MR proponowana jest obecna stabilna **Beta 0.5.35**; przyjęcie i publikacja nadal zależą od maintainerów F-Droid. Model kanałów GitHub: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
+**Relacja do kanałów GitHub:** F-Droid to osobna dystrybucja (inny podpis, flavor `fdroid`). Do otwartego MR proponowana jest aktualna **Beta 0.5.68**; przyjęcie i publikacja nadal zależą od maintainerów F-Droid. Model kanałów GitHub: [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md).
 
 ---
 
@@ -17,11 +17,11 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Fork fdroiddata** | https://gitlab.com/Woszik/fdroiddata |
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
-| **Kandydat w szablonie repo NaviLas** | tag `v0.5.35`, versionCode 39, commit `3e94b51` |
-| **Kandydat na forku GitLab (live MR)** | 0.5.35 po `git push` z `/tmp/fdroiddata` |
+| **Kandydat w szablonie repo NaviLas** | tag `v0.5.68`, versionCode 81, commit `624c89e` |
+| **Kandydat na forku GitLab (live MR)** | 0.5.68 (Beta GitHub) |
 | **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
 | **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
-| **Ostatnia aktywność autora** | 2026-08-30 — szablon 0.5.35 (commit `3e94b51`) |
+| **Ostatnia aktywność autora** | 2026-09-08 — podbicie kandydata do Beta **0.5.68** |
 | **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
 
 ### Zrobione
@@ -60,7 +60,7 @@ Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRI
 | Licencja | **GPL-3.0-or-later** — plik [`LICENSE`](../LICENSE) |
 | Źródła | **Publiczne** — `https://github.com/Woszik/NaviLas` |
 | Reproducible / jeden podpis | **Nie** — za wysoki koszt utrzymania |
-| GitHub + F-Droid równolegle | **Tak** — różne podpisy; wersja 0.5.35 jest Betą GitHub i kandydatem do otwartego MR F-Droid |
+| GitHub + F-Droid równolegle | **Tak** — różne podpisy; wersja **0.5.68** jest Betą GitHub i kandydatem do otwartego MR F-Droid |
 | Zmiana źródła APK | Reinstalacja + eksport/import punktów |
 | Flavory Gradle | `github` (updater Beta), `fdroid` (bez GitHub update) |
 
@@ -71,7 +71,7 @@ Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRI
 | Flavor | `APP_UPDATE_ENABLED` | Dystrybucja | Build release |
 |--------|----------------------|-------------|---------------|
 | `github` | tak | NaviLas-releases (**Beta**), CI tag | `assembleGithubRelease` |
-| `fdroid` | nie | F-Droid (po merge MR); obecny kandydat 0.5.35 | `assembleFdroidRelease` |
+| `fdroid` | nie | F-Droid (po merge MR); obecny kandydat **0.5.68** | `assembleFdroidRelease` |
 
 CI GitHub Actions buduje wyłącznie **`githubRelease`** (dziś = Beta).
 
