@@ -22,7 +22,7 @@ fastlane/metadata/android/
   pl-PL/   — title, short_description, full_description
 ```
 
-Screenshoty / icon.png — opcjonalnie później (maintainer może poprosić).
+Screenshoty: `fastlane/metadata/android/{en-US,pl-PL}/images/phoneScreenshots/` (12 PNG: pion/poziom × dzień/noc × Szukaj/Mapa/Lista). Icon: `en-US/images/icon.png`.
 
 ## Szablon MR (App Inclusion)
 

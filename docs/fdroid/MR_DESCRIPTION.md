@@ -20,7 +20,7 @@ Public: https://github.com/Woszik/NaviLas
 
 - Flavor `fdroidRelease` — no in-app GitHub updater (`APP_UPDATE_ENABLED=false`)
 - Parallel `github` flavor for sideload/APK releases (not used by F-Droid)
-- Current proposed build: `v0.5.68` (versionCode 81)
+- Current proposed build: `0.5.68` (versionCode 81), commit `3d9f6b3` (Beta tag `v0.5.68` plus current Fastlane screenshots)
 
 ## Anti-Features
 
@@ -28,6 +28,6 @@ Public: https://github.com/Woszik/NaviLas
 
 ## Notes for reviewers
 
-- Proposed build is now **0.5.68** (versionCode 81), commit `624c89e3cfc51b81f8c216a850682f8744647b00` (GitHub Beta tag `v0.5.68`)
+- Proposed build is now **0.5.68** (versionCode 81), commit `3d9f6b3a4c669cedd88d6004ba096743ca20cc55` (same app as GitHub Beta tag `v0.5.68`, plus current Fastlane screenshots and changelog 81)
 - No reproducible builds / `Binaries` — GitHub APK is the `github` flavor and cannot match `fdroidRelease`. F-Droid may sign with its own key (accepted by author)
 - GitHub Releases remain a separate tester channel from F-Droid
