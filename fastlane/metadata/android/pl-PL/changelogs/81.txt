@@ -1,0 +1,1 @@
+Poziom: jedna belka i karta miejsca z boku; Porównaj jako karta nad listą (przyklejone nazwy, zostaje po obrocie i po skoku na mapę). Drugi klik w zaznaczony pin odznacza.
