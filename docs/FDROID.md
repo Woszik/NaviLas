@@ -18,10 +18,10 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
 | **Kandydat w szablonie repo NaviLas** | Beta **0.5.68**, versionCode 81, commit `1126c89` (tag `v0.5.68` + zrzuty Fastlane) |
-| **Kandydat na forku GitLab (live MR)** | po pushu GitHub: zaktualizować YAML do `1126c89` (stary `3d9f6b3` nie używać) |
+| **Kandydat na forku GitLab (live MR)** | Beta **0.5.68**, versionCode 81, commit `1126c89` |
 | **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
 | **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
-| **Ostatnia aktywność autora** | 2026-09-08 — podbicie kandydata do Beta **0.5.68** |
+| **Ostatnia aktywność autora** | 2026-09-08 — YAML na `1126c89` (Beta 0.5.68 + zrzuty; przepisana historia) |
 | **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
 
 ### Zrobione
@@ -31,6 +31,7 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 - [x] Konto GitLab, fork `fdroiddata`
 - [x] Plik `metadata/pl.navilas.finder.yml` na branchu `pl.navilas.finder`
 - [x] Merge Request !46612
+- [x] Kandydat **0.5.68** / 81, commit `1126c89` na fork u (zrzuty Fastlane)
 
 ### Co znaczy `waiting-on-response`
 
