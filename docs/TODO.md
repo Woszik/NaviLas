@@ -10,7 +10,7 @@ Brak spraw poza pomysłami na przyszłość (Compact poniżej).
 
 ### Wniosek o sieć drogową LP — odpowiedź BDL (2026-09-07)
 
-**BDLPOMOC-3343.** BDL: LP **nie posiada** geometrii sieci drogowej ani statusu udostępnienia dróg do ruchu kołowego. NaviLas zostaje przy heurystykach OSM („dostęp niepewny”, dojazd do parkingu / postoju LP). BDL nie wskazał innego adresata. Ewentualny wniosek do DGLP / SILP — tylko jeśli zdecydujesz. Treść: [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md). Oryginał korespondencji lokalnie `~/Dokumenty/NaviLas/korespondencja-bdl/`.
+**BDLPOMOC-3343.** BDL: LP **nie posiada** geometrii sieci drogowej ani statusu udostępnienia dróg do ruchu kołowego. NaviLas zostaje przy heurystykach OSM („dostęp niepewny”, dojazd do parkingu / postoju LP). BDL nie wskazał innego adresata. Ewentualny wniosek do DGLP / SILP — tylko jeśli zdecydujesz. Treść: [`WNIOSEK_BDL_SIEC_DROGOWA.md`](WNIOSEK_BDL_SIEC_DROGOWA.md). Oryginał korespondencji (w tym podpis) lokalnie `~/Dokumenty/NaviLas/korespondencja-bdl/`.
 
 ### Wniosek o sieć drogową LP — wysłany (2026-09-03)
 
