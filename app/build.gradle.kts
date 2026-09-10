@@ -14,6 +14,21 @@ android {
         versionCode = 81
         versionName = "0.5.68"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // F-Droid ABI split: -PABI=armeabi-v7a|arm64-v8a|x86|x86_64
+        // versionCode = 81*10 + {1,2,3,4}. GitHub builds omit -PABI (universal).
+        val abi = (findProperty("ABI") as String?)?.trim().orEmpty()
+        if (abi.isNotEmpty()) {
+            val abiDigit = mapOf(
+                "armeabi-v7a" to 1,
+                "arm64-v8a" to 2,
+                "x86" to 3,
+                "x86_64" to 4,
+            )[abi] ?: error("Unknown ABI '$abi'")
+            versionCode = 81 * 10 + abiDigit
+            ndk {
+                abiFilters += abi
+            }
+        }
     }
 
     flavorDimensions += "distribution"
