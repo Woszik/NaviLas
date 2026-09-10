@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-08**.
+Ostatnia aktualizacja dokumentacji: **2026-09-10**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.69-nightly | 82 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.70-nightly | 83 |
 | **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -31,6 +31,10 @@ Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
 - **Mapa:** drugi klik w zaznaczony pin odznacza.
 
 Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
+
+## Nightly 0.5.70
+
+Nowa ikona: świerk i N (zamiast pinezki).
 
 ## Nightly 0.5.68
 
