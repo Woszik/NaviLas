@@ -112,6 +112,20 @@
             android:layout_marginTop="16dp"
             android:text="@string/settings_keep_screen_on" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/czechBorderRestSites"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/settings_czech_border_rest" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_czech_border_rest_hint"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnOsmAndProfiles"
             style="@style/Widget.Material3.Button.OutlinedButton"

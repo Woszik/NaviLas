@@ -1,6 +1,7 @@
 package pl.navilas.finder.nav
 
 import pl.navilas.finder.data.bdl.RestSiteRepository
+import pl.navilas.finder.data.osm.CzechOsmRestClient
 import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
@@ -14,10 +15,18 @@ import java.util.Locale
 
 object NavigationTargets {
     /**
-     * CAR navigation always targets the result coordinates (rest site or standalone parking primary).
-     * Nearby related parking is not used as a separate destination.
+     * CAR navigation targets the result coordinates (rest site or standalone parking primary).
+     * CZ OSM add-on: navigate to linked public parking (driving into Czech forest is illegal).
      */
     fun forCar(site: RestSite): Pair<LatLon, NavigationTargetKind> {
+        if (site.sourceLayerId == CzechOsmRestClient.LAYER_CZ_REST) {
+            val parking = site.relatedObjects.firstOrNull {
+                it.layerId == CzechOsmRestClient.LAYER_CZ_PARKING
+            }
+            if (parking != null) {
+                return LatLon(parking.latitude, parking.longitude) to NavigationTargetKind.PARKING
+            }
+        }
         val kind = if (site.sourceLayerId == RestSiteRepository.LAYER_PARKING) {
             NavigationTargetKind.PARKING
         } else {

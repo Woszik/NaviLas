@@ -23,6 +23,8 @@
             android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
             app:popupTheme="@style/Theme.NaviLas.ToolbarPopup"
             app:menu="@menu/main_toolbar"
+            app:logo="@drawable/ic_launcher"
+            app:logoDescription="@string/app_name"
             app:title="@string/app_name" />
     </pl.navilas.finder.ui.PageSwipeZone>
 

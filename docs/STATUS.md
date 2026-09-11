@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-10**.
+Ostatnia aktualizacja dokumentacji: **2026-09-11**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.70-nightly | 83 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.71-nightly | 84 |
 | **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -20,7 +20,7 @@ Instalacja lokalnego buildu deweloperskiego:
 ./gradlew :app:installGithubDebug
 ```
 
-Oficjalna **Beta 0.5.68** (versionCode 81): APK z [NaviLas-releases v0.5.68](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.68). Promocja Nightly 0.5.59–0.5.68. Propozycja F-Droid: ta sama Beta plus aktualne zrzuty Fastlane, MR [!46612](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46612) — [`FDROID.md`](FDROID.md).
+Oficjalna **Beta 0.5.68** (versionCode 81): APK z [NaviLas-releases v0.5.68](https://github.com/Woszik/NaviLas-releases/releases/tag/v0.5.68). Promocja Nightly 0.5.59–0.5.68. F-Droid MR [!46612](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/46612): linsui — *mostly ready*, kolejka testów, kandydat nadal **0.5.68** — [`FDROID.md`](FDROID.md).
 
 ## Nowości Beta 0.5.68
 
@@ -31,6 +31,11 @@ Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
 - **Mapa:** drugi klik w zaznaczony pin odznacza.
 
 Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
+
+## Nightly 0.5.71
+
+- Ikona aplikacji na zielonym pasku przed „NaviLas”.
+- Test: Ustawienia → **Czechy przy granicy (OSM)** (domyślnie wyłączone, włączenie po dialogu). Gdy kółko wyszukiwania sięga CZ — picnic/wiata OSM z parkingiem ≤300 m; NAWIGUJ na parking. Nie katalog LČR.
 
 ## Nightly 0.5.70
 

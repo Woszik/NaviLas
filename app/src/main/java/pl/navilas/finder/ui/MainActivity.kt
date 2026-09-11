@@ -446,6 +446,10 @@ class MainActivity : AppCompatActivity() {
             dialogView.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
                 R.id.keepScreenOnTracking,
             )
+        val czechBorderRest =
+            dialogView.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(
+                R.id.czechBorderRestSites,
+            )
         val updateChannelSection = dialogView.findViewById<View>(R.id.updateChannelSection)
         val updateChannelGroup = dialogView.findViewById<RadioGroup>(R.id.updateChannelGroup)
 
@@ -479,6 +483,35 @@ class MainActivity : AppCompatActivity() {
             },
         )
         keepScreenOn.isChecked = uiPreferences.keepScreenOnWhileTracking
+        czechBorderRest.isChecked = uiPreferences.czechBorderRestSitesEnabled
+        fun attachCzechConfirmListener() {
+            czechBorderRest.setOnCheckedChangeListener { button, isChecked ->
+                if (!isChecked) return@setOnCheckedChangeListener
+                // Already enabled in prefs or user just confirmed — leave on.
+                if (button.tag == "confirmed") {
+                    button.tag = null
+                    return@setOnCheckedChangeListener
+                }
+                button.setOnCheckedChangeListener(null)
+                button.isChecked = false
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.settings_czech_border_confirm_title)
+                    .setMessage(R.string.settings_czech_border_confirm_body)
+                    .setNegativeButton(android.R.string.cancel) { _, _ ->
+                        attachCzechConfirmListener()
+                    }
+                    .setPositiveButton(R.string.settings_czech_border_confirm_enable) { _, _ ->
+                        czechBorderRest.tag = "confirmed"
+                        czechBorderRest.isChecked = true
+                        attachCzechConfirmListener()
+                    }
+                    .setOnCancelListener {
+                        attachCzechConfirmListener()
+                    }
+                    .show()
+            }
+        }
+        attachCzechConfirmListener()
         dialogView.findViewById<View>(R.id.btnOsmAndProfiles).setOnClickListener {
             importOsmAndProfiles(fromSettings = true)
         }
@@ -518,6 +551,12 @@ class MainActivity : AppCompatActivity() {
                     else -> StartupMode.REMEMBER_LAST
                 }
                 uiPreferences.keepScreenOnWhileTracking = keepScreenOn.isChecked
+                val czechWas = uiPreferences.czechBorderRestSitesEnabled
+                val czechNow = czechBorderRest.isChecked
+                uiPreferences.czechBorderRestSitesEnabled = czechNow
+                if (czechWas != czechNow) {
+                    viewModel.onCzechBorderRestPreferenceChanged()
+                }
                 if (BuildConfig.APP_UPDATE_ENABLED) {
                     val oldChannel = uiPreferences.updateChannel
                     val newChannel = when (updateChannelGroup.checkedRadioButtonId) {

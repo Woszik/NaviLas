@@ -34,6 +34,7 @@ import pl.navilas.finder.data.cache.RoadAssessmentCache
 import pl.navilas.finder.data.preferences.StartupMode
 import pl.navilas.finder.data.preferences.UiPreferences
 import pl.navilas.finder.data.osm.CachingOverpassRoadClient
+import pl.navilas.finder.data.osm.CzechOsmRestClient
 import pl.navilas.finder.data.osm.MotorcycleAccessHint
 import pl.navilas.finder.data.osm.NominatimGeocoder
 import pl.navilas.finder.data.osm.OfficialApproachEntry
@@ -341,6 +342,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val appUpdateDownloader = AppUpdateDownloader()
     private val uiPreferences = UiPreferences(application)
+    private val czechOsmRestClient = CzechOsmRestClient()
     private val exploreModePrefs =
         application.getSharedPreferences(EXPLORE_MODE_PREFS, Application.MODE_PRIVATE)
     private val cameraToken = AtomicLong(1L)
@@ -3073,7 +3075,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val profile = state.profile
             val startedAt = System.currentTimeMillis()
             val outcome = restRepository.findRestSitesAlongCorridor(line, leftKm, rightKm)
-            val sorted = outcome.bundle.sites.sortedBy { site ->
+            val withCzech = maybeMergeCzechBorderSites(
+                bdlSites = outcome.bundle.sites,
+                latitude = origin.latitude,
+                longitude = origin.longitude,
+                radiusKm = maxOf(leftKm, rightKm) + 5.0,
+            ).filter { site ->
+                site.sourceLayerId != CzechOsmRestClient.LAYER_CZ_REST ||
+                    CorridorGeometry.isInside(
+                        site.latitude,
+                        site.longitude,
+                        line,
+                        leftKm,
+                        rightKm,
+                    )
+            }
+            val sorted = withCzech.sortedBy { site ->
                 CorridorGeometry.project(site.latitude, site.longitude, line)?.distanceAlongKm
                     ?: Double.MAX_VALUE
             }
@@ -3198,7 +3215,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 longitude = position.longitude,
                 radiusKm = radiusKm,
             )
-            val bundle = outcome.bundle
+            val mergedSites = maybeMergeCzechBorderSites(
+                bdlSites = outcome.bundle.sites,
+                latitude = position.latitude,
+                longitude = position.longitude,
+                radiusKm = radiusKm,
+            )
+            val bundle = outcome.bundle.copy(sites = mergedSites)
             lastBdlSearchContext = BdlSearchContext(
                 originLat = position.latitude,
                 originLon = position.longitude,
@@ -3251,6 +3274,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     message = AppMessage.Error("Wyszukiwanie: ${e.message ?: "błąd"}"),
                 )
             }
+        }
+    }
+
+    fun onCzechBorderRestPreferenceChanged() {
+        lastBdlSearchContext = null
+        bdlSessionCache.clear()
+    }
+
+    private suspend fun maybeMergeCzechBorderSites(
+        bdlSites: List<RestSite>,
+        latitude: Double,
+        longitude: Double,
+        radiusKm: Double,
+    ): List<RestSite> {
+        if (!uiPreferences.czechBorderRestSitesEnabled) return bdlSites
+        if (!CzechOsmRestClient.envelopeMayHitCzechia(latitude, longitude, radiusKm)) {
+            return bdlSites
+        }
+        return try {
+            val czech = czechOsmRestClient.findRestSites(latitude, longitude, radiusKm)
+            CzechOsmRestClient.mergePreferringBdl(bdlSites, czech)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // BDL results still usable; CZ add-on is best-effort.
+            bdlSites
         }
     }
 

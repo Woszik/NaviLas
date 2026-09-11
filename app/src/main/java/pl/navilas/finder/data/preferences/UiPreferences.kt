@@ -90,6 +90,14 @@ class UiPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_PENDING_OSMAND_SETUP, false)
         set(value) = prefs.edit().putBoolean(KEY_PENDING_OSMAND_SETUP, value).apply()
 
+    /**
+     * Experimental: merge OSM picnic/shelter+parking in Czechia when the search radius
+     * crosses the border. Default off — user must confirm a dialog in Settings.
+     */
+    var czechBorderRestSitesEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CZECH_BORDER_REST, false)
+        set(value) = prefs.edit().putBoolean(KEY_CZECH_BORDER_REST, value).apply()
+
     companion object {
         private const val PREFS_NAME = "navilas_ui"
         private const val KEY_THEME_MODE = "theme_mode"
@@ -101,6 +109,7 @@ class UiPreferences(context: Context) {
         private const val KEY_ENTRY_BAN_REFRESH_SNOOZE = "entry_ban_refresh_snooze_until"
         private const val KEY_UPDATE_CHANNEL = "update_channel"
         private const val KEY_PENDING_OSMAND_SETUP = "pending_osmand_setup"
+        private const val KEY_CZECH_BORDER_REST = "czech_border_rest_sites"
     }
 }
 
