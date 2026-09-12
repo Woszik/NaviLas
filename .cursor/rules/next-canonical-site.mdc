@@ -1,0 +1,20 @@
+---
+description: Next — GitHub Pages canonical site, JSON-LD, Wikidata (SEO / AI answers). Apply when Woj starts canonical site / Wikidata / navilas.pl Pages work.
+alwaysApply: false
+---
+
+# Widoczność: strona kanoniczna i Wikidata
+
+Otwarte w [`docs/TODO.md`](docs/TODO.md). Cel: jeden crawlable URL z faktami o NaviLas (Gemini / Google), nie ranking trick.
+
+Gdy Woj każe ruszyć:
+
+1. **GitHub Pages** (PL + krótki EN): skąd APK, Play Protect, GitHub vs F-Droid, że to nie apka LP. JSON-LD `SoftwareApplication`, FAQ, `robots.txt` bez blokady Googlebota / Google-Extended, opcjonalnie `llms.txt`.
+2. Linki ze README `NaviLas` i `NaviLas-releases`.
+3. Szkic Wikidata — publikuje Woj z własnego konta.
+
+**Woj musi:** włączyć Pages w Settings; kupić `navilas.pl` + DNS (osobna pozycja w TODO); konto Wikidata; posty na forach.
+
+Nie czekać na F-Droid, żeby stronę odpalić — listing dopisać później.
+
+Po zrobieniu: skreślić w TODO i usunąć tę regułę.

@@ -1,0 +1,15 @@
+---
+description: Next — IzzyOnDroid AppRequest + Obtainium README/config (not Aurora). Apply when Woj starts Izzy / Obtainium distribution work.
+alwaysApply: false
+---
+
+# Dystrybucja: IzzyOnDroid i Obtainium
+
+Otwarte w [`docs/TODO.md`](docs/TODO.md). **Nie mylić z Aurora Store** (klient Play, bez Play nie ma listingu).
+
+Gdy Woj każe ruszyć:
+
+1. **Obtainium:** krótki akapit w README `NaviLas-releases` — dodać repo `https://github.com/Woszik/NaviLas-releases`. Opcjonalnie JSON na [apps.obtainium.imranr.dev](https://apps.obtainium.imranr.dev) (`pl.navilas.finder`, bez `nightly`); PR robi Woj.
+2. **IzzyOnDroid:** draft issue AppRequest do [IzzyOnDroid/repodata](https://codeberg.org/IzzyOnDroid/repodata/issues). Woj otwiera z konta Codeberg. Zaznaczyć: updater GitHub tylko po zgodzie w dialogu; APK na `NaviLas-releases`.
+
+Po zrobieniu: skreślić w TODO i usunąć tę regułę.

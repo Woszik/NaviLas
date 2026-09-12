@@ -1,0 +1,30 @@
+---
+description: Oszczędna praca agenta w NaviLas (tokeny, zakres, docs)
+alwaysApply: true
+---
+
+# Lean NaviLas
+
+Android / Kotlin / GPL-3 — `pl.navilas.finder`. Flavory: `github` | `fdroid`.
+
+## Zakres
+- Rób tylko to, o co prosi Woj. Bez „przy okazji”, bez refaktorów, bez nowych plików docs.
+- Commit / push / release / `./gradlew` — tylko na wyraźne polecenie.
+- Nie ruszaj `next-*` z TODO, dopóki Woj nie każe ruszyć.
+
+## Kontekst (tanio)
+- Najpierw `Grep` / wąski `Glob`; czytaj fragmenty, nie całe `docs/*.md`.
+- Stan: `docs/STATUS.md` tylko gdy potrzebna wersja/kanał. Otwarte sprawy: `docs/TODO.md`.
+- Nie wklejaj docs do odpowiedzi — podaj ścieżkę.
+- Nie uruchamiaj Task/explore przy 1–3 plikach lub znanym symbolu.
+- `.cursorignore` już odcina build/APK/szkice — nie obchodź go bez potrzeby.
+
+## Kod
+- Edytuj istniejący styl; minimalny diff.
+- UI strings → `res/values`; layouty View, nie wymyślaj Compose.
+- Flavor: zmiany updatera / store tylko w właściwym source set (`github` vs `fdroid` / `main`).
+- Workflows: bez heredoców w `run:` (patrz reguła GHA).
+
+## Odpowiedzi
+- PL, krótko: werdykt → co zmieniono → co Woj ma zrobić (jeśli coś).
+- Bez powtórzeń promptu, bez długich planów „na zapas”.
