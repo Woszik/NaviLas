@@ -28,6 +28,7 @@ import pl.navilas.finder.data.bdl.OfflineMapBrowseLoader
 import pl.navilas.finder.data.bdl.PlaceNameHit
 import pl.navilas.finder.data.bdl.PlaceNameSearch
 import pl.navilas.finder.data.bdl.RestSiteRepository
+import pl.navilas.finder.data.bdl.RestSearchOutcome
 import pl.navilas.finder.data.cache.BdlSearchSessionCache
 import pl.navilas.finder.data.cache.PersistentOsmRoadTileStore
 import pl.navilas.finder.data.cache.RoadAssessmentCache
@@ -47,6 +48,7 @@ import pl.navilas.finder.data.saved.SavedPointsBackupParseResult
 import pl.navilas.finder.data.saved.SavedPointsBackupSnapshot
 import pl.navilas.finder.data.saved.SavedPointsImportMode
 import pl.navilas.finder.data.saved.SavedPointsImportResult
+import pl.navilas.finder.data.route.RoutePlanStore
 import pl.navilas.finder.domain.BdlOverlayFilter
 import pl.navilas.finder.domain.BdlOverlayPoint
 import pl.navilas.finder.domain.SiteSelection
@@ -88,6 +90,10 @@ import pl.navilas.finder.domain.PoiGeometryKind
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
 import pl.navilas.finder.domain.RoadAssessment
+import pl.navilas.finder.domain.RouteEditAction
+import pl.navilas.finder.domain.RoutePlan
+import pl.navilas.finder.domain.RouteWaypoint
+import pl.navilas.finder.domain.RouteWaypointKind
 import pl.navilas.finder.domain.SearchConfig
 import pl.navilas.finder.domain.SearchOriginMode
 import pl.navilas.finder.domain.ListViewMode
@@ -98,6 +104,8 @@ import pl.navilas.finder.domain.ZanocujStatus
 import pl.navilas.finder.location.AppLocationProvider
 import pl.navilas.finder.location.LocationOutcome
 import pl.navilas.finder.nav.NavigationTargets
+import pl.navilas.finder.nav.RouteGpxWriter
+import pl.navilas.finder.data.osm.GpxRouteParser
 import pl.navilas.finder.util.CorridorGeometry
 import pl.navilas.finder.util.GeoUtils
 import pl.navilas.finder.BuildConfig
@@ -139,6 +147,7 @@ internal fun searchCriteriaSummaryPl(
     corridorPointCount: Int,
     corridorLeftKm: Double,
     corridorRightKm: Double,
+    routeWaypointCount: Int = 0,
 ): String = when (origin) {
     SearchOriginMode.GPS -> "${radiusKm.toInt()} km · od GPS"
     SearchOriginMode.MAP -> "${radiusKm.toInt()} km · od mapa"
@@ -148,6 +157,8 @@ internal fun searchCriteriaSummaryPl(
     }
     SearchOriginMode.LINE ->
         "linia: $corridorPointCount pkt L${corridorLeftKm.toInt()}/P${corridorRightKm.toInt()}"
+    SearchOriginMode.ROUTE ->
+        "trasa: $routeWaypointCount pkt ±${corridorLeftKm.toInt()} km"
 }
 
 internal fun exploreModeTargetPage(
@@ -183,6 +194,22 @@ data class UiState(
     val corridorVertexAction: CorridorVertexAction? = null,
     /** Waiting for second map tap to finish GPS→map line shortcut. */
     val corridorAwaitMapEnd: Boolean = false,
+    /**
+     * Route imported from an external planner (GPX from OsmAnd) plus hand-added waypoints.
+     * Survives restarts through [pl.navilas.finder.data.route.RoutePlanStore].
+     */
+    val routePlan: RoutePlan = RoutePlan(),
+    /** Pending waypoint edit waiting for a map tap (move an existing point). */
+    val routeEditAction: RouteEditAction? = null,
+    /** Map tap that opened the point-actions sheet; null when nothing pending. */
+    val pendingMapPoint: LatLon? = null,
+    /**
+     * Route band half-widths (km). Separate from the hand-drawn corridor so switching
+     * between LINE and ROUTE does not overwrite the user's corridor widths.
+     */
+    val routeLeftKm: Double = DEFAULT_ROUTE_SIDE_KM,
+    val routeRightKm: Double = DEFAULT_ROUTE_SIDE_KM,
+
     /** Nominatim candidates for locality picker (null = no picker). */
     val localityCandidates: List<pl.navilas.finder.data.osm.GeocodedPlace>? = null,
     /** Offline BDL place-name query (not locality geocode). */
@@ -277,6 +304,10 @@ data class UiState(
             corridorLine.firstOrNull()?.let {
                 UserPosition(it.latitude, it.longitude, approximate = false)
             }
+        SearchOriginMode.ROUTE ->
+            routePlan.line.firstOrNull()?.let {
+                UserPosition(it.latitude, it.longitude, approximate = false)
+            }
         SearchOriginMode.GPS -> userPosition
     }
 
@@ -289,6 +320,24 @@ data class UiState(
     fun usesCorridorForSearch(): Boolean =
         searchOriginMode == SearchOriginMode.LINE && corridorLine.size >= 2
 
+    fun usesRouteForSearch(): Boolean =
+        searchOriginMode == SearchOriginMode.ROUTE && routePlan.isUsable
+
+    /** Polyline driving corridor search and route-km sorting, whichever mode is active. */
+    fun activeSearchLine(): List<LatLon> = when (searchOriginMode) {
+        SearchOriginMode.LINE -> corridorLine
+        SearchOriginMode.ROUTE -> routePlan.line
+        else -> emptyList()
+    }
+
+    /** Corridor half-widths for the active line mode (route uses the same sliders). */
+    fun activeLineWidthKm(): Pair<Double, Double> =
+        if (searchOriginMode == SearchOriginMode.ROUTE) {
+            routeLeftKm to routeRightKm
+        } else {
+            corridorLeftKm to corridorRightKm
+        }
+
     fun isMapBrowse(): Boolean = exploreMode == AppExploreMode.MAP_BROWSE
 
     fun entryBanAt(latitude: Double, longitude: Double): ForestEntryBan? =
@@ -297,6 +346,8 @@ data class UiState(
     companion object {
         const val DEFAULT_CORRIDOR_LEFT_KM = 5.0
         const val DEFAULT_CORRIDOR_RIGHT_KM = 10.0
+        /** Imported routes default to a symmetric, tighter band than a drawn corridor. */
+        const val DEFAULT_ROUTE_SIDE_KM = 5.0
         const val MOTORCYCLE_ROAD_ANALYZE_LIMIT = 50
         const val MAX_CORRIDOR_SIDE_KM = 50.0
     }
@@ -332,6 +383,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         voivodeshipCacheFile = File(application.filesDir, "county_voivodeship_cache.json"),
     )
     private val savedPointsStore = SavedPointsStore.fromAppFilesDir(application.filesDir)
+    private val routePlanStore = RoutePlanStore.fromAppFilesDir(application.filesDir)
     private val appUpdatePrefs = AppUpdatePreferences(application)
     private val appUpdateChecker = AppUpdateChecker(
         manifestsByTrack = mapOf(
@@ -407,6 +459,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val saved = savedPointsStore.allPoints().associateBy { it.site.id }
         val categories = savedPointsStore.allCategories()
         val lastGps = lastGpsPreferences.load()
+        val restoredRoute = routePlanStore.load()
         val user = lastGps?.let {
             UserPosition(it.latitude, it.longitude, it.approximate)
         }
@@ -432,6 +485,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             savedCategories = categories,
             userPosition = user,
             mapCameraRequest = camera,
+            routePlan = restoredRoute,
+            searchOriginMode = if (restoredRoute.isUsable) SearchOriginMode.ROUTE else SearchOriginMode.GPS,
             entryBanPackDownloadedAt = forestEntryBanStore.downloadedAt(),
             entryBanPackCount = forestEntryBanStore.count(),
         )
@@ -798,6 +853,244 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ---- Imported route (GPX from an external planner) --------------------------------
+
+    /**
+     * Replaces the current route plan with one imported from GPX and switches search to
+     * the route band. Routing stays in the external app — NaviLas only reads geometry.
+     */
+    fun importRoutePlan(plan: RoutePlan, multipleTracks: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) { routePlanStore.save(plan) }
+        val origin = plan.line.first()
+        _state.update { current ->
+            current.copy(
+                routePlan = plan,
+                routeEditAction = null,
+                pendingMapPoint = null,
+                searchOriginMode = SearchOriginMode.ROUTE,
+                results = buildResults(
+                    current.allSites,
+                    UserPosition(origin.latitude, origin.longitude, approximate = false),
+                    current.profile,
+                    current.browseCarFilter,
+                    current.roadBySiteId,
+                    corridorLine = plan.line,
+                    corridorSites = current.allSites,
+                ),
+                currentPage = AppPages.MAP,
+                message = AppMessage.Info(
+                    buildString {
+                        append("Trasa: ${plan.line.size} pkt · ${plan.waypoints.size} punktów trasy")
+                        plan.sourceName?.let { append(" · $it") }
+                        if (multipleTracks) append(". W pliku było kilka śladów — użyto najdłuższego.")
+                        append(". Naciśnij ZNAJDŹ, by szukać miejsc przy trasie.")
+                    },
+                ),
+            )
+        }
+    }
+
+    fun clearRoutePlan() {
+        viewModelScope.launch(Dispatchers.IO) { routePlanStore.clear() }
+        _state.update { current ->
+            current.copy(
+                routePlan = RoutePlan(),
+                routeEditAction = null,
+                pendingMapPoint = null,
+                searchOriginMode = if (current.searchOriginMode == SearchOriginMode.ROUTE) {
+                    SearchOriginMode.GPS
+                } else {
+                    current.searchOriginMode
+                },
+                message = AppMessage.Info("Wyczyszczono trasę."),
+            )
+        }
+    }
+
+    fun setRouteLeftKm(km: Double) {
+        val clamped = km.coerceIn(0.0, UiState.MAX_CORRIDOR_SIDE_KM)
+        _state.update { it.copy(routeLeftKm = clamped) }
+    }
+
+    fun setRouteRightKm(km: Double) {
+        val clamped = km.coerceIn(0.0, UiState.MAX_CORRIDOR_SIDE_KM)
+        _state.update { it.copy(routeRightKm = clamped) }
+    }
+
+    /** Symmetric adjustment for the single "pas przy trasie" input in the route panel. */
+    fun setRouteSideKm(km: Double) {
+        val clamped = km.coerceIn(0.0, UiState.MAX_CORRIDOR_SIDE_KM)
+        _state.update { it.copy(routeLeftKm = clamped, routeRightKm = clamped) }
+    }
+
+    /** Adds a hand-placed point; [kind] decides whether it corrects the route or becomes the finish. */
+    fun addRouteWaypoint(
+        latitude: Double,
+        longitude: Double,
+        kind: RouteWaypointKind,
+        name: String? = null,
+    ) {
+        val position = LatLon(latitude, longitude)
+        _state.update { current ->
+            val existing = current.routePlan
+            // A route may hold exactly one target, always last.
+            val via = existing.waypoints.filter { it.kind == RouteWaypointKind.WAYPOINT }
+            val currentTarget = existing.target
+            val nextWaypoints = when (kind) {
+                RouteWaypointKind.WAYPOINT -> via + RouteWaypoint(
+                    id = "wp-${System.currentTimeMillis()}",
+                    kind = RouteWaypointKind.WAYPOINT,
+                    name = name?.takeIf { it.isNotBlank() } ?: "Punkt trasy ${via.size + 1}",
+                    position = position,
+                ) + listOfNotNull(currentTarget)
+
+                RouteWaypointKind.TARGET -> via + RouteWaypoint(
+                    id = "target-${System.currentTimeMillis()}",
+                    kind = RouteWaypointKind.TARGET,
+                    name = name?.takeIf { it.isNotBlank() } ?: "Cel",
+                    position = position,
+                )
+            }
+            val nextPlan = existing.withWaypoints(nextWaypoints)
+            viewModelScope.launch(Dispatchers.IO) { routePlanStore.save(nextPlan) }
+            val hasGeometry = nextPlan.isUsable
+            current.copy(
+                routePlan = nextPlan,
+                routeEditAction = null,
+                pendingMapPoint = null,
+                searchOriginMode = SearchOriginMode.ROUTE,
+                message = AppMessage.Info(
+                    when {
+                        kind == RouteWaypointKind.TARGET && !hasGeometry ->
+                            "Cel zapisany. Udostępnij trasę (GPX) do OsmAnd, aby wyznaczył prowadzenie, " +
+                                "a potem udostępnij wynik z powrotem do NaviLas."
+                        kind == RouteWaypointKind.TARGET ->
+                            "Cel trasy ustawiony. Naciśnij ZNAJDŹ, by szukać miejsc przy trasie."
+                        !hasGeometry ->
+                            "Dodano punkt trasy (${nextPlan.viaPoints.size}). " +
+                                "Wyeksportuj trasę do OsmAnd, aby ją wyznaczył."
+                        else ->
+                            "Dodano punkt trasy (${nextPlan.viaPoints.size}). " +
+                                "Udostępnij trasę do OsmAnd, aby przeliczył prowadzenie."
+                    },
+                ),
+            )
+        }
+    }
+
+    fun addTargetAt(latitude: Double, longitude: Double) {
+        addRouteWaypoint(latitude, longitude, RouteWaypointKind.TARGET, "Cel z mapy")
+    }
+
+    fun beginMoveRouteWaypoint(waypointId: String) {
+        _state.update {
+            it.copy(
+                routeEditAction = RouteEditAction.Move(waypointId),
+                pendingMapPoint = null,
+                message = AppMessage.Info("Dotknij mapy, aby przenieść punkt trasy."),
+                currentPage = AppPages.MAP,
+            )
+        }
+    }
+
+    fun removeRouteWaypoint(waypointId: String) {
+        _state.update { current ->
+            val next = current.routePlan.waypoints.filterNot { it.id == waypointId }
+            val nextPlan = current.routePlan.withWaypoints(next)
+            viewModelScope.launch(Dispatchers.IO) { routePlanStore.save(nextPlan) }
+            current.copy(
+                routePlan = nextPlan,
+                routeEditAction = null,
+                message = AppMessage.Info("Usunięto punkt trasy."),
+            )
+        }
+    }
+
+    fun cancelRouteEditAction() {
+        _state.update { it.copy(routeEditAction = null) }
+    }
+
+    /** Moves a waypoint to a map tap; used for the pending [RouteEditAction.Move]. */
+    private fun applyRouteWaypointMove(
+        current: UiState,
+        waypointId: String,
+        latitude: Double,
+        longitude: Double,
+    ): UiState {
+        val index = current.routePlan.waypoints.indexOfFirst { it.id == waypointId }
+        if (index == -1) {
+            return current.copy(routeEditAction = null, message = AppMessage.Error("Nie ma takiego punktu trasy."))
+        }
+        val next = current.routePlan.waypoints.toMutableList().also {
+            it[index] = it[index].copy(position = LatLon(latitude, longitude))
+        }
+        val nextPlan = current.routePlan.withWaypoints(next)
+        viewModelScope.launch(Dispatchers.IO) { routePlanStore.save(nextPlan) }
+        return current.copy(
+            routePlan = nextPlan,
+            routeEditAction = null,
+            message = AppMessage.Info("Przeniesiono punkt trasy. Udostępnij trasę do OsmAnd."),
+        )
+    }
+
+    fun dismissMapPointActions() {
+        _state.update { it.copy(pendingMapPoint = null) }
+    }
+
+    /** Reads a shared GPX (OsmAnd → Udostępnij) and turns it into the active route plan. */
+    fun importRouteGpx(uri: android.net.Uri) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSearching = true, message = AppMessage.Info("Wczytuję trasę z GPX…")) }
+            val result = withContext(Dispatchers.IO) {
+                val resolver = getApplication<Application>().contentResolver
+                val size = runCatching {
+                    resolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+                }.getOrNull() ?: 0L
+                if (size > GpxRouteParser.MAX_FILE_BYTES) {
+                    return@withContext GpxRouteParser.Result.Failure(
+                        "Plik GPX jest zbyt duży (limit ${GpxRouteParser.MAX_FILE_BYTES / (1024 * 1024)} MB).",
+                    )
+                }
+                val name = queryDisplayName(uri)
+                runCatching {
+                    resolver.openInputStream(uri)?.use { stream ->
+                        GpxRouteParser.parse(stream, name)
+                    } ?: GpxRouteParser.Result.Failure("Nie mogę otworzyć pliku GPX.")
+                }.getOrElse { error ->
+                    GpxRouteParser.Result.Failure("Nie mogę odczytać GPX: ${error.message ?: "błąd"}")
+                }
+            }
+            when (result) {
+                is GpxRouteParser.Result.Success -> {
+                    _state.update { it.copy(isSearching = false, message = null) }
+                    importRoutePlan(result.value.route, result.value.multipleTracks)
+                }
+
+                is GpxRouteParser.Result.Failure ->
+                    _state.update {
+                        it.copy(isSearching = false, message = AppMessage.Error(result.message))
+                    }
+            }
+        }
+    }
+
+    private fun queryDisplayName(uri: android.net.Uri): String? = runCatching {
+        val app = getApplication<Application>()
+        app.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+        }
+    }.getOrNull()
+
+    /** GPX text for sharing back to the external planner (OsmAnd "Plan a route"). */
+    fun buildRouteGpx(): Pair<String, String>? {
+        val plan = _state.value.routePlan
+        if (plan.waypoints.isEmpty() && plan.line.size < 2) return null
+        val name = plan.sourceName?.let { "NaviLas — $it" } ?: "NaviLas — trasa"
+        return RouteGpxWriter.write(plan, name, includeTrack = plan.line.size >= 2) to
+            RouteGpxWriter.suggestedFileName(plan)
+    }
+
     fun startCorridorGpsToMap() {
         viewModelScope.launch {
             var gps = _state.value.userPosition
@@ -953,8 +1246,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchOriginMode(mode: SearchOriginMode) {
         _state.update { current ->
+            if (mode == SearchOriginMode.ROUTE && !current.routePlan.isUsable) {
+                return@update current.copy(
+                    message = AppMessage.Info(
+                        "Najpierw wczytaj trasę: udostępnij GPX z OsmAnd do NaviLas.",
+                    ),
+                )
+            }
             current.copy(
                 searchOriginMode = mode,
+                pendingMapPoint = null,
+                routeEditAction = null,
                 localityCandidates = null,
                 localityPickPurpose = if (mode == SearchOriginMode.LINE) {
                     current.localityPickPurpose
@@ -971,11 +1273,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         SearchOriginMode.LINE -> current.corridorLine.firstOrNull()?.let {
                             UserPosition(it.latitude, it.longitude, approximate = false)
                         }
+                        SearchOriginMode.ROUTE -> current.routePlan.line.firstOrNull()?.let {
+                            UserPosition(it.latitude, it.longitude, approximate = false)
+                        }
                     },
                     current.profile,
                     current.browseCarFilter,
                     current.roadBySiteId,
-                    corridorLine = if (mode == SearchOriginMode.LINE) current.corridorLine else emptyList(),
+                    corridorLine = when (mode) {
+                        SearchOriginMode.LINE -> current.corridorLine
+                        SearchOriginMode.ROUTE -> current.routePlan.line
+                        else -> emptyList()
+                    },
                 ),
             )
         }
@@ -1177,11 +1486,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         profile,
                         current.browseCarFilter,
                         current.roadBySiteId,
-                        corridorLine = if (current.searchOriginMode == SearchOriginMode.LINE) {
-                            current.corridorLine
-                        } else {
-                            emptyList()
-                        },
+                        corridorLine = current.activeSearchLine(),
                     )
                 },
             )
@@ -1284,11 +1589,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             state.profile,
             state.browseCarFilter,
             state.roadBySiteId,
-            corridorLine = if (state.searchOriginMode == SearchOriginMode.LINE) {
-                state.corridorLine
-            } else {
-                emptyList()
-            },
+            corridorLine = state.activeSearchLine(),
         )
     }
 
@@ -2154,13 +2455,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         applySelection(if (siteId == null) emptyList() else listOf(siteId))
     }
 
-    /** Empty-map tap: clear browse selection, or drop a search pin. Ignores ghost taps after a marker. */
+    /** Empty-map tap: route edit, corridor vertex, or search pin. Ghost taps after a marker are ignored. */
     fun onEmptyMapClicked(latitude: Double, longitude: Double) {
         if (System.currentTimeMillis() < ignoreEmptyMapClickUntilElapsedMs) return
-        if (_state.value.isMapBrowse()) {
+        val current = _state.value
+        if (current.isMapBrowse()) {
             selectSite(null)
-        } else {
-            setMapSearchPin(latitude, longitude)
+            return
+        }
+        val routeEdit = current.routeEditAction
+        if (routeEdit is RouteEditAction.Move) {
+            _state.update { applyRouteWaypointMove(it, routeEdit.waypointId, latitude, longitude) }
+            return
+        }
+        when {
+            // LINE mode keeps drawing the corridor — its vertices are edited on the map.
+            current.searchOriginMode == SearchOriginMode.LINE ->
+                appendCorridorPoint(latitude, longitude)
+
+            // With a route on the map the tap is ambiguous (waypoint vs. search pin),
+            // so it stages the point-actions sheet instead of guessing.
+            current.searchOriginMode == SearchOriginMode.ROUTE || current.routePlan.isUsable ->
+                _state.update {
+                    it.copy(
+                        pendingMapPoint = LatLon(latitude, longitude),
+                        message = AppMessage.Info(
+                            "Punkt na mapie: dodaj punkt trasy albo ustaw cel (menu akcji).",
+                        ),
+                    )
+                }
+
+            else -> setMapSearchPin(latitude, longitude)
         }
     }
 
@@ -2930,17 +3255,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     buildResults(
                         it.allSites,
                         when (it.searchOriginMode) {
-                            SearchOriginMode.LINE -> it.searchOrigin() ?: pos
+                            SearchOriginMode.LINE, SearchOriginMode.ROUTE -> it.searchOrigin() ?: pos
                             else -> pos
                         },
                         it.profile,
                         it.browseCarFilter,
                         it.roadBySiteId,
-                        corridorLine = if (it.searchOriginMode == SearchOriginMode.LINE) {
-                            it.corridorLine
-                        } else {
-                            emptyList()
-                        },
+                        corridorLine = it.activeSearchLine(),
                     )
                 },
                 message = message,
@@ -2961,6 +3282,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 lineNeedsLocality || _state.value.searchOriginMode == SearchOriginMode.LOCALITY ->
                     searchFromLocality()
                 _state.value.searchOriginMode == SearchOriginMode.LINE -> performCorridorSearch()
+                _state.value.searchOriginMode == SearchOriginMode.ROUTE -> performRouteSearch()
                 else -> {
                     val origin = _state.value.searchOrigin()
                     if (origin == null) {
@@ -3066,15 +3388,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return
         }
+        val startedAt = System.currentTimeMillis()
+        performAlongLineSearch(
+            line = line,
+            leftKm = state.corridorLeftKm,
+            rightKm = state.corridorRightKm,
+            startedAtMs = startedAt,
+            summaryPrefix = "korytarz",
+            errorLabel = "Wyszukiwanie wzdłuż linii",
+            fetch = { l, left, right -> restRepository.findRestSitesAlongCorridor(l, left, right) },
+        )
+    }
+
+    private suspend fun performRouteSearch() {
+        val state = _state.value
+        val plan = state.routePlan
+        if (!plan.isUsable) {
+            _state.update {
+                it.copy(
+                    message = AppMessage.Error(
+                        "Brak trasy. Udostępnij GPX z OsmAnd do NaviLas albo wybierz „Wzdłuż linii”.",
+                    ),
+                )
+            }
+            return
+        }
+        if (state.routeLeftKm + state.routeRightKm <= 0.0) {
+            _state.update {
+                it.copy(message = AppMessage.Error("Ustaw szerokość pasa przy trasie (> 0 km)."))
+            }
+            return
+        }
+        val startedAt = System.currentTimeMillis()
+        performAlongLineSearch(
+            line = plan.line,
+            leftKm = state.routeLeftKm,
+            rightKm = state.routeRightKm,
+            startedAtMs = startedAt,
+            summaryPrefix = "trasa",
+            errorLabel = "Wyszukiwanie przy trasie",
+            fetch = { l, left, right -> restRepository.findRestSitesAlongRoute(l, left, right) },
+        )
+    }
+
+    /** Shared body for LINE and ROUTE searches — both are asymmetric bands around a polyline. */
+    private suspend fun performAlongLineSearch(
+        line: List<LatLon>,
+        leftKm: Double,
+        rightKm: Double,
+        startedAtMs: Long,
+        summaryPrefix: String,
+        errorLabel: String,
+        fetch: suspend (List<LatLon>, Double, Double) -> RestSearchOutcome,
+    ) {
         val generation = searchGeneration.incrementAndGet()
         val origin = UserPosition(line.first().latitude, line.first().longitude, approximate = false)
         _state.update { it.copy(isSearching = true, isAnalyzingRoads = false, message = null) }
         try {
-            val leftKm = state.corridorLeftKm
-            val rightKm = state.corridorRightKm
-            val profile = state.profile
-            val startedAt = System.currentTimeMillis()
-            val outcome = restRepository.findRestSitesAlongCorridor(line, leftKm, rightKm)
+            val profile = _state.value.profile
+            val outcome = fetch(line, leftKm, rightKm)
             val withCzech = maybeMergeCzechBorderSites(
                 bdlSites = outcome.bundle.sites,
                 latitude = origin.latitude,
@@ -3082,20 +3454,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 radiusKm = maxOf(leftKm, rightKm) + 5.0,
             ).filter { site ->
                 site.sourceLayerId != CzechOsmRestClient.LAYER_CZ_REST ||
-                    CorridorGeometry.isInside(
-                        site.latitude,
-                        site.longitude,
-                        line,
-                        leftKm,
-                        rightKm,
-                    )
+                    CorridorGeometry.isInside(site.latitude, site.longitude, line, leftKm, rightKm)
             }
             val sorted = withCzech.sortedBy { site ->
                 CorridorGeometry.project(site.latitude, site.longitude, line)?.distanceAlongKm
                     ?: Double.MAX_VALUE
             }
             lastBdlSearchContext = null
-            val elapsedMs = System.currentTimeMillis() - startedAt
+            val elapsedMs = System.currentTimeMillis() - startedAtMs
             val token = cameraToken.getAndIncrement()
             publishBdlSearchResults(
                 generation = generation,
@@ -3105,7 +3471,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 radiusKm = maxOf(leftKm, rightKm),
                 cameraToken = token,
                 startRoadAnalysis = profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty(),
-                corridorSummary = "korytarz L${leftKm.toInt()}/P${rightKm.toInt()} km · ${line.size} pkt · ${elapsedMs} ms",
+                corridorSummary = "$summaryPrefix L${leftKm.toInt()}/P${rightKm.toInt()} km · " +
+                    "${line.size} pkt · ${elapsedMs} ms",
                 corridorLine = line,
             )
             if (profile == TravelProfile.MOTORCYCLE && sorted.isNotEmpty()) {
@@ -3139,7 +3506,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     isSearching = false,
                     isAnalyzingRoads = false,
-                    message = AppMessage.Error("Wyszukiwanie wzdłuż linii: ${e.message ?: "błąd"}"),
+                    message = AppMessage.Error("$errorLabel: ${e.message ?: "błąd"}"),
                 )
             }
         }
@@ -3324,9 +3691,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyMap()
         }
-        val lineForSort = corridorLine.ifEmpty {
-            if (snapshot.searchOriginMode == SearchOriginMode.LINE) snapshot.corridorLine else emptyList()
-        }
+        val lineForSort = corridorLine.ifEmpty { snapshot.activeSearchLine() }
         val results = withContext(Dispatchers.Default) {
             buildResults(
                 sites,
@@ -3346,6 +3711,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     "miejscowości ${current.localityQuery.trim().ifBlank { "?" }}"
                 current.searchOriginMode == SearchOriginMode.MAP -> "punktu na mapie"
                 current.searchOriginMode == SearchOriginMode.LINE -> "linii"
+                current.searchOriginMode == SearchOriginMode.ROUTE -> "trasy"
                 else -> "GPS"
             }
             val offlineSuffix = if (current.offlineBdl.isReady) " · offline BDL" else ""
@@ -3417,11 +3783,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         snapshot.profile,
                         snapshot.browseCarFilter,
                         roadBySiteId,
-                        corridorLine = if (snapshot.searchOriginMode == SearchOriginMode.LINE) {
-                            snapshot.corridorLine
-                        } else {
-                            emptyList()
-                        },
+                        corridorLine = snapshot.activeSearchLine(),
                     )
                 }
                 if (searchGeneration.get() != generation) return@launch

@@ -17,6 +17,7 @@ import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.mergeWith
 import pl.navilas.finder.util.CorridorGeometry
 import pl.navilas.finder.util.GeoUtils
+import pl.navilas.finder.util.RouteGeometry
 import java.io.IOException
 
 data class RestSearchBundle(
@@ -79,6 +80,50 @@ class RestSiteRepository(
             findRestSitesFromNetworkEnvelope(origin.latitude, origin.longitude, envelope, accept)
         }
         RestSearchOutcome(bundle = bundle, fromSessionCache = false)
+    }
+
+    /**
+     * Route-length variant of [findRestSitesAlongCorridor].
+     *
+     * The single-envelope approach is fine for a hand-drawn corridor, but an imported
+     * route can be 300–500 km long: one bounding box would cover hundreds of km² and
+     * pull the entire BDL layer into memory. Chunks are queried separately and merged.
+     */
+    suspend fun findRestSitesAlongRoute(
+        line: List<LatLon>,
+        leftKm: Double,
+        rightKm: Double,
+        chunkKm: Double = RouteGeometry.DEFAULT_CHUNK_KM,
+    ): RestSearchOutcome = withContext(Dispatchers.IO) {
+        require(line.size >= 2) { "route line needs at least 2 points" }
+        require(leftKm >= 0.0 && rightKm >= 0.0) { "corridor widths must be >= 0" }
+        require(leftKm + rightKm > 0.0) { "corridor width must be positive" }
+        val chunks = RouteGeometry.chunk(line, chunkKm)
+        if (chunks.isEmpty()) {
+            return@withContext RestSearchOutcome(bundle = RestSearchBundle(emptyList(), emptyList()))
+        }
+        pipelineLog("route chunks=${chunks.size} points=${line.size} L=$leftKm P=$rightKm")
+        val sitesById = LinkedHashMap<String, RestSite>()
+        val zonesById = LinkedHashMap<String, ZanocujPolygon>()
+        chunks.forEachIndexed { index, chunk ->
+            val outcome = findRestSitesAlongCorridor(chunk, leftKm, rightKm)
+            outcome.bundle.sites.forEach { sitesById.putIfAbsent(it.id, it) }
+            outcome.bundle.zanocujPolygons.forEach { zonesById.putIfAbsent(it.id, it) }
+            pipelineLog(
+                "route chunk ${index + 1}/${chunks.size}: sites=${outcome.bundle.sites.size} " +
+                    "total=${sitesById.size}",
+            )
+        }
+        val origin = line.first()
+        RestSearchOutcome(
+            bundle = RestSearchBundle(
+                sites = sitesById.values.sortedBy {
+                    GeoUtils.distanceKm(origin.latitude, origin.longitude, it.latitude, it.longitude)
+                },
+                zanocujPolygons = zonesById.values.toList(),
+            ),
+            fromSessionCache = false,
+        )
     }
 
     private suspend fun fetchRestSites(

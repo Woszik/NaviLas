@@ -87,6 +87,10 @@ import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
 import pl.navilas.finder.domain.RestSiteTitles
 import pl.navilas.finder.domain.RoadSuitability
+import pl.navilas.finder.domain.RouteEditAction
+import pl.navilas.finder.domain.RoutePlan
+import pl.navilas.finder.domain.RouteWaypoint
+import pl.navilas.finder.domain.RouteWaypointKind
 import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.SiteWebSearch
 import pl.navilas.finder.domain.SearchConfig
@@ -119,6 +123,7 @@ import pl.navilas.finder.update.UpdateTrack
 import pl.navilas.finder.nav.ExternalNavApps
 import pl.navilas.finder.nav.NavigationLinks
 import pl.navilas.finder.nav.OsmAndMotoRouteStyle
+import pl.navilas.finder.util.RouteGeometry
 import java.io.File
 import java.util.Locale
 
@@ -182,6 +187,8 @@ class MainActivity : AppCompatActivity() {
     private var installReceiverRegistered = false
     private var waitingForSystemInstallerUi = false
     private var pendingImportSnapshot: SavedPointsBackupSnapshot? = null
+    /** Last map point for which the actions sheet was shown (avoids re-showing on redraw). */
+    private var pendingMapPointShown: Pair<Double, Double>? = null
 
     private enum class PendingAfterInstallPermission {
         START_DOWNLOAD,
@@ -310,7 +317,7 @@ class MainActivity : AppCompatActivity() {
             isSavedProvider = { siteId -> viewModel.state.value.isSaved(siteId) },
             savedMetaProvider = { siteId -> savedMetaFor(siteId) },
             distanceLabelProvider = { item ->
-                formatPoiDistance(viewModel.state.value, item.distanceKm)
+                formatPoiDistance(viewModel.state.value, item)
             },
             entryBanLabelProvider = { site ->
                 viewModel.state.value.entryBanAt(site.latitude, site.longitude)?.let { ban ->
@@ -340,6 +347,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 mapController.setOnCorridorVertexClickListener { index ->
                     showCorridorVertexMenu(index)
+                }
+                mapController.setOnRouteWaypointClickListener { waypointId ->
+                    showRouteWaypointMenu(waypointId)
+                }
+                mapController.setOnMapLongClickListener { lat, lon ->
+                    handleMapLongPress(lat, lon)
                 }
                 mapController.setOnCameraIdleListener { west, south, east, north, zoom, bearing ->
                     mapBinding.mapZoomScale.text = getString(R.string.map_zoom_scale, zoom)
@@ -414,6 +427,13 @@ class MainActivity : AppCompatActivity() {
         setupBackHandler()
         observeState()
         requestLocationPermissions()
+        handleRouteIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleRouteIntent(intent)
     }
 
     private fun setupPageChromeNavigation() {
@@ -784,7 +804,8 @@ class MainActivity : AppCompatActivity() {
         bindPlaceNameSearchUi(state)
         updateSearchButtonLabel(
             state.searchConfig.searchRadiusKm,
-            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE ||
+                state.searchOriginMode == SearchOriginMode.ROUTE,
         )
         searchBinding.searchHint.setText(R.string.search_page_hint)
     }
@@ -1103,6 +1124,7 @@ class MainActivity : AppCompatActivity() {
                 current.corridorLine.size,
                 current.corridorLeftKm,
                 current.corridorRightKm,
+                routeWaypointCount = current.routePlan.waypoints.size,
             )
             sheetBinding.sheetSearchSummary.isVisible = !sheetSearchExpanded
             sheetBinding.sheetSearchPanel.isVisible = sheetSearchExpanded
@@ -1291,6 +1313,7 @@ class MainActivity : AppCompatActivity() {
                 state.corridorLine.size,
                 state.corridorLeftKm,
                 state.corridorRightKm,
+                routeWaypointCount = state.routePlan.waypoints.size,
             )
             sheetBinding.sheetSearchSummary.isVisible = !sheetSearchExpanded
             sheetBinding.sheetSearchPanel.isVisible = sheetSearchExpanded
@@ -1318,7 +1341,8 @@ class MainActivity : AppCompatActivity() {
         sheetBinding.sheetBdlOverlaySummary.text = overlaySectionSummary(state)
         updateSearchButtonLabel(
             state.searchConfig.searchRadiusKm,
-            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE ||
+                state.searchOriginMode == SearchOriginMode.ROUTE,
         )
         sheetBinding.btnSheetSearch.isEnabled = searchBinding.btnSearch.isEnabled
         sheetBinding.btnSheetBrowseReload.isEnabled = searchBinding.btnSearch.isEnabled
@@ -1346,10 +1370,13 @@ class MainActivity : AppCompatActivity() {
                 R.id.radioSearchMap -> SearchOriginMode.MAP
                 R.id.radioSearchLocality -> SearchOriginMode.LOCALITY
                 R.id.radioSearchLine -> SearchOriginMode.LINE
+                R.id.radioSearchRoute -> SearchOriginMode.ROUTE
                 else -> SearchOriginMode.GPS
             }
             viewModel.setSearchOriginMode(mode)
-            if (mode == SearchOriginMode.LINE && viewModel.state.value.currentPage != AppPages.MAP) {
+            if ((mode == SearchOriginMode.LINE || mode == SearchOriginMode.ROUTE) &&
+                viewModel.state.value.currentPage != AppPages.MAP
+            ) {
                 viewModel.setCurrentPage(AppPages.MAP)
             }
         }
@@ -1409,6 +1436,23 @@ class MainActivity : AppCompatActivity() {
             defaultValue = { formatKm(UiState.DEFAULT_CORRIDOR_RIGHT_KM) },
             isSyncing = { syncingCorridorUi },
         )
+        controls.routeSideInput.addTextChangedListener(
+            object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    if (syncingCorridorUi) return
+                    s?.toString()?.replace(',', '.')?.toDoubleOrNull()?.let { viewModel.setRouteSideKm(it) }
+                }
+            },
+        )
+        installClearDefaultOnFocus(
+            field = controls.routeSideInput,
+            defaultValue = { formatKm(UiState.DEFAULT_ROUTE_SIDE_KM) },
+            isSyncing = { syncingCorridorUi },
+        )
+        controls.btnClearRoute.setOnClickListener { viewModel.clearRoutePlan() }
+        controls.btnShareRoute.setOnClickListener { shareRouteGpx() }
     }
 
     private fun setupPlaceNameSearch(controls: PlaceNameSearchBinding) {
@@ -1871,9 +1915,7 @@ class MainActivity : AppCompatActivity() {
             searchBinding.btnSearch.text = label
         }
         mapFilterSheetBinding?.btnSheetSearch?.text = label
-    }
-
-    private fun requestLocationPermissions(
+    }    private fun requestLocationPermissions(
         forceCenter: Boolean = false,
         forTrackingToggle: Boolean = false,
     ) {
@@ -2024,6 +2066,7 @@ class MainActivity : AppCompatActivity() {
         val mapHintRes = when {
             state.isMapBrowse() -> R.string.map_browse_tap_hint
             state.searchOriginMode == SearchOriginMode.LINE -> R.string.map_corridor_hint
+            state.searchOriginMode == SearchOriginMode.ROUTE -> R.string.map_route_hint
             state.searchOriginMode == SearchOriginMode.MAP -> R.string.map_search_pin_hint
             else -> null
         }
@@ -2103,11 +2146,18 @@ class MainActivity : AppCompatActivity() {
                 mapController.setBrowseOverlayPoints(state.bdlOverlayViewport)
                 mapController.setEntryBanPolygons(state.entryBanViewport)
                 mapController.updateSearchPin(
-                    if (state.searchOriginMode == SearchOriginMode.LINE) null else state.mapSearchPin,
+                    if (state.searchOriginMode == SearchOriginMode.LINE ||
+                        state.searchOriginMode == SearchOriginMode.ROUTE
+                    ) {
+                        null
+                    } else {
+                        state.mapSearchPin
+                    },
                 )
                 mapController.updateCorridorLine(
                     if (state.searchOriginMode == SearchOriginMode.LINE) state.corridorLine else emptyList(),
                 )
+                mapController.updateRoutePlan(state.routePlan)
                 val resultsHash = listItems.hashCode() xor state.selectedSiteIds.hashCode() xor
                     state.profile.hashCode() xor state.zanocujPolygons.size xor
                     state.browseCarFilter.hashCode() xor
@@ -2115,7 +2165,11 @@ class MainActivity : AppCompatActivity() {
                     state.bdlOverlayViewport.size xor
                     state.entryBanViewport.size xor
                     (state.mapSearchPin?.hashCode() ?: 0) xor state.listViewMode.hashCode() xor
-                    state.corridorLine.hashCode() xor state.searchOriginMode.hashCode()
+                    state.corridorLine.hashCode() xor state.searchOriginMode.hashCode() xor
+                    state.routePlan.line.size xor
+                    (state.routePlan.line.firstOrNull()?.hashCode() ?: 0) xor
+                    (state.routePlan.line.lastOrNull()?.hashCode() ?: 0) xor
+                    state.routePlan.waypoints.hashCode()
                 if (forceMarkers || resultsHash != lastRenderedResultsToken) {
                     lastRenderedResultsToken = resultsHash
                     val polygons = if (state.listViewMode == ListViewMode.SAVED) emptyList() else state.zanocujPolygons
@@ -2141,6 +2195,19 @@ class MainActivity : AppCompatActivity() {
         handleAppUpdateState(state)
         handleBdlRefreshOffer(state)
         handleEntryBanRefreshOffer(state)
+        handlePendingMapPoint(state)
+    }
+
+    /** A ROUTE-mode tap stages [UiState.pendingMapPoint]; show the action sheet once. */
+    private fun handlePendingMapPoint(state: UiState) {
+        val point = state.pendingMapPoint ?: run {
+            pendingMapPointShown = null
+            return
+        }
+        val key = point.latitude to point.longitude
+        if (pendingMapPointShown == key) return
+        pendingMapPointShown = key
+        showMapPointActions(point)
     }
 
     private fun handleAppUpdateState(state: UiState) {
@@ -2709,8 +2776,14 @@ class MainActivity : AppCompatActivity() {
         addRow(
             labelTable,
             valueTable,
-            getString(R.string.compare_distance),
-            items.map { formatPoiDistance(state, it.distanceKm) },
+            getString(
+                if (state.activeSearchLine().size >= 2) {
+                    R.string.compare_distance_along_line
+                } else {
+                    R.string.compare_distance
+                },
+            ),
+            items.map { formatPoiDistance(state, it) },
         )
         addRow(labelTable, valueTable, "Wiata", items.map { yesNo(SiteFeature.WIATA in it.site.features) })
         addRow(labelTable, valueTable, "Palenisko", items.map { yesNo(SiteFeature.PALENISKO in it.site.features) })
@@ -2829,7 +2902,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             title
         }
-        poi.cardDistance.text = formatPoiDistance(state, selected.distanceKm)
+        poi.cardDistance.text = formatPoiDistance(state, selected)
         poi.cardFeatures.text = if (overlayGroup != null) {
             selected.site.description?.replace("\n", " · ")
                 ?: selected.site.featureSummaryPl()
@@ -3154,6 +3227,8 @@ class MainActivity : AppCompatActivity() {
             return workStatus?.let { "$base\n$it" } ?: base
         }
         val radius = "${state.searchConfig.searchRadiusKm.toInt()} km"
+        val lineMode = state.searchOriginMode == SearchOriginMode.LINE ||
+            state.searchOriginMode == SearchOriginMode.ROUTE
         val origin = when (state.searchOriginMode) {
             SearchOriginMode.GPS -> "od: GPS"
             SearchOriginMode.MAP -> "od: mapa"
@@ -3164,8 +3239,11 @@ class MainActivity : AppCompatActivity() {
             SearchOriginMode.LINE -> {
                 "linia: ${state.corridorLine.size} pkt L${state.corridorLeftKm.toInt()}/P${state.corridorRightKm.toInt()}"
             }
+            SearchOriginMode.ROUTE -> {
+                "trasa: ${state.routePlan.line.size} pkt ±${state.routeRightKm.toInt()} km"
+            }
         }
-        val base = if (state.searchOriginMode == SearchOriginMode.LINE) {
+        val base = if (lineMode) {
             "$profile · $origin · $filterLabel · wyników: ${state.results.size}$offline"
         } else {
             "$profile · $radius · $filterLabel · wyników: ${state.results.size} · $origin$offline"
@@ -3186,11 +3264,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Line/route searches report distance along the polyline from its start, so the list
+     * shows route kilometres. Plain radius searches keep the distance from the origin.
+     */
+    private fun formatPoiDistance(state: UiState, item: RestSiteResult): String {
+        if (state.activeSearchLine().size >= 2 && !state.isMapBrowse()) {
+            return getString(
+                R.string.poi_distance_along_line,
+                String.format(Locale.forLanguageTag("pl-PL"), "%.1f", item.distanceKm),
+            )
+        }
+        return formatPoiDistance(state, item.distanceKm)
+    }
+
     private fun bindSearchCriteriaUi(state: UiState) {
         forEachSearchCriteria { bindSearchCriteriaUi(it, state) }
         updateSearchButtonLabel(
             state.searchConfig.searchRadiusKm,
-            lineMode = state.searchOriginMode == SearchOriginMode.LINE,
+            lineMode = state.searchOriginMode == SearchOriginMode.LINE ||
+                state.searchOriginMode == SearchOriginMode.ROUTE,
         )
     }
 
@@ -3202,15 +3295,18 @@ class MainActivity : AppCompatActivity() {
             SearchOriginMode.MAP -> controls.searchOriginGroup.check(R.id.radioSearchMap)
             SearchOriginMode.LOCALITY -> controls.searchOriginGroup.check(R.id.radioSearchLocality)
             SearchOriginMode.LINE -> controls.searchOriginGroup.check(R.id.radioSearchLine)
+            SearchOriginMode.ROUTE -> controls.searchOriginGroup.check(R.id.radioSearchRoute)
         }
 
         val localityVisible = state.searchOriginMode == SearchOriginMode.LOCALITY
         val lineVisible = state.searchOriginMode == SearchOriginMode.LINE
+        val routeVisible = state.searchOriginMode == SearchOriginMode.ROUTE
         controls.corridorPanel.isVisible = lineVisible
-        controls.radiusSpinner.isVisible = !lineVisible
-        controls.radiusLabel.isVisible = !lineVisible
+        controls.routePanel.isVisible = routeVisible
+        controls.radiusSpinner.isVisible = !lineVisible && !routeVisible
+        controls.radiusLabel.isVisible = !lineVisible && !routeVisible
         val presets = SearchConfig.SEARCH_RADIUS_PRESETS_KM
-        if (lineVisible) {
+        if (lineVisible || routeVisible) {
             setCustomRadiusUiVisible(controls, false)
         } else {
             val isCustom = state.searchConfig.searchRadiusKm !in presets
@@ -3233,8 +3329,7 @@ class MainActivity : AppCompatActivity() {
             controls.localityInput.setSelection(state.localityQuery.length)
         }
         bindLocalityCandidates(controls, state.localityCandidates)
-        if (lineVisible) {
-            controls.corridorStatus.text = getString(
+        if (lineVisible) {            controls.corridorStatus.text = getString(
                 R.string.corridor_status,
                 state.corridorLine.size,
                 formatKm(state.corridorLeftKm),
@@ -3252,6 +3347,29 @@ class MainActivity : AppCompatActivity() {
                 controls.corridorRightInput.text?.toString() != rightText
             ) {
                 controls.corridorRightInput.setText(rightText)
+            }
+            syncingCorridorUi = false
+        }
+        if (routeVisible) {
+            val km = RouteGeometry.cumulativeKm(state.routePlan.line).lastOrNull() ?: 0.0
+            val via = state.routePlan.viaPoints.size
+            controls.routeStatus.text = getString(
+                R.string.route_status,
+                km.toInt(),
+                state.routePlan.line.size,
+                via,
+            )
+            val source = state.routePlan.sourceName
+            controls.routeSource.isVisible = !source.isNullOrBlank()
+            if (!source.isNullOrBlank()) {
+                controls.routeSource.text = getString(R.string.route_source, source)
+            }
+            syncingCorridorUi = true
+            val sideText = formatKm(state.routeRightKm)
+            if (!controls.routeSideInput.hasFocus() &&
+                controls.routeSideInput.text?.toString() != sideText
+            ) {
+                controls.routeSideInput.setText(sideText)
             }
             syncingCorridorUi = false
         }
@@ -3368,6 +3486,170 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    // ---- Imported route (GPX from OsmAnd) ---------------------------------------------
+
+    /** Handles ACTION_VIEW / ACTION_SEND with a GPX from the external planner. */
+    private fun handleRouteIntent(intent: Intent?) {
+        if (intent == null) return
+        val uri = when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+            }
+            else -> null
+        } ?: return
+        if (looksLikeGpx(intent, uri)) importRouteFromUri(uri)
+    }
+
+    private fun looksLikeGpx(intent: Intent, uri: android.net.Uri): Boolean {
+        val type = intent.type
+        if (type == null) {
+            // Some providers omit the MIME type; then only the file name can vouch for it.
+            return uri.toString().endsWith(".gpx", ignoreCase = true)
+        }
+        if (type.contains("gpx", ignoreCase = true)) return true
+        // Untyped streams are only trusted when the file name says GPX.
+        return type == "application/octet-stream" &&
+            uri.toString().endsWith(".gpx", ignoreCase = true)
+    }
+
+    private fun importRouteFromUri(uri: android.net.Uri) {
+        val current = viewModel.state.value.routePlan
+        if (current.line.size >= 2) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.route_confirm_replace_title)
+                .setMessage(
+                    getString(
+                        R.string.route_confirm_replace_body,
+                        RouteGeometry.cumulativeKm(current.line).lastOrNull()?.toInt() ?: 0,
+                        current.waypoints.size,
+                    ),
+                )
+                .setPositiveButton(android.R.string.ok) { _, _ -> viewModel.importRouteGpx(uri) }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        } else {
+            viewModel.importRouteGpx(uri)
+        }
+    }
+
+    /** Bare map tap opened the point menu; ROUTE mode stages it via [UiState.pendingMapPoint]. */
+    private fun showMapPointActions(point: LatLon) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_map_point_actions, null)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.route_point_actions_title)
+            .setView(dialogView)
+            .create()
+        dialogView.findViewById<TextView>(R.id.mapPointActionsCoords).text =
+            String.format(Locale.US, "%.6f, %.6f", point.latitude, point.longitude)
+        val corridorButton = dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnMapPointCorridor,
+        )
+        corridorButton.isVisible = viewModel.state.value.searchOriginMode == SearchOriginMode.LINE
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnMapPointSetTarget,
+        ).setOnClickListener {
+            viewModel.addTargetAt(point.latitude, point.longitude)
+            dialog.dismiss()
+        }
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnMapPointAddWaypoint,
+        ).setOnClickListener {
+            viewModel.addRouteWaypoint(
+                point.latitude,
+                point.longitude,
+                RouteWaypointKind.WAYPOINT,
+            )
+            dialog.dismiss()
+        }
+        corridorButton.setOnClickListener {
+            viewModel.appendCorridorPoint(point.latitude, point.longitude)
+            dialog.dismiss()
+        }
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnMapPointSearchPin,
+        ).setOnClickListener {
+            viewModel.setMapSearchPin(point.latitude, point.longitude)
+            dialog.dismiss()
+        }
+        dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+            R.id.btnMapPointCancel,
+        ).setOnClickListener { dialog.dismiss() }
+        dialog.setOnDismissListener { viewModel.dismissMapPointActions() }
+        dialog.show()
+    }
+
+    /** Long press on the map is the shortcut for "set route target" — only while planning a route. */
+    private fun handleMapLongPress(latitude: Double, longitude: Double) {
+        val state = viewModel.state.value
+        if (state.isMapBrowse()) return
+        if (state.searchOriginMode != SearchOriginMode.ROUTE && !state.routePlan.isUsable) return
+        viewModel.addTargetAt(latitude, longitude)
+        Snackbar.make(binding.root, R.string.route_point_set_target, Snackbar.LENGTH_SHORT).show()
+    }
+
+    private fun showRouteWaypointMenu(waypointId: String) {
+        val waypoint = viewModel.state.value.routePlan.waypoints
+            .firstOrNull { it.id == waypointId } ?: return
+        val options = arrayOf(
+            getString(R.string.route_waypoint_move),
+            getString(R.string.route_waypoint_navigate),
+            getString(R.string.route_waypoint_delete),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.route_waypoint_title, routeWaypointTitle(waypoint)))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> viewModel.beginMoveRouteWaypoint(waypointId)
+                    1 -> openNavigationChooser(waypoint.position, waypoint.name)
+                    2 -> viewModel.removeRouteWaypoint(waypointId)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun routeWaypointTitle(waypoint: RouteWaypoint): String = when (waypoint.kind) {
+        RouteWaypointKind.TARGET ->
+            getString(R.string.route_selected_target) + " · " + waypoint.name
+        RouteWaypointKind.WAYPOINT -> waypoint.name
+    }
+
+    private fun shareRouteGpx() {
+        val payload = viewModel.buildRouteGpx()
+        if (payload == null) {
+            Snackbar.make(binding.root, R.string.route_share_empty, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val (gpx, fileName) = payload
+        val file = File(File(cacheDir, "route").apply { mkdirs() }, fileName)
+        runCatching { file.writeText(gpx) }.onFailure {
+            Snackbar.make(binding.root, R.string.route_share_failed, Snackbar.LENGTH_LONG).show()
+            return
+        }
+        val uri = FileProvider.getUriForFile(this, getString(R.string.file_provider_authority), file)
+        // OsmAnd consumes GPX via ACTION_SEND + EXTRA_STREAM (and ACTION_VIEW as fallback).
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/gpx+xml"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = android.content.ClipData.newRawUri(fileName, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val view = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/gpx+xml")
+            clipData = android.content.ClipData.newRawUri(fileName, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(send, getString(R.string.route_share))
+        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        if (!startIntentSafely(chooser)) {
+            if (!startIntentSafely(view)) {
+                Snackbar.make(binding.root, R.string.route_share_failed, Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun updateOfflinePanelVisibility() {
@@ -3522,7 +3804,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             RestSiteTitles.cardTitle(site.name)
         }
-        details.detailsDistance.text = formatPoiDistance(state, item.distanceKm)
+        details.detailsDistance.text = formatPoiDistance(state, item)
         details.detailsFeatures.text = if (overlayGroup != null) {
             site.description?.replace("\n", " · ") ?: site.featureSummaryPl()
         } else {

@@ -1,6 +1,6 @@
 # F-Droid — NaviLas
 
-Stan: **MR otwarty — kandydat podbity do Beta 0.5.68** (2026-09-08). Czekamy na kolejne spojrzenie maintainera.
+Stan: **MR otwarty — kolejka testów (linsui 2026-09-10).** Metadane i ABI split OK; F-Droid przetestuje później. Kandydat nadal Beta **0.5.68** (811–814). Nightly 0.5.70 (nowa ikona) **nie** idzie do tego MR.
 
 Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/)
 
@@ -17,12 +17,12 @@ Przewodnik: [Submitting to F-Droid](https://f-droid.org/docs/Submitting_to_F-Dro
 | **Fork fdroiddata** | https://gitlab.com/Woszik/fdroiddata |
 | **Branch MR** | `pl.navilas.finder` |
 | **Plik metadanych** | `metadata/pl.navilas.finder.yml` |
-| **Kandydat w szablonie repo NaviLas** | Beta **0.5.68**, versionCode 81, commit `1126c89` (tag `v0.5.68` + zrzuty Fastlane) |
-| **Kandydat na forku GitLab (live MR)** | Beta **0.5.68**, versionCode 81, commit `1126c89` |
-| **Status MR** | Open — labele `New App` + `waiting-on-response` (patrz niżej) |
-| **Pipeline na forku** | czerwony — **normalne** na forku kontrybutora, nie blokuje review |
-| **Ostatnia aktywność autora** | 2026-09-08 — YAML na `1126c89` (Beta 0.5.68 + zrzuty; przepisana historia) |
-| **Ostatnia aktywność recenzenta** | ~2026-08-24 — duckniii / linsui (prośby); od wtedy cisza |
+| **Kandydat w szablonie repo NaviLas** | Beta **0.5.68**, ABI split 811–814, commit `54f93be` |
+| **Kandydat na forku GitLab (live MR)** | Beta **0.5.68**, ABI split 811–814, commit `54f93be` |
+| **Status MR** | Open — linsui: *mostly ready*, czekają na test APK (kolejka długa) |
+| **Pipeline MR (fdroid/fdroiddata)** | #2833348716 **zielony** (przed ABI split). Nowy pipeline po YAML ABI. |
+| **Ostatnia aktywność autora** | 2026-09-10 — ABI split (`-PABI=`, VercodeOperation) |
+| **Ostatnia aktywność recenzenta** | 2026-09-10 wieczór — linsui: MR mostly ready, test later; update MR if we release a new version |
 
 ### Zrobione
 
@@ -41,6 +41,8 @@ To **nie** jest kolejka „czekamy aż Woj coś dopisze”. Label wstawia recenz
 
 Kolejka nowych aplikacji jest długa, recenzenci to wolontariusze. **6 dni ciszy po odpowiedzi jest normalne** — typowy czas to dni–tygodnie, bywa kilka miesięcy. **Nie pingować** po mniej niż ~2–3 tygodniach od ostatniej odpowiedzi (krótko, po angielsku, bez „please merge”).
 
+Od 2026-09-10 linsui potwierdził, że MR jest **mostly ready** i czeka na test w kolejce — to nie jest już „czekamy na Woj”. Nightly GitHub **nie** aktualizuje YAML-a. Nowa **Beta** (tag) — tak, wtedy zaktualizować ten MR zanim zdążą zmergować.
+
 ### Po powrocie (gdy maintainer odpowie)
 
 1. Przeczytać komentarze w MR → odpowiedzieć w wątku (krótko, po angielsku).
@@ -48,7 +50,7 @@ Kolejka nowych aplikacji jest długa, recenzenci to wolontariusze. **6 dni ciszy
 3. Po **merge** MR: aplikacja trafi do F-Droid po kolejnym cyklu publikacji (nie od razu).
 4. Kolejne wersje: tag na GitHub; F-Droid łapie tagi (`UpdateCheckMode: Tags`).
 
-**Prawdopodobna następna uwaga:** w YAML jest `Binaries` + `AllowedAPKSigningKeys` (reproducible). APK z NaviLas-releases to flavor **`github`**, recipe buduje **`fdroidRelease`** — sumy się nie zepną. Albo usunąć `Binaries` i zostawić podpis F-Droid, albo publikować osobny APK flavoru `fdroid` pod ten sam tag (koszt: reproducible). Decyzja projektu: **nie** robimy reproducible (patrz tabela poniżej).
+W YAML **nie** ma `Binaries`. F-Droid buduje flavor `fdroid` (`assembleFdroidRelease`) i podpisuje swoim kluczem. APK GitHub to flavor `github` — inne podpisy, to zamierzone.
 
 Szablon odpowiedzi / opis MR: [`docs/fdroid/MR_DESCRIPTION.md`](fdroid/MR_DESCRIPTION.md)
 

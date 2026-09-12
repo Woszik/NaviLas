@@ -45,6 +45,7 @@ import pl.navilas.finder.domain.LatLon
 import pl.navilas.finder.domain.NavigationTargetKind
 import pl.navilas.finder.domain.RestSite
 import pl.navilas.finder.domain.RestSiteResult
+import pl.navilas.finder.domain.RoutePlan
 import pl.navilas.finder.domain.SiteFeature
 import pl.navilas.finder.domain.TravelProfile
 import pl.navilas.finder.domain.ZanocujStatus
@@ -61,9 +62,12 @@ class MapController {
     private var onEmptyMapClick: ((Double, Double) -> Unit)? = null
     private var onEntryBanClick: ((String) -> Unit)? = null
     private var onCorridorVertexClick: ((Int) -> Unit)? = null
+    private var onRouteWaypointClick: ((String) -> Unit)? = null
+    private var onMapLongClick: ((Double, Double) -> Unit)? = null
     private var onCameraIdle: ((Double, Double, Double, Double, Double, Double) -> Unit)? = null
     private var onGestureCameraMoveStarted: (() -> Unit)? = null
     private var clickListenerRegistered = false
+    private var clickListenerBound = false
     private var cameraIdleRegistered = false
     private var cameraMoveStartedRegistered = false
     private var applyingFollowCamera = false
@@ -130,6 +134,14 @@ class MapController {
 
     fun setOnCorridorVertexClickListener(listener: ((index: Int) -> Unit)?) {
         onCorridorVertexClick = listener
+    }
+
+    fun setOnMapLongClickListener(listener: ((latitude: Double, longitude: Double) -> Unit)?) {
+        onMapLongClick = listener
+    }
+
+    fun setOnRouteWaypointClickListener(listener: ((waypointId: String) -> Unit)?) {
+        onRouteWaypointClick = listener
     }
 
     fun setOnGestureCameraMoveStartedListener(listener: (() -> Unit)?) {
@@ -538,13 +550,32 @@ class MapController {
     }
 
     private fun ensureClickListener(mapLibreMap: MapLibreMap) {
-        if (clickListenerRegistered) return
-        clickListenerRegistered = true
+        if (!clickListenerRegistered) {
+            clickListenerRegistered = true
+            mapLibreMap.addOnMapLongClickListener { latLng ->
+                val handler = onMapLongClick
+                if (handler == null) {
+                    false
+                } else {
+                    handler(latLng.latitude, latLng.longitude)
+                    true
+                }
+            }
+        }
+        if (clickListenerBound) return
+        clickListenerBound = true
         mapLibreMap.addOnMapClickListener { latLng ->
             val screen = mapLibreMap.projection.toScreenLocation(latLng)
             val vertexIndex = queryCorridorVertexIndex(PointF(screen.x, screen.y))
             if (vertexIndex != null) {
                 onCorridorVertexClick?.invoke(vertexIndex)
+                true
+            } else if (onRouteWaypointClick != null &&
+                queryRouteWaypointId(PointF(screen.x, screen.y))?.let { id ->
+                    onRouteWaypointClick?.invoke(id)
+                    true
+                } == true
+            ) {
                 true
             } else if (zoomIntoCluster(PointF(screen.x, screen.y))) {
                 true
@@ -846,6 +877,97 @@ class MapController {
                 ),
             )
         }
+        // Imported route: read-only geometry (never editable here) + waypoint markers.
+        if (style.getSource(SOURCE_ROUTE_LINE) == null) {
+            style.addSource(GeoJsonSource(SOURCE_ROUTE_LINE, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                LineLayer(LAYER_ROUTE_LINE, SOURCE_ROUTE_LINE).withProperties(
+                    lineColor(Color.parseColor("#1565C0")),
+                    lineWidth(4f),
+                ),
+            )
+        }
+        if (style.getSource(SOURCE_ROUTE_WAYPOINTS) == null) {
+            style.addSource(
+                GeoJsonSource(SOURCE_ROUTE_WAYPOINTS, FeatureCollection.fromFeatures(emptyList())),
+            )
+            style.addLayer(
+                CircleLayer(LAYER_ROUTE_WAYPOINTS, SOURCE_ROUTE_WAYPOINTS).withProperties(
+                    circleRadius(9f),
+                    circleColor(Color.parseColor("#0D47A1")),
+                    circleStrokeColor(Color.WHITE),
+                    circleStrokeWidth(2f),
+                ),
+            )
+        }
+        if (style.getSource(SOURCE_ROUTE_TARGET) == null) {
+            style.addSource(GeoJsonSource(SOURCE_ROUTE_TARGET, FeatureCollection.fromFeatures(emptyList())))
+            style.addLayer(
+                CircleLayer(LAYER_ROUTE_TARGET, SOURCE_ROUTE_TARGET).withProperties(
+                    circleRadius(12f),
+                    circleColor(Color.parseColor("#C62828")),
+                    circleStrokeColor(Color.WHITE),
+                    circleStrokeWidth(2.5f),
+                ),
+            )
+        }
+    }
+
+    /** Draws the imported route plan. Geometry is display-only; only waypoints come back to OsmAnd. */
+    fun updateRoutePlan(plan: RoutePlan) {
+        val s = style ?: return
+        val lineSource = s.getSourceAs<GeoJsonSource>(SOURCE_ROUTE_LINE) ?: return
+        val waypointSource = s.getSourceAs<GeoJsonSource>(SOURCE_ROUTE_WAYPOINTS) ?: return
+        val targetSource = s.getSourceAs<GeoJsonSource>(SOURCE_ROUTE_TARGET) ?: return
+        if (plan.line.size >= 2) {
+            lineSource.setGeoJson(
+                Feature.fromGeometry(
+                    LineString.fromLngLats(plan.line.map { Point.fromLngLat(it.longitude, it.latitude) }),
+                ),
+            )
+        } else {
+            lineSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        }
+        val via = plan.viaPoints
+        waypointSource.setGeoJson(
+            FeatureCollection.fromFeatures(
+                via.mapIndexed { index, waypoint ->
+                    Feature.fromGeometry(
+                        Point.fromLngLat(waypoint.longitude, waypoint.latitude),
+                    ).apply {
+                        addStringProperty(PROP_WAYPOINT_ID, waypoint.id)
+                        addNumberProperty("index", index)
+                    }
+                },
+            ),
+        )
+        val target = plan.target
+        if (target == null) {
+            targetSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        } else {
+            targetSource.setGeoJson(
+                Feature.fromGeometry(Point.fromLngLat(target.longitude, target.latitude)).apply {
+                    addStringProperty(PROP_WAYPOINT_ID, target.id)
+                },
+            )
+        }
+    }
+
+    /** Waypoint id under the tap, if any — used to open the route point menu. */
+    fun queryRouteWaypointId(screen: PointF): String? {
+        val mapLibreMap = map ?: return null
+        val pad = RectF(
+            screen.x - HIT_PAD_PX,
+            screen.y - HIT_PAD_PX,
+            screen.x + HIT_PAD_PX,
+            screen.y + HIT_PAD_PX,
+        )
+        listOf(LAYER_ROUTE_TARGET, LAYER_ROUTE_WAYPOINTS).forEach { layer ->
+            val features = runCatching { mapLibreMap.queryRenderedFeatures(pad, layer) }.getOrNull()
+            val id = features?.firstOrNull()?.getStringProperty(PROP_WAYPOINT_ID)
+            if (!id.isNullOrBlank()) return id
+        }
+        return null
     }
 
     fun updateCorridorLine(points: List<LatLon>) {
@@ -898,6 +1020,9 @@ class MapController {
         const val SOURCE_HELPER_LINE = "navilas-helper-line"
         const val SOURCE_CORRIDOR = "navilas-corridor"
         const val SOURCE_CORRIDOR_VERTICES = "navilas-corridor-vertices"
+        const val SOURCE_ROUTE_LINE = "navilas-route-line"
+        const val SOURCE_ROUTE_WAYPOINTS = "navilas-route-waypoints"
+        const val SOURCE_ROUTE_TARGET = "navilas-route-target"
         const val LAYER_USER = "navilas-user-layer"
         const val LAYER_SEARCH_PIN = "navilas-search-pin-layer"
         const val LAYER_SITES = "navilas-sites-layer"
@@ -913,6 +1038,10 @@ class MapController {
         const val LAYER_HELPER_LINE = "navilas-helper-line-layer"
         const val LAYER_CORRIDOR = "navilas-corridor-layer"
         const val LAYER_CORRIDOR_VERTICES = "navilas-corridor-vertices-layer"
+        const val LAYER_ROUTE_LINE = "navilas-route-line-layer"
+        const val LAYER_ROUTE_WAYPOINTS = "navilas-route-waypoints-layer"
+        const val LAYER_ROUTE_TARGET = "navilas-route-target-layer"
+        const val PROP_WAYPOINT_ID = "waypoint_id"
         const val PROP_ZANOCUJ = "zanocuj"
         const val PROP_PARKING = "parking"
         const val PROP_FILTER_MATCH = "filter_match"

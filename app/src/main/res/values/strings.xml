@@ -18,6 +18,7 @@
     <string name="compare_selection">Porównaj zaznaczone</string>
     <string name="compare_name">Nazwa</string>
     <string name="compare_distance">Odległość</string>
+    <string name="compare_distance_along_line">Km trasy</string>
     <string name="compare_zanocuj">Zanocuj</string>
     <string name="compare_moto">Dojazd moto</string>
     <string name="compare_saved">Zapisane</string>
@@ -118,6 +119,7 @@
     <string name="zanocuj_near_zone_emoji">🌲 Blisko strefy „Zanocuj w lesie”</string>
     <string name="map_search_pin_hint">Dotknij mapy (poza znacznikiem wyniku), aby ustawić punkt wyszukiwania — potem ZNAJDŹ.</string>
     <string name="map_corridor_hint">Tryb linii: klikaj mapę, aby dodać punkty. Dotknij istniejącego punktu, aby przesunąć / wstawić / usunąć.</string>
+    <string name="map_route_hint">Trasa jest tylko do odczytu. Dotknij mapy, by dodać punkt trasy lub cel; dotknij punktu trasy, by nim zarządzać. Długie przytrzymanie = cel.</string>
     <string name="map_browse_tap_hint">Dotknij punkt na mapie, by zobaczyć kartę. Puste miejsce zamyka zaznaczenie.</string>
     <string name="clear_map_search_pin">Szukaj od GPS (wyczyść punkt mapy)</string>
     <string name="search_origin_label">Szukaj wokół:</string>
@@ -125,6 +127,27 @@
     <string name="search_origin_map">Punktu zaznaczonego na mapie</string>
     <string name="search_origin_locality">Miejscowości</string>
     <string name="search_origin_line">Wzdłuż linii na mapie</string>
+    <string name="search_origin_route">Wzdłuż trasy z OsmAnd</string>
+    <string name="route_hint">Trasa z OsmAnd: udostępnij GPX do NaviLas (albo „Otwórz w NaviLas”). Linia jest tylko do odczytu — punkty korygują trasę w OsmAnd.</string>
+    <string name="route_status">Trasa: %1$d km · %2$d pkt · %3$d punktów trasy</string>
+    <string name="route_source">Źródło: %1$s</string>
+    <string name="route_side_hint">Pas przy trasie (km)</string>
+    <string name="route_clear">Wyczyść trasę</string>
+    <string name="route_share">Udostępnij trasę (GPX)</string>
+    <string name="route_waypoint_title">Punkt trasy: %1$s</string>
+    <string name="route_waypoint_move">Przesuń</string>
+    <string name="route_waypoint_delete">Usuń</string>
+    <string name="route_waypoint_navigate">Nawiguj tutaj</string>
+    <string name="route_point_actions_title">Punkt na mapie</string>
+    <string name="route_point_add_waypoint">Dodaj punkt trasy</string>
+    <string name="route_point_set_target">Ustaw cel trasy</string>
+    <string name="route_point_search_pin">Ustaw punkt wyszukiwania</string>
+    <string name="route_point_add_corridor">Dodaj punkt linii</string>
+    <string name="route_selected_target">Cel</string>
+    <string name="route_share_empty">Brak trasy do udostępnienia.</string>
+    <string name="route_share_failed">Nie udało się udostępnić trasy.</string>
+    <string name="route_confirm_replace_title">Zastąpić obecną trasę?</string>
+    <string name="route_confirm_replace_body">W pamięci jest już trasa (%1$d km, %2$d punktów). Wczytanie nowego pliku GPX ją zastąpi.</string>
     <string name="corridor_hint">Klikaj mapę (min. 2 punkty). Lewo/prawo = szerokość korytarza. Skróty poniżej budują linię 2-punktową.</string>
     <string name="corridor_left_hint">Lewo (km)</string>
     <string name="corridor_right_hint">Prawo (km)</string>
@@ -220,6 +243,7 @@
     <string name="close_poi_card">Zamknij kartę miejsca</string>
     <string name="close_compare_card">Zamknij porównanie</string>
     <string name="poi_distance_no_gps">Włącz GPS, by zobaczyć odległość</string>
+    <string name="poi_distance_along_line">%1$s km trasy</string>
     <string name="location_updated">Lokalizacja GPS zaktualizowana.</string>
     <string name="location_updated_search">Lokalizacja GPS zaktualizowana. Wyszukiwanie od GPS.</string>
     <string name="location_approx">Dostępna tylko lokalizacja przybliżona.</string>

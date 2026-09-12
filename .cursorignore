@@ -1,0 +1,31 @@
+# Build / tool caches (główny zysk: ~1.4GB)
+/app/build/
+/build/
+/.gradle/
+/.kotlin/
+
+# Artefakty binarne
+*.apk
+*.aab
+*.ap_
+*.dex
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE / lokalne / sekrety
+/.idea/
+*.iml
+/local.properties
+/.jdk_env
+/.navilas-secrets/
+.DS_Store
+/captures/
+
+# Szum badawczy / logi (już w .gitignore)
+/.research/
+
+# Screenshots sklepowe (teksty metadata zostają)
+/fastlane/metadata/android/*/images/
+
+# Szkice ikon (PNG/SVG robocze; docs/*.md zostają)
+/docs/icon-sketches/
