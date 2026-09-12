@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-11**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.72-nightly | 85 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.73-nightly | 86 |
 | **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -32,9 +32,13 @@ Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
 
 Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
 
+## Nightly 0.5.73
+
+- **Wysokość znaku na pasku = wysokość litery N** w tytule (Material3 TitleLarge 22sp → ~16 dp). `ic_toolbar_logo` przycięty do samego znaku (bez pustego tła viewportu 108), 17×16 dp.
+
 ## Nightly 0.5.72
 
-- **Ikona na pasku tytułowym zmniejszona** do rozmiaru ikony akcji (24dp), bez tła — wcześniej Toolbar rysował launcherową `ic_launcher` (108dp, z zielonym tłem), więc logo było ogromnym kaflen zlewającym się z paskiem. Nowy wektor `drawable/ic_toolbar_logo.xml`: sam znak (świerk + N), ostry na każdej gęstości. Pion: mały odstęp logo–tytuł; poziom bez zmian poza rozmiarem.
+- Ikona na pasku: osobny wektor bez tła zamiast launcherowego `ic_launcher` (108 dp).
 
 ## Nightly 0.5.71
 
