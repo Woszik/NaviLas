@@ -1,12 +1,12 @@
 # Stan projektu NaviLas
 
-Ostatnia aktualizacja dokumentacji: **2026-09-11**.
+Ostatnia aktualizacja dokumentacji: **2026-09-12**.
 
 ## Kanały aktualizacji
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.73-nightly | 86 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.74-nightly | 87 |
 | **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -31,6 +31,11 @@ Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
 - **Mapa:** drugi klik w zaznaczony pin odznacza.
 
 Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
+
+## Nightly 0.5.74
+
+- **Ustawienia:** sekcje w rozwijanych belkach (domyślnie zwinięte).
+- **OsmAnd:** po przekazaniu `.osf` przycisk „Wgraj ponownie…” + dialog przed nadpisaniem; bez OsmAnd — wyłączony.
 
 ## Nightly 0.5.73
 

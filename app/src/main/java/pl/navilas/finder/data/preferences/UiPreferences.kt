@@ -91,6 +91,14 @@ class UiPreferences(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_PENDING_OSMAND_SETUP, value).apply()
 
     /**
+     * True after NaviLas successfully handed the .osf profiles file to OsmAnd.
+     * Not a guarantee the user finished OsmAnd's import UI.
+     */
+    var osmandProfilesOffered: Boolean
+        get() = prefs.getBoolean(KEY_OSMAND_PROFILES_OFFERED, false)
+        set(value) = prefs.edit().putBoolean(KEY_OSMAND_PROFILES_OFFERED, value).apply()
+
+    /**
      * Experimental: merge OSM picnic/shelter+parking in Czechia when the search radius
      * crosses the border. Default off — user must confirm a dialog in Settings.
      */
@@ -109,6 +117,7 @@ class UiPreferences(context: Context) {
         private const val KEY_ENTRY_BAN_REFRESH_SNOOZE = "entry_ban_refresh_snooze_until"
         private const val KEY_UPDATE_CHANNEL = "update_channel"
         private const val KEY_PENDING_OSMAND_SETUP = "pending_osmand_setup"
+        private const val KEY_OSMAND_PROFILES_OFFERED = "osmand_profiles_offered"
         private const val KEY_CZECH_BORDER_REST = "czech_border_rest_sites"
     }
 }

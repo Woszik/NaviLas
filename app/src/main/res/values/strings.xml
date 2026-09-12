@@ -65,6 +65,10 @@
     <string name="nav_store_failed">Nie udało się otworzyć sklepu.</string>
     <string name="nav_open_failed">Nie udało się otworzyć aplikacji nawigacji.</string>
     <string name="settings_osmand_profiles">Wgraj profile NaviLas do OsmAnd</string>
+    <string name="settings_osmand_profiles_again">Wgraj ponownie profile NaviLas</string>
+    <string name="settings_osmand_profiles_status">Ostatnio przekazano plik do OsmAnd. Import kończysz w OsmAnd.</string>
+    <string name="settings_osmand_profiles_confirm_title">Ponowny import profili</string>
+    <string name="settings_osmand_profiles_confirm_body">Profile NaviLas mogły już być w OsmAnd. Ponowny import może nadpisać istniejące ustawienia.\n\nKontynuować?</string>
     <string name="settings_osmand_profiles_need_app">Najpierw zainstaluj OsmAnd — jest zalecany w NAWIGUJ.</string>
     <string name="nav_osmand_moto_style_title">Styl trasy OsmAnd</string>
     <string name="nav_osmand_moto_style_message">NaviLas przełącza profil w OsmAnd. Krótka i kręta potrzebują BRouter (zalecany). Profile wgraj z Ustawień, jeśli jeszcze nie.</string>
@@ -336,6 +340,16 @@
     <string name="about_license">NaviLas — Copyright (C) 2026 Woszik.\n\nProgram jest wolnym oprogramowaniem: możesz je rozpowszechniać i/lub modyfikować na warunkach GNU General Public License w wersji 3 lub (według własnego wyboru) dowolnej późniejszej.\n\nPełny tekst licencji: plik LICENSE w repozytorium źródeł\nhttps://github.com/Woszik/NaviLas\n\nKod źródłowy: https://github.com/Woszik/NaviLas</string>
     <string name="about_legal">NaviLas nie jest oficjalną aplikacją Lasów Państwowych ani Banku Danych o Lasach.\n\nInformacje w aplikacji mają charakter pomocniczy. Obowiązujące przepisy, zakazy wstępu do lasu oraz zasady biwakowania / „Zanocuj w lesie” zawsze sprawdzaj w aktualnych, oficjalnych źródłach.\n\nKontakt: woszi@pm.me</string>
     <string name="settings_title">Ustawienia</string>
+    <string name="settings_section_appearance">Wygląd ▼</string>
+    <string name="settings_section_appearance_open">Wygląd ▲</string>
+    <string name="settings_section_startup">Uruchomienie i ekran ▼</string>
+    <string name="settings_section_startup_open">Uruchomienie i ekran ▲</string>
+    <string name="settings_section_nav">Nawigacja ▼</string>
+    <string name="settings_section_nav_open">Nawigacja ▲</string>
+    <string name="settings_section_experiments">Eksperymenty ▼</string>
+    <string name="settings_section_experiments_open">Eksperymenty ▲</string>
+    <string name="settings_section_updates">Aktualizacje ▼</string>
+    <string name="settings_section_updates_open">Aktualizacje ▲</string>
     <string name="settings_theme_label">Wygląd</string>
     <string name="settings_theme_system">Zgodnie z systemem</string>
     <string name="settings_theme_ambient">Automatycznie — czujnik światła</string>

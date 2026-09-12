@@ -452,6 +452,54 @@ class MainActivity : AppCompatActivity() {
             )
         val updateChannelSection = dialogView.findViewById<View>(R.id.updateChannelSection)
         val updateChannelGroup = dialogView.findViewById<RadioGroup>(R.id.updateChannelGroup)
+        val btnOsmAndProfiles =
+            dialogView.findViewById<com.google.android.material.button.MaterialButton>(
+                R.id.btnOsmAndProfiles,
+            )
+        val osmandProfilesStatus = dialogView.findViewById<TextView>(R.id.osmandProfilesStatus)
+
+        fun bindSection(
+            toggle: View,
+            panel: View,
+            collapsedLabel: Int,
+            expandedLabel: Int,
+        ) {
+            fun refresh() {
+                val open = panel.isVisible
+                if (toggle is TextView) {
+                    toggle.setText(if (open) expandedLabel else collapsedLabel)
+                }
+            }
+            refresh()
+            toggle.setOnClickListener {
+                panel.isVisible = !panel.isVisible
+                refresh()
+            }
+        }
+        bindSection(
+            dialogView.findViewById(R.id.btnSectionAppearance),
+            dialogView.findViewById(R.id.panelAppearance),
+            R.string.settings_section_appearance,
+            R.string.settings_section_appearance_open,
+        )
+        bindSection(
+            dialogView.findViewById(R.id.btnSectionStartup),
+            dialogView.findViewById(R.id.panelStartup),
+            R.string.settings_section_startup,
+            R.string.settings_section_startup_open,
+        )
+        bindSection(
+            dialogView.findViewById(R.id.btnSectionNav),
+            dialogView.findViewById(R.id.panelNav),
+            R.string.settings_section_nav,
+            R.string.settings_section_nav_open,
+        )
+        bindSection(
+            dialogView.findViewById(R.id.btnSectionExperiments),
+            dialogView.findViewById(R.id.panelExperiments),
+            R.string.settings_section_experiments,
+            R.string.settings_section_experiments_open,
+        )
 
         ambientTheme.isEnabled = ambientLightThemeController.isAvailable
         if (!ambientTheme.isEnabled) {
@@ -512,11 +560,46 @@ class MainActivity : AppCompatActivity() {
             }
         }
         attachCzechConfirmListener()
-        dialogView.findViewById<View>(R.id.btnOsmAndProfiles).setOnClickListener {
-            importOsmAndProfiles(fromSettings = true)
+
+        fun refreshOsmAndProfilesButton() {
+            val osmandInstalled = ExternalNavApps.installedOsmAndPackage(packageManager) != null
+            val offered = uiPreferences.osmandProfilesOffered
+            btnOsmAndProfiles.isEnabled = osmandInstalled
+            btnOsmAndProfiles.setText(
+                if (offered) {
+                    R.string.settings_osmand_profiles_again
+                } else {
+                    R.string.settings_osmand_profiles
+                },
+            )
+            osmandProfilesStatus.isVisible = offered && osmandInstalled
         }
+        refreshOsmAndProfilesButton()
+        btnOsmAndProfiles.setOnClickListener {
+            if (uiPreferences.osmandProfilesOffered) {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.settings_osmand_profiles_confirm_title)
+                    .setMessage(R.string.settings_osmand_profiles_confirm_body)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        importOsmAndProfiles(fromSettings = true)
+                        refreshOsmAndProfilesButton()
+                    }
+                    .show()
+            } else {
+                importOsmAndProfiles(fromSettings = true)
+                refreshOsmAndProfilesButton()
+            }
+        }
+
         updateChannelSection.isVisible = BuildConfig.APP_UPDATE_ENABLED
         if (BuildConfig.APP_UPDATE_ENABLED) {
+            bindSection(
+                dialogView.findViewById(R.id.btnSectionUpdates),
+                dialogView.findViewById(R.id.panelUpdates),
+                R.string.settings_section_updates,
+                R.string.settings_section_updates_open,
+            )
             updateChannelGroup.check(
                 when (uiPreferences.updateChannel) {
                     UpdateChannelPreference.NIGHTLY -> R.id.updateChannelNightly
@@ -3811,6 +3894,7 @@ class MainActivity : AppCompatActivity() {
             setPackage(pkg)
         }
         if (startIntentSafely(view)) {
+            uiPreferences.osmandProfilesOffered = true
             Snackbar.make(binding.root, R.string.nav_osmand_profiles_done, Snackbar.LENGTH_LONG).show()
             return
         }
@@ -3821,6 +3905,7 @@ class MainActivity : AppCompatActivity() {
             setPackage(pkg)
         }
         if (startIntentSafely(send)) {
+            uiPreferences.osmandProfilesOffered = true
             Snackbar.make(binding.root, R.string.nav_osmand_profiles_done, Snackbar.LENGTH_LONG).show()
             return
         }
