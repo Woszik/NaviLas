@@ -6,7 +6,7 @@ Ostatnia aktualizacja dokumentacji: **2026-09-12**.
 
 | Kanał | Status | Bieżąca wersja | versionCode |
 |-------|--------|----------------|-------------|
-| **Nightly** | GitHub (prerelease `nightly`) | 0.5.74-nightly | 87 |
+| **Nightly** | GitHub (prerelease `nightly`) | 0.5.75-nightly | 88 |
 | **Beta** | GitHub Releases | 0.5.68 | 81 |
 | **Final** | **nie istnieje** | — | — |
 
@@ -31,6 +31,10 @@ Względem **0.5.58** (promocja Nightly 0.5.59–0.5.68):
 - **Mapa:** drugi klik w zaznaczony pin odznacza.
 
 Zakres funkcji z 0.5.58 (nawigacja, BDL, zakazy, kanały) bez zmian — poniżej.
+
+## Nightly 0.5.75
+
+- **OsmAnd moto:** Krótka / Kręta na routingu OsmAnd (bez BRouter) — realny ETA moto, profile `NaviLas krótka` / `NaviLas kręta` (inne ikony). Reimport `.osf` podmienia stare profile BRouter.
 
 ## Nightly 0.5.74
 

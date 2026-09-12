@@ -18,7 +18,7 @@ E-mail z wnioskiem o geometrię sieci i status udostępnienia do ruchu; treść 
 
 ### Opisy OsmAnd moto + Nightly 0.5.52
 
-Ujednolicone teksty w aplikacji (dialog stylu trasy, import `.osf`) i w docs: mapowanie Krótka/Kręta/Standardowa → `profile=` / BRouter. Checklist NAWIGUJ zamknięty.
+Ujednolicone teksty w aplikacji (dialog stylu trasy, import `.osf`) i w docs: mapowanie Krótka/Kręta/Standardowa → `profile=` / routing OsmAnd (bez BRouter). Checklist NAWIGUJ zamknięty.
 
 ### Testy ręczne NAWIGUJ (Nightly 0.5.47+)
 

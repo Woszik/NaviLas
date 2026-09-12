@@ -53,7 +53,10 @@ object NavigationTargets {
     }
 }
 
-/** OsmAnd moto route styles — keys match imported NaviLas `.osf` profile stringKey. */
+/**
+ * OsmAnd moto route styles — keys match imported NaviLas `.osf` profile stringKey.
+ * Stable keys (`brouter_*`) so re-import replaces older BRouter-based profiles.
+ */
 enum class OsmAndMotoRouteStyle(val profileKey: String) {
     SHORT("brouter_trekking"),
     TWISTY("brouter_moped"),

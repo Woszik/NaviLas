@@ -105,4 +105,4 @@ woszi@pm.me
 - [`docs/fdroid/pl.navilas.finder.yml`](docs/fdroid/pl.navilas.finder.yml) — szablon metadanych F-Droid
 - [`docs/APP_UPDATES.md`](docs/APP_UPDATES.md) — in-app update (**Beta**, flavor `github`)
 - [`docs/BDL_POINT_CATEGORIES.md`](docs/BDL_POINT_CATEGORIES.md) — kategorie BDL
-- [`docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt) — setup profili OsmAnd/BRouter (testy urządzeniowe)
+- [`docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](docs/osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt) — setup profili OsmAnd moto NaviLas (testy urządzeniowe)

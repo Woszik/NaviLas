@@ -36,13 +36,15 @@ Brak OsmAnd: dialog (zalecenie offline w lesie, nie wymóg) → Play Store OsmAn
 
 Mapowanie (po imporcie `NaviLas_osmand_moto_profiles.osf` z assetów aplikacji):
 
-| NaviLas (dialog) | Parametr `profile=` | Profil OsmAnd | BRouter |
+| NaviLas (dialog) | Parametr `profile=` | Profil OsmAnd | Routing |
 |------------------|---------------------|---------------|---------|
-| Krótka — BRouter trekking | `brouter_trekking` | `Brouter[trekking]` | `trekking.brf` (zalecany, nie wymagany) |
-| Kręta — BRouter moped | `brouter_moped` | `Brouter[moped]` | `moped.brf` (zalecany, nie wymagany) |
+| Krótka — NaviLas (turystyczna) | `brouter_trekking` | `NaviLas krótka` | OsmAnd `navilas_short` (bez BRouter) |
+| Kręta — NaviLas (drogi lokalne) | `brouter_moped` | `NaviLas kręta` | OsmAnd `navilas_scenic` (bez BRouter) |
 | Standardowa — Motocykl OsmAnd | `motorcycle` | Motocykl | wbudowany OsmAnd |
 
-Setup: Ustawienia → Wgraj profile NaviLas do OsmAnd, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt). Przed testem Krótka/Kręta uruchom aplikację BRouter.
+`stringKey` profili bez zmian względem starszych `.osf` (BRouter) — ponowny import **podmienia** stare profile; pierwsza instalacja **dodaje** je obok Motocykla.
+
+Setup: Ustawienia → Wgraj profile NaviLas do OsmAnd, albo [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt). Wystarczy OsmAnd + mapa offline.
 
 ## Cruiser (Emux)
 
@@ -70,6 +72,6 @@ Jedyny moment, gdy Android pokazuje listę programów: `Intent.createChooser` na
 7. Współrzędne GPS → snackbar + wklejenie w Calimoto ręcznie.
 8. Profil MOTOCYKL bez odpowiedniej drogi: przycisk NAWIGUJ ukryty.
 9. Ustawienia → Wgraj profile NaviLas do OsmAnd (gdy OsmAnd jest).
-10. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę (BRouter dla Krótka/Kręta).
+10. MOTOCYKL → OsmAnd → dialog Krótka / Kręta / Standardowa → OsmAnd przełącza profil i liczy trasę offline (Krótka/Kręta = routing NaviLas w OsmAnd).
 
 **Stan checklisty:** potwierdzone (Nightly 0.5.47+ / opisy 0.5.52).

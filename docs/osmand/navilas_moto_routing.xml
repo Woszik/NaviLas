@@ -1,0 +1,1669 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NaviLas motorcycle tourist routing — OsmAnd offline (no BRouter).
+     Based on OsmAnd-resources routing.xml car profile (GPLv3).
+     derivedProfiles=motorcycle → legal moto access; speed model like OsmAnd Motocykl. -->
+<osmand_routing_config defaultProfile="navilas_short" name="navilas_moto">
+	<routingProfile name="navilas_short" baseProfile="car" restrictionsAware="true" minSpeed="20.0" defaultSpeed="45.0" maxSpeed="110.0" sharpTurn="30" slightTurn="15" roundaboutTurn="15" onewayAware="true">
+		<!-- Special penalty for reversed direction at route's startup (in seconds, default is 60) -->
+		<attribute name="penaltyForReverseDirection" value="300" /> <!-- car: ~ 5 minutes to find U-turn -->
+	 	<!--<attribute name="heuristicCoefficient" value="1.5" />
+		-->
+		<attribute name="derivedProfiles" value="motorcycle"/>
+		<!-- NaviLas krótka — turystyczna, bez autostrad, ETA jak moto -->
+		<!-- MAIN parameter to approximate (35m good for custom recorded tracks)-->
+		<attribute name="minPointApproximation" value = "50"/>
+		<!-- don't search subsegments shorter than specified distance (also used to step back for car turns) -->
+		<attribute name="minStepApproximation" value = "100"/>
+		<!-- This parameter could speed up or slow down evaluation (better to make bigger for long routes and smaller for short)-->
+		<attribute name="maxStepApproximation" value= "3000"/>
+		<!-- Parameter to smoother the track itself (could be 0 if it's not recorded track) -->
+		<attribute name="smoothenPointsNoRoute" value = "5"/>
+
+		<!-- Turn penalties for short_way=yes -->
+		<attribute name="shortWaySharpTurn" value = "10"/>
+		<attribute name="shortWaySlightTurn" value = "5"/>
+		<attribute name="shortWayRoundaboutTurn" value = "5"/>
+
+		<!-- NEW ROUTING API -->
+		<!-- <parameter id="prefer_motorway" name="Prefer motorways" description="Prefer motorways" type="boolean"/> -->
+		<!-- <parameter id="no_new_routing" name="Do not use v1.9 routing" description="Do not use v1.9 routing" type="boolean"/> -->
+		
+		<parameter id="short_way" name="Short way" description="Short way" type="boolean"/>
+		<parameter id="avoid_toll" name="Avoid toll roads" description="Avoid toll roads" type="boolean"/>
+		<parameter id="avoid_unpaved" name="Avoid unpaved roads" description="Avoid unpaved roads" type="boolean"/>
+		<parameter id="avoid_low_emission_zone" name="Avoid low emission zones" description="Avoid low emission zones" type="boolean"/>
+		<parameter id="prefer_unpaved" name="Prefer unpaved roads" description="Prefer unpaved roads" type="boolean"/>
+		<parameter id="avoid_ferries" name="Avoid ferries" description="Avoid ferries" type="boolean"/>
+		<parameter id="avoid_shuttle_train" name="Avoid Shuttle Trains" description="Avoid Shuttle Trains" type="boolean"/>
+		<parameter id="avoid_motorway" name="Avoid motorways" description="Avoid motorways" type="boolean"/>
+		<parameter id="avoid_tunnels" name="Avoid tunnels" description="Avoid tunnels" type="boolean"/>
+		<parameter id="avoid_borders" name="Avoid border crossing" description="Avoid crossing a border into another country" type="boolean"/>
+		<parameter id="avoid_ice_roads_fords" name="Avoid ice roads, fords" description="Avoid ice roads and fords" type="boolean"/>
+		<parameter id="avoid_4wd_only" name="Avoid 4WD roads" description="Avoid roads only suitable for 4WD only vehicles" type="boolean"/>
+		<parameter id="allow_private" name="Allow private access" description="Allow access to private areas for cars" type="boolean" profiles="default,motorcycle"/>
+		<parameter id="allow_private_for_truck" name="Allow private access (truck)" description="Allow access to private areas for trucks" type="boolean" profiles="truck"/>
+		<parameter id="goods_restrictions" name="Goods vehicles restrictions" description="Consider access permissions for light goods vehicles (goods)" type="boolean" profiles="default"/>
+		<parameter id="hazmat_category" name="Hazmat category" description="Hazardous materials category / Consider hazmat access permissions" type="numeric" values="0,1,2,3,4" valueDescriptions="No restrictions,B,C,D,E" default="0" profiles="truck"/>
+		<!--<parameter id="hazmat_category_usa" name="Hazmat category (USA)" description="Hazardous materials category (USA) / Consider hazmat access permissions" type="numeric" values="0,1,1.1,1.2,1.3,1.4,1.5,1.6,2,2.1,2.2,2.3,3,4,4.1,4.2,4.3,5,5.1,5.2,6,6.1,6.2,7,8,9" valueDescriptions="No restrictions,1,1.1,1.2,1.3,1.4,1.5,1.6,2,2.1,2.2,2.3,3,4,4.1,4.2,4.3,5,5.1,5.2,6,6.1,6.2,7,8,9" default="0" profiles="truck"/>-->
+		<parameter id="hazmat_category_usa_1" name="HazMat 1. Explosives" description="HazMat 1. Explosives" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_2" name="HazMat 2. Gases" description="HazMat 2. Gases" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_3" name="HazMat 3. Flammable liquids" description="HazMat 3. Flammable liquids" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_4" name="HazMat 4. Flammable solids" description="HazMat 4. Flammable solids" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_5" name="HazMat 5. Oxidizing agents and organic peroxides" description="HazMat 5. Oxidizing agents and organic peroxides" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_6" name="HazMat 6. Toxic and infectious substances" description="HazMat 6. Toxic and infectious substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_7" name="HazMat 7. Radioactive substances" description="HazMat 7. Radioactive substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_8" name="HazMat 8. Corrosive substances" description="HazMat 8. Corrosive substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_9" name="HazMat 9. Miscellaneous" description="HazMat 9. Miscellaneous" type="boolean" profiles="truck"/>
+		<parameter id="weight" name="Weight" description="Maximum vehicle weight to be permitted on the route" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t"/>
+		<parameter id="height" name="Height" description="Maximum vehicle height to be permitted on the route" type="numeric" values="0,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5" valueDescriptions="-,1.5m,2m,2.5m,3m,3.5m,4m,4.5m,5m,5.5m,6m,6.5m,7m,7.5m"/>
+		<parameter id="length" name="Length" description="Maximum vehicle length to be permitted on the route" type="numeric" values="0,5,6,6.5,7,8,9,9.5,10,11,12" valueDescriptions="-,5m,6m,6.5m,7m,8m,9m,9.5m,10m,11m,12m"/>
+		<parameter id="width" name="Width" description="Maximum vehicle width to be permitted on the route" type="numeric" values="0,1.5,2,2.3,2.5,3" valueDescriptions="-,1.5m,2m,2.3m,2.5m,3m"/>
+		<parameter id="maxaxleload" name="Max axle load" description="Maximum legal load weight limit per axle" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t" profiles="truck"/>
+		<parameter id="weightrating" name="Max weight at full load" description="Maximum permitted weight of the vehicle at full load" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t" profiles="truck"/>
+		<parameter id="motor_type" name="Motor type" description="For CO2 computation" type="numeric" values="0,1,2,3,4,5,6,7" valueDescriptions="-,Petrol,Diesel,Lpg,Gas,Electric,Hybrid,Ethanol"/>
+
+		<way attribute="access">
+			<select value="-1" t="osmand_change" v="delete"/>
+			<select value="-1" t="highway" v="proposed"/>
+			<select value="-1" t="highway" v="construction"/>
+			<select value="-1" t="construction" v="yes"/>
+			<if param="avoid_low_emission_zone">
+				<select value="-1" t="low_emission_zone" v="yes"/>
+			</if>
+			<if param="avoid_ice_roads_fords">
+				<select value="-1" t="ice_road" v="yes"/>
+				<select value="-1" t="winter_road" v="yes"/>
+				<select value="-1" t="ford" v="yes"/>
+			</if>
+			<if param="avoid_ferries">
+			    <select value="-1" t="route" v="ferry"/>
+			</if>
+			<if param="avoid_shuttle_train">
+			    <select value="-1" t="route" v="shuttle_train"/>
+			</if>
+			<if param="goods_restrictions">
+				<select value="-1" t="goods" v="no"/>
+			</if>
+			<if param="avoid_4wd_only">
+				<select value="-1" t="4wd_only" v="yes"/>
+				<select value="-1" t="4wd_only" v="recommended"/>
+			</if>
+			<if param="avoid_unpaved">
+				<select value="-1" t="highway" v="track"/>
+				<select value="-1" t="surface" v="unpaved"/>
+				<select value="-1" t="surface" v="compacted"/>
+				<select value="-1" t="surface" v="dirt"/>
+				<select value="-1" t="surface" v="gravel"/>
+				<select value="-1" t="surface" v="fine_gravel"/>
+				<select value="-1" t="surface" v="grass"/>
+				<select value="-1" t="surface" v="ground"/>
+				<select value="-1" t="surface" v="mud"/>
+				<select value="-1" t="surface" v="pebblestone"/>
+				<select value="-1" t="surface" v="sand"/>
+				<!--<select value="-1" t="surface" v="wood"/>-->
+				<select value="-1" t="smoothness" v="very_bad"/>
+				<select value="-1" t="smoothness" v="horrible"/>
+				<select value="-1" t="smoothness" v="very_horrible"/>
+				<select value="-1" t="smoothness" v="impassable"/>
+			</if>
+
+			<select value="-1" t="highway" v="steps"/>
+
+			<if param="profile_truck">
+				<select value="-1" t="hgv" v="no"/>
+				<select value="-1" t="hgv_articulated" v="no"/>
+				<if param="allow_private_for_truck">
+					<select value="1" t="hgv" v="private"/>
+					<select value="1" t="hgv_articulated" v="private"/>
+				</if>
+				<select value="-1"  t="hgv" v="private"/>
+				<select value="-1"  t="hgv_articulated" v="private"/>
+			</if>
+
+			<if param="profile_motorcycle">
+				<select value="-1" t="motorcycle" v="no"/>
+				<select value="-1" t="motorcycle" v="private"/>
+				<select value="-1" t="motorcycle" v="agricultural"/>
+				<select value="-1" t="motorcycle" v="forestry"/>
+				<select value="-1" t="motorcycle" v="agricultural;forestry"/>
+				<select value="-1" t="motorcycle" v="forestry;agricultural"/>
+				<select value="1" t="motorcycle" v="yes"/>
+				<select value="1" t="motorcycle" v="permissive"/>
+				<select value="1" t="motorcycle" v="designated"/>
+				<select value="1" t="motorcycle" v="destination"/>
+				<select value="1" t="motorcycle" v="customers"/>
+				<select value="1" t="motorcycle" v="official"/>
+			</if>
+
+			<select value="-1" t="motorcar" v="no"/>
+			<select value="-1" t="motorcar" v="agricultural"/>
+			<select value="-1" t="motorcar" v="forestry"/>
+			<select value="-1" t="motorcar" v="agricultural;forestry"/>
+			<select value="-1" t="motorcar" v="forestry;agricultural"/>
+			<select value="1"  t="motorcar" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="motorcar" v="private"/>
+			</if>
+			<select value="-1"  t="motorcar" v="private"/>
+			<select value="1"  t="motorcar" v="permissive"/>
+			<select value="1"  t="motorcar" v="designated"/>
+			<select value="1"  t="motorcar" v="destination"/>
+			<select value="1"  t="motorcar" v="customers"/>
+			<select value="1"  t="motorcar" v="official"/>
+
+			<select value="-1" t="motor_vehicle" v="no"/>
+			<select value="-1" t="motor_vehicle" v="agricultural"/>
+			<select value="-1" t="motor_vehicle" v="forestry"/>
+			<select value="-1" t="motor_vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="motor_vehicle" v="forestry;agricultural"/>
+			<select value="1"  t="motor_vehicle" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="motor_vehicle" v="private"/>
+			</if>
+			<select value="-1"  t="motor_vehicle" v="private"/>
+			<select value="1"  t="motor_vehicle" v="permissive"/>
+			<select value="1"  t="motor_vehicle" v="designated"/>
+			<select value="1"  t="motor_vehicle" v="destination"/>
+			<select value="1"  t="motor_vehicle" v="customers"/>
+			<select value="1"  t="motor_vehicle" v="official"/>
+
+			<select value="-1" t="vehicle" v="no"/>
+			<select value="-1" t="vehicle" v="agricultural"/>
+			<select value="-1" t="vehicle" v="forestry"/>
+			<select value="-1" t="vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="vehicle" v="forestry;agricultural"/>
+			<select value="1"  t="vehicle" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="vehicle" v="private"/>
+			</if>
+			<select value="-1"  t="vehicle" v="private"/>
+			<select value="1"  t="vehicle" v="permissive"/>
+			<select value="1"  t="vehicle" v="designated"/>
+			<select value="1"  t="vehicle" v="destination"/>
+			<select value="1"  t="vehicle" v="customers"/>
+
+			<select value="-1" t="highway" v="cycleway"/>
+			<select value="-1" t="highway" v="footway"/>
+			<select value="-1" t="highway" v="path"/>
+
+			<select value="-1" t="access" v="no"/>
+			<select value="-1" t="access" v="agricultural"/>
+			<select value="-1" t="access" v="forestry"/>
+			<select value="-1" t="access" v="agricultural;forestry"/>
+			<select value="-1" t="access" v="forestry;agricultural"/>
+			<select value="-1" t="access" v="emergency"/>
+			<select value="1"  t="access" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="access" v="private"/>
+			</if>
+			<select value="-1"  t="access" v="private"/>
+			<select value="1"  t="access" v="permissive"/>
+			<select value="1"  t="access" v="destination"/>
+			<select value="1"  t="access" v="customers"/>
+
+			<if param="profile_truck">
+				<select value="-1" t="maxweight:hgv">
+					<gt value1=":weight" value2="$maxweight" type="weight"/>
+				</select>
+				<select value="-1" t="maxweightrating:hgv">
+					<gt value1=":weightrating" value2="$maxweightrating:hgv" type="weight"/>
+				</select>
+			</if>
+			<select value="-1" t="maxweight">
+				<gt value1=":weight" value2="$maxweight" type="weight"/>
+			</select>
+			<select value="-1" t="maxweightrating">
+				<gt value1=":weightrating" value2="$maxweightrating" type="weight"/>
+			</select>
+			<select value="-1" t="maxaxleload">
+				<gt value1=":maxaxleload" value2="$maxaxleload" type="weight"/>
+			</select>
+			<select value="-1" t="maxheight">
+				<gt value1=":height" value2="$maxheight" type="length"/>
+			</select>
+			<select value="-1" t="maxlength">
+				<gt value1=":length" value2="$maxlength" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth">
+				<gt value1=":width" value2="$maxwidth" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth:physical">
+				<gt value1=":width" value2="$maxwidth:physical" type="length"/>
+			</select>
+			<select value="-1" t="width">
+				<gt value1=":width" value2="$width" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:forward">
+				<gt value1=":height" value2="$maxheight:forward" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:backward">
+				<gt value1=":height" value2="$maxheight:backward" type="length"/>
+			</select>
+
+			<ge value1=":hazmat_category" value2="4"> <!-- E -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+				<select value="1" t="hazmat:d" v="yes"/>
+				<select value="-1" t="hazmat:d" v="no"/>
+				<select value="1" t="hazmat:e" v="yes"/>
+				<select value="-1" t="hazmat:e" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="3"> <!-- D -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+				<select value="1" t="hazmat:d" v="yes"/>
+				<select value="-1" t="hazmat:d" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="2"> <!-- C -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="1"> <!-- B -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="0"> <!-- A -->
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+			</ge>
+
+			<!--hazmat category usa-->
+			<if param="hazmat_category_usa_1">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:1" v="no"/>
+				<select value="-1" t="hazmat:1.1" v="no"/>
+				<select value="-1" t="hazmat:1.2" v="no"/>
+				<select value="-1" t="hazmat:1.3" v="no"/>
+				<select value="-1" t="hazmat:1.4" v="no"/>
+				<select value="-1" t="hazmat:1.5" v="no"/>
+				<select value="-1" t="hazmat:1.6" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_2">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:2" v="no"/>
+				<select value="-1" t="hazmat:2.1" v="no"/>
+				<select value="-1" t="hazmat:2.2" v="no"/>
+				<select value="-1" t="hazmat:2.3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_3">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_4">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:4" v="no"/>
+				<select value="-1" t="hazmat:4.1" v="no"/>
+				<select value="-1" t="hazmat:4.2" v="no"/>
+				<select value="-1" t="hazmat:4.3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_5">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:5" v="no"/>
+				<select value="-1" t="hazmat:5.1" v="no"/>
+				<select value="-1" t="hazmat:5.2" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_6">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:6" v="no"/>
+				<select value="-1" t="hazmat:6.1" v="no"/>
+				<select value="-1" t="hazmat:6.2" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_7">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:7" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_8">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:8" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_9">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:9" v="no"/>
+			</if>
+
+			<select value="1" t="highway" v="motorway"/>
+			<select value="1" t="highway" v="motorway_link"/>
+			<select value="1" t="highway" v="trunk"/>
+			<select value="1" t="highway" v="trunk_link"/>
+			<select value="1" t="highway" v="primary"/>
+			<select value="1" t="highway" v="primary_link"/>
+			<select value="1" t="highway" v="secondary"/>
+			<select value="1" t="highway" v="secondary_link"/>
+			<select value="1" t="highway" v="tertiary"/>
+			<select value="1" t="highway" v="tertiary_link"/>
+			<select value="1" t="highway" v="unclassified"/>
+			<select value="1" t="highway" v="road"/>
+			<select value="1" t="highway" v="residential"/>
+			<select value="1" t="highway" v="track"/>
+			<select value="1" t="highway" v="service"/>
+			<select value="1" t="highway" v="living_street"/>
+			<select value="1" t="route" v="ferry"/>
+			<select value="1" t="route" v="shuttle_train"/>
+			<select value="-1"/>
+		</way>
+
+		<way attribute="oneway">
+			<if param="profile_motorcycle">
+				<select value="1" t="oneway:motorcycle" v="yes"/>
+				<select value="1" t="oneway:motorcycle" v="1"/>
+				<select value="0" t="oneway:motorcycle" v="no"/>
+				<select value="-1" t="oneway:motorcycle" v="-1"/>
+			</if>
+			<select value="1" t="oneway:motorcar" v="yes"/>
+			<select value="0" t="oneway:motorcar" v="no"/>
+			<select value="-1" t="oneway:motorcar" v="-1"/>
+			
+			<select value="1" t="oneway:motor_vehicle" v="yes"/>
+			<select value="0" t="oneway:motor_vehicle" v="no"/>
+			<select value="-1" t="oneway:motor_vehicle" v="-1"/>
+
+			<select value="1" t="oneway:vehicle" v="yes"/>
+			<select value="0" t="oneway:vehicle" v="no"/>
+			<select value="-1" t="oneway:vehicle" v="-1"/>
+
+			<select value="1" t="oneway" v="yes"/>
+			<select value="1" t="oneway" v="1"/>
+			<select value="-1" t="oneway" v="-1"/>
+			<select value="1" t="roundabout"/>
+			<select value="1" t="junction" v="roundabout"/>
+			<select value="1" t="motor_vehicle:backward" v="no"/>
+			<select value="-1" t="motor_vehicle:forward" v="no"/>
+			<select value="1" t="vehicle:backward" v="no"/>
+			<select value="-1" t="vehicle:forward" v="no"/>
+		</way>
+
+		<way attribute="penalty_transition">
+			<!-- cost in time when you change the route from motorway to primary or from primary
+				 to living_street, but not other way around. Calculated as difference between values -->
+			<!-- 
+			<if param="no_new_routing">
+				<select value="0"/>
+			</if>
+			-->
+			<if param="short_way">
+				<select value="0" t="highway" v="motorway"/>
+				<select value="1" t="highway" v="motorway_link"/>
+				<select value="5" t="highway" v="trunk"/>
+				<select value="5" t="highway" v="trunk_link"/>
+				<select value="10" t="highway" v="primary"/>
+				<select value="10" t="highway" v="primary_link"/>
+				<select value="15" t="highway" v="secondary"/>
+				<select value="15" t="highway" v="secondary_link"/>
+				<select value="20" t="highway" v="tertiary"/>
+				<select value="20" t="highway" v="tertiary_link"/>
+				<select value="40" t="highway" v="service"/>
+				<select value="25"/>
+			</if>
+			
+			<if param="avoid_motorway">
+				<select value="100" t="highway" v="motorway"/>
+				<select value="90" t="highway" v="motorway_link"/>
+			</if>
+			<if param="avoid_tunnels">
+				<select value="200" t="tunnel" v="yes"/>
+				<select value="150" t="tunnel" v="avalanche_protector"/>
+			</if>
+			<select value="100" t="surface" v="gravel"/>
+
+			<select value="6" t="side_road" v="yes"/>
+			<select value="6" t="side_road" v="rotary"/>
+			<select value="6" t="side_road" v="double"/>
+
+			<select value="0" t="highway" v="motorway"/>
+			<select value="5" t="highway" v="motorway_link"/>
+			<select value="10" t="highway" v="trunk"/>
+			<select value="10" t="highway" v="trunk_link"/>
+			<select value="50" t="highway" v="primary"/>
+			<select value="51" t="highway" v="primary_link"/>
+			<select value="80" t="highway" v="secondary"/>
+			<select value="80" t="highway" v="secondary_link"/>
+			<select value="130" t="highway" v="tertiary"/>
+			<select value="130" t="highway" v="tertiary_link"/>
+			<select value="155" t="highway" v="unclassified"/>
+			<select value="167" t="highway" v="residential"/>
+			<select value="230" t="highway" v="service"/>
+			<select value="200"/>
+			
+			<!--
+			<select value="" t="highway" v="road"/>
+			<select value="" t="highway" v="residential"/>
+			<select value="" t="highway" v="track"/>
+			<select value="" t="highway" v="unclassified"/>
+			<select value="" t="highway" v="service"/>
+			
+			<select value="" t="highway" v="living_street"/>
+			<select value="" t="route" v="ferry"/>-->
+		</way>
+
+		<way attribute="speed" type="speed">
+			<!-- maxspeed doesn't affect on motorway_link and trunk_link -->
+			<select value="100" t="highway" v="motorway_link"/>
+			<select value="90" t="highway" v="trunk_link"/>
+
+			<if param="profile_truck">
+				<select value="$maxspeed:hgv" t="maxspeed:hgv"/>
+				<select value="$maxspeed:goods" t="maxspeed:goods"/>
+				<select value="$maxspeed:truck" t="maxspeed:truck"/>
+			</if>
+
+			<!-- shortway handled internally -->
+			<select value="$maxspeed:motorcar" t="maxspeed:motorcar"/>
+			<select value="$maxspeed:practical" t="maxspeed:practical"/>
+			<select value="$maxspeed:advisory" t="maxspeed:advisory"/>
+			<select value="$maxspeed" t="maxspeed"/>
+
+			<!-- most important backbone roads -->
+			<select value="110" t="highway" v="motorway"/>
+			<select value="100" t="highway" v="trunk"/>
+
+			<!-- generally linking larger towns -->
+			<select value="65" t="highway" v="primary"/>
+			<select value="65" t="highway" v="primary_link"/>
+			<!-- generally linking smaller towns and villages -->
+			<select value="60" t="highway" v="secondary"/>
+			<select value="60" t="highway" v="secondary_link"/>
+			
+			<!-- important urban roads -->
+			<select value="45" t="highway" v="tertiary"/>
+			<select value="45" t="highway" v="tertiary_link"/>
+			
+			<!-- Some values of "abutters" mean the road is inside a place,
+				 so cap the speed even if it is a high level road (below). -->
+			<!--
+			<select value="30" t="abutters" v="residential"/>
+			<select value="30" t="abutters" v="commercial"/>
+			<select value="30" t="abutters" v="retail"/>
+			<select value="30" t="abutters" v="industrial"/>
+			<select value="30" t="abutters" v="mixed"/>
+			-->
+			<!-- roads with speeds lower than 50 and those that we want to ignore abutters
+				 must be placed before the "abutters" block below. -->
+			
+			<!-- lowest form of grid network, usually 90% of urban roads -->
+			<select value="35" t="highway" v="unclassified"/>
+			<!-- road = no type, no review and may be not accurate -->
+			<select value="35" t="highway" v="road"/>
+			<select value="35" t="highway" v="residential"/>
+			<select value="15" t="highway" v="track"/>
+
+			<select value="30" t="highway" v="service"/>
+			<select value="25" t="highway" v="living_street"/>
+			<select value="15" t="route" v="ferry"/>
+			<select value="60" t="route" v="shuttle_train"/>
+
+		</way>
+
+		<way attribute="priority">
+			<!-- not working fine -->
+			<!--
+			<if param="prefer_motorway">
+				<select value="1.2" t="highway" v="motorway"/>
+				<select value="1.1" t="highway" v="motorway_link"/>
+				<select value="1.2" t="highway" v="trunk"/>
+				<select value="1.1" t="highway" v="trunk_link"/>
+			</if> -->
+			<!-- access deprioritize -->
+			<select t="motorcar" v="private" value="0.15"/>
+			<select t="motorcar" v="destination" value="0.15"/>
+			<select t="motorcar" v="delivery" value="0.15"/>
+			<select t="motorcar" v="customers" value="0.15"/>
+			<select t="motor_vehicle" v="private" value="0.15"/>
+			<select t="motor_vehicle" v="destination" value="0.15"/>
+			<select t="motor_vehicle" v="delivery" value="0.15"/>
+			<select t="motor_vehicle" v="customers" value="0.15"/>
+			<select t="vehicle" v="private" value="0.15"/>
+			<select t="vehicle" v="destination" value="0.15"/>
+			<select t="vehicle" v="delivery" value="0.15"/>
+			<select t="vehicle" v="customers" value="0.15"/>
+			<select t="access" v="private" value="0.15"/>
+			<select t="access" v="destination" value="0.15"/>
+			<select t="access" v="delivery" value="0.15"/>
+			<select t="access" v="customers" value="0.15"/>
+			<if param="profile_truck">
+				<select t="hgv" v="delivery" value="0.15"/>
+			</if>
+			<select t="oneway" v="reversible" value="0.01"/>
+
+			<select value="0.2" t="tracktype" v="grade5" />
+			<select value="0.5" t="smoothness" v="bad"/>
+			<select value="0.3" t="smoothness" v="very_bad"/>
+			<select value="0.15" t="smoothness" v="horrible"/>
+			<select value="0.1" t="smoothness" v="very_horrible"/>
+			<select value="0.05" t="smoothness" v="impassable"/>
+
+			<if param="prefer_unpaved">
+				<if param="avoid_motorway">
+					<select value="0.05" t="highway" v="motorway"/>
+					<select value="0.05" t="highway" v="motorway_link"/>
+				</if>
+				<select value="1.5" t="tracktype" v="grade2"/>
+				<select value="1.4" t="tracktype" v="grade3"/>
+				<select value="1.3" t="tracktype" v="grade4"/>
+				<select value="1.2" t="tracktype" v="grade5"/>
+				<select value="1.3" t="surface" v="unpaved"/>
+				<select value="0.6" t="surface" v="compacted"/>
+				<select value="1.3" t="surface" v="dirt"/>
+				<select value="1.5" t="surface" v="earth"/>
+				<select value="0.7" t="surface" v="gravel"/>
+				<select value="0.4" t="surface" v="fine_gravel"/>
+				<select value="1.1" t="surface" v="grass"/>
+				<select value="1.5" t="surface" v="ground"/>
+				<select value="0.5" t="surface" v="mud"/>
+				<select value="1.3" t="surface" v="pebblestone"/>
+				<select value="1.0" t="surface" v="sand"/>
+
+
+				<select value="0.1" t="surface" v="asphalt"/>
+				<select value="0.2" t="surface" v="chipseal"/>
+				<select value="0.1" t="surface" v="paved"/>
+				<select value="0.1" t="surface" v="concrete"/>
+				<select value="0.2" t="surface" v="paving_stones"/>
+
+				<select value="0.2" t="highway" v="motorway"/>
+				<select value="0.18" t="highway" v="motorway_link"/>
+				<select value="0.4" t="highway" v="trunk"/>
+				<select value="0.35" t="highway" v="trunk_link"/>
+				<select value="0.45" t="highway" v="primary"/>
+				<select value="0.4" t="highway" v="primary_link"/>
+				<select value="0.45" t="highway" v="secondary"/>
+				<select value="0.4" t="highway" v="secondary_link"/>
+				<select value="0.7" t="highway" v="tertiary"/>
+				<select value="0.65" t="highway" v="tertiary_link"/>
+				<select value="1.4" t="highway" v="unclassified"/>
+				<select value="1.3" t="highway" v="road"/>
+				<select value="1.3" t="highway" v="residential"/>
+
+				<select value="1.0" t="highway" v="track"/>
+
+				<select value="0.8" t="highway" v="service"/>
+				<select value="0.8" t="highway" v="living_street"/>
+			</if>
+			<if param="avoid_motorway">
+				<select value="0.05" t="highway" v="motorway"/>
+				<select value="0.05" t="highway" v="motorway_link"/>
+			</if>
+
+			<if param="avoid_tunnels">
+				<select value="0.02" t="tunnel" v="yes"/>
+			</if>
+			<if param="avoid_toll">
+				<select value="0.1" t="toll" v="yes"/>
+			</if>
+
+			<select value="0.5" t="surface" v="gravel"/>
+			<select value="0.5" t="surface" v="unpaved"/>
+
+			<!-- dedicated motorcycle lane, not an ordinary service road -->
+			<if param="profile_motorcycle">
+				<select value="1" t="motorcycle" v="designated"/>
+			</if>
+
+			<!-- NaviLas short: avoid motorways/trunk, mild boost for local roads -->
+			<select value="0.12" t="highway" v="motorway"/>
+			<select value="0.18" t="highway" v="motorway_link"/>
+			<select value="0.35" t="highway" v="trunk"/>
+			<select value="0.40" t="highway" v="trunk_link"/>
+			<select value="0.85" t="highway" v="primary"/>
+			<select value="0.80" t="highway" v="primary_link"/>
+			<select value="1.05" t="highway" v="secondary"/>
+			<select value="1.00" t="highway" v="secondary_link"/>
+			<select value="1.10" t="highway" v="tertiary"/>
+			<select value="1.05" t="highway" v="tertiary_link"/>
+			<select value="1.05" t="highway" v="unclassified"/>
+			<select value="0.85" t="highway" v="road"/>
+			<select value="0.80" t="highway" v="residential"/>
+
+			<select value="0.35" t="highway" v="track"/>
+
+			<select value="0.55" t="highway" v="service"/>
+			<select value="0.55" t="highway" v="living_street"/>
+			<select value="1" t="route" v="ferry"/>
+			<select value="1" t="route" v="shuttle_train"/>
+
+			<select value="0.7"/>
+		</way>
+
+		<way attribute="destination_priority">
+			<select value="0.5" t="tunnel" v="yes"/>
+		</way>
+
+		<way attribute="obstacle_srtm_alt_speed">
+			<if param="short_way">
+				<ge value1="20" value2=":incline">
+					<select value="0.35"/>
+				</ge>
+			</if>
+		</way>
+
+		<point attribute="obstacle_time">
+			<select value="5"  t="barrier" v="entrance"/>
+			<select value="15" t="barrier" v="gate"/>
+			<select value="15" t="barrier" v="lift_gate"/>
+			<select value="30" t="barrier" v="swing_gate"/>
+			<select value="180" t="barrier" v="toll_booth"/>
+			<select value="25" t="barrier"/>
+			<select value="10" t="traffic_calming"/>
+			<select value="20" t="highway" v="traffic_signals"/>
+			<select value="1"  t="crossing" v="unmarked"/>
+			<select value="5"  t="crossing" v="uncontrolled"/>
+			<select value="15" t="highway" v="crossing"/>
+			<select value="15" t="highway" v="stop"/>
+			<select value="10" t="highway" v="give_way"/>
+			<select value="25" t="ford"/>
+
+			<select value="25" t="railway" v="crossing"/>
+			<select value="25" t="railway" v="level_crossing"/>
+		</point>
+
+		<point attribute="obstacle">
+			<if param="avoid_toll">
+				<select value="900" t="barrier" v="toll_booth"/>
+			</if>
+			<if param="avoid_borders">
+				<select value="-1" t="barrier" v="border_control"/>
+			</if>
+
+			<!-- Some barrier nodes are combined with maxheight or other size limits, e.g. height_restrictor or underground parking entrances. -->
+			<select value="-1" t="maxheight">
+				<gt value1=":height" value2="$maxheight" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth">
+				<gt value1=":width" value2="$maxwidth" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth:physical">
+				<gt value1=":width" value2="$maxwidth:physical" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:forward">
+				<gt value1=":height" value2="$maxheight:forward" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:backward">
+				<gt value1=":height" value2="$maxheight:backward" type="length"/>
+			</select>
+
+			<if param="avoid_ice_roads_fords">
+				<select value="-1" t="ford" v="yes"/>
+			</if>
+
+			<!-- If access for a car is explicitly marked, the barrier is passable,
+				 with a slight penalty.
+				 If no access for a car is explicitly marked, the barrier is impassable.
+				 Evaluate the keys in descending order of the specificity in the access hierarchy. -->
+			<select value="-1" t="motorcar" v="no"/>
+			<select value="-1" t="motorcar" v="agricultural"/>
+			<select value="-1" t="motorcar" v="forestry"/>
+			<select value="-1" t="motorcar" v="agricultural;forestry"/>
+			<select value="-1" t="motorcar" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="motorcar" v="private"/>
+			</if>
+			<select value="60"  t="motorcar" v="destination"/>
+			<select value="0"  t="motorcar" v="yes"/>
+			<select value="0"  t="motorcar" v="permissive"/>
+			<select value="0"  t="motorcar" v="designated"/>
+			<select value="0"  t="motorcar" v="customers"/>
+			<select value="0"  t="motorcar" v="official"/>
+			
+			<select value="-1" t="motor_vehicle" v="no"/>
+			<select value="-1" t="motor_vehicle" v="agricultural"/>
+			<select value="-1" t="motor_vehicle" v="forestry"/>
+			<select value="-1" t="motor_vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="motor_vehicle" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="motor_vehicle" v="private"/>
+			</if>
+			<select value="60"  t="motor_vehicle" v="destination"/>
+			<select value="0"  t="motor_vehicle" v="yes"/>
+			<select value="0"  t="motor_vehicle" v="permissive"/>
+			<select value="0"  t="motor_vehicle" v="designated"/>
+			<select value="0"  t="motor_vehicle" v="customers"/>
+			<select value="0"  t="motor_vehicle" v="official"/>
+
+			<select value="-1" t="vehicle" v="no"/>
+			<select value="-1" t="vehicle" v="agricultural"/>
+			<select value="-1" t="vehicle" v="forestry"/>
+			<select value="-1" t="vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="vehicle" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="vehicle" v="private"/>
+			</if>
+			<select value="60"  t="vehicle" v="destination"/>
+			<select value="0"  t="vehicle" v="yes"/>
+			<select value="0"  t="vehicle" v="permissive"/>
+			<select value="0"  t="vehicle" v="designated"/>
+			<select value="0"  t="vehicle" v="customers"/>
+
+			<select value="-1" t="access" v="no"/>
+			<select value="-1" t="access" v="agricultural"/>
+			<select value="-1" t="access" v="forestry"/>
+			<select value="-1" t="access" v="agricultural;forestry"/>
+			<select value="-1" t="access" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="access" v="private"/>
+			</if>
+			<select value="60"  t="access" v="destination"/>
+			<select value="0"  t="access" v="yes"/>
+			<select value="0"  t="access" v="permissive"/>
+			<select value="0"  t="access" v="customers"/>
+			<if param="allow_private">
+				<select value="1" t="bollard" v="removable"/>
+				<select value="1" t="bollard" v="rising"/>
+			</if>
+			<if param="profile_motorcycle">
+				<select value="-1" t="motorcycle" v="no"/>
+				<select value="-1" t="motorcycle" v="private"/>
+				<select value="-1" t="motorcycle" v="agricultural"/>
+				<select value="-1" t="motorcycle" v="forestry"/>
+				<select value="-1" t="motorcycle" v="agricultural;forestry"/>
+				<select value="-1" t="motorcycle" v="forestry;agricultural"/>
+				<select value="0" t="motorcycle" v="yes"/>
+				<select value="0" t="motorcycle" v="permissive"/>
+				<select value="0" t="motorcycle" v="designated"/>
+				<select value="0" t="motorcycle" v="destination"/>
+				<select value="0" t="motorcycle" v="customers"/>
+				<select value="0" t="motorcycle" v="official"/>
+			</if>
+			<select value="-1" t="barrier" v="bollard"/>
+			<select value="-1" t="barrier" v="chain"/>
+			<select value="-1" t="barrier" v="debris"/>
+			<select value="-1" t="barrier" v="jersey_barrier"/>
+			<select value="-1" t="barrier" v="block"/>
+			<select value="-1" t="barrier" v="turnstile"/>
+			<select value="-1" t="barrier" v="bus_trap"/>
+			<select value="-1" t="barrier" v="cycle_barrier"/>
+			<select value="-1" t="barrier" v="sump_buster"/>
+
+			<if param="short_way">
+				<select value="0" t="barrier" v="cattle_grid"/>
+				<select value="0" t="barrier" v="border_control"/>
+				<select value="0" t="barrier" v="bump_gate"/>
+				<select value="0" t="barrier" v="entrance"/>
+				<select value="0" t="barrier" v="sally_port"/>
+				<select value="0" t="barrier" v="toll_booth"/>
+				<select value="0" t="barrier" v="lift_gate"/>
+				<select value="0" t="barrier" v="swing_gate"/>
+				<select value="5" t="highway" v="traffic_signals"/>
+				<select value="0" t="highway" v="give_way"/>
+			</if>
+			<select value="5"   t="barrier" v="cattle_grid"/>
+			<select value="283" t="barrier" v="border_control"/>
+			<select value="300" t="barrier" v="bump_gate"/>
+			<select value="300" t="barrier" v="gate" /> <!-- could be on many ferries (make accessible) -->
+			<select value="1"   t="barrier" v="entrance"/>
+			<select value="100" t="barrier" v="sally_port"/>
+			<select value="1"   t="barrier" v="toll_booth"/>
+			<select value="1"   t="barrier" v="height_restrictor"/>
+			<select value="1"   t="barrier" v="coupure"/>
+			<!-- These 2 shouldn't be allowed per the wiki (access=no is assumed) but people often do not add the proper access tags. -->
+			<select value="300" t="barrier" v="lift_gate"/>
+			<select value="300" t="barrier" v="swing_gate"/>
+			<!-- Without explicit access marking, barriers other than the listed values above are impassable to a car. -->
+			<select value="10" t="traffic_calming"/>
+			<select value="5"  t="highway" v="give_way"/>
+			<select value="15"  t="highway" v="stop"/>
+			<!-- introduction to not drive through city -->
+			<select value="15" t="highway" v="traffic_signals"/>
+			<select value="300" t="amenity" v="ferry_terminal"/>
+
+			<select value="25" t="ford"/>
+		</point>
+	</routingProfile>
+
+
+	<routingProfile name="navilas_scenic" baseProfile="car" restrictionsAware="true" minSpeed="20.0" defaultSpeed="45.0" maxSpeed="110.0" sharpTurn="30" slightTurn="15" roundaboutTurn="15" onewayAware="true">
+		<!-- Special penalty for reversed direction at route's startup (in seconds, default is 60) -->
+		<attribute name="penaltyForReverseDirection" value="300" /> <!-- car: ~ 5 minutes to find U-turn -->
+	 	<!--<attribute name="heuristicCoefficient" value="1.5" />
+		-->
+		<attribute name="derivedProfiles" value="motorcycle"/>
+		<!-- NaviLas kręta — drogi lokalne, ETA jak moto -->
+		<!-- MAIN parameter to approximate (35m good for custom recorded tracks)-->
+		<attribute name="minPointApproximation" value = "50"/>
+		<!-- don't search subsegments shorter than specified distance (also used to step back for car turns) -->
+		<attribute name="minStepApproximation" value = "100"/>
+		<!-- This parameter could speed up or slow down evaluation (better to make bigger for long routes and smaller for short)-->
+		<attribute name="maxStepApproximation" value= "3000"/>
+		<!-- Parameter to smoother the track itself (could be 0 if it's not recorded track) -->
+		<attribute name="smoothenPointsNoRoute" value = "5"/>
+
+		<!-- Turn penalties for short_way=yes -->
+		<attribute name="shortWaySharpTurn" value = "10"/>
+		<attribute name="shortWaySlightTurn" value = "5"/>
+		<attribute name="shortWayRoundaboutTurn" value = "5"/>
+
+		<!-- NEW ROUTING API -->
+		<!-- <parameter id="prefer_motorway" name="Prefer motorways" description="Prefer motorways" type="boolean"/> -->
+		<!-- <parameter id="no_new_routing" name="Do not use v1.9 routing" description="Do not use v1.9 routing" type="boolean"/> -->
+		
+		<parameter id="short_way" name="Short way" description="Short way" type="boolean"/>
+		<parameter id="avoid_toll" name="Avoid toll roads" description="Avoid toll roads" type="boolean"/>
+		<parameter id="avoid_unpaved" name="Avoid unpaved roads" description="Avoid unpaved roads" type="boolean"/>
+		<parameter id="avoid_low_emission_zone" name="Avoid low emission zones" description="Avoid low emission zones" type="boolean"/>
+		<parameter id="prefer_unpaved" name="Prefer unpaved roads" description="Prefer unpaved roads" type="boolean"/>
+		<parameter id="avoid_ferries" name="Avoid ferries" description="Avoid ferries" type="boolean"/>
+		<parameter id="avoid_shuttle_train" name="Avoid Shuttle Trains" description="Avoid Shuttle Trains" type="boolean"/>
+		<parameter id="avoid_motorway" name="Avoid motorways" description="Avoid motorways" type="boolean"/>
+		<parameter id="avoid_tunnels" name="Avoid tunnels" description="Avoid tunnels" type="boolean"/>
+		<parameter id="avoid_borders" name="Avoid border crossing" description="Avoid crossing a border into another country" type="boolean"/>
+		<parameter id="avoid_ice_roads_fords" name="Avoid ice roads, fords" description="Avoid ice roads and fords" type="boolean"/>
+		<parameter id="avoid_4wd_only" name="Avoid 4WD roads" description="Avoid roads only suitable for 4WD only vehicles" type="boolean"/>
+		<parameter id="allow_private" name="Allow private access" description="Allow access to private areas for cars" type="boolean" profiles="default,motorcycle"/>
+		<parameter id="allow_private_for_truck" name="Allow private access (truck)" description="Allow access to private areas for trucks" type="boolean" profiles="truck"/>
+		<parameter id="goods_restrictions" name="Goods vehicles restrictions" description="Consider access permissions for light goods vehicles (goods)" type="boolean" profiles="default"/>
+		<parameter id="hazmat_category" name="Hazmat category" description="Hazardous materials category / Consider hazmat access permissions" type="numeric" values="0,1,2,3,4" valueDescriptions="No restrictions,B,C,D,E" default="0" profiles="truck"/>
+		<!--<parameter id="hazmat_category_usa" name="Hazmat category (USA)" description="Hazardous materials category (USA) / Consider hazmat access permissions" type="numeric" values="0,1,1.1,1.2,1.3,1.4,1.5,1.6,2,2.1,2.2,2.3,3,4,4.1,4.2,4.3,5,5.1,5.2,6,6.1,6.2,7,8,9" valueDescriptions="No restrictions,1,1.1,1.2,1.3,1.4,1.5,1.6,2,2.1,2.2,2.3,3,4,4.1,4.2,4.3,5,5.1,5.2,6,6.1,6.2,7,8,9" default="0" profiles="truck"/>-->
+		<parameter id="hazmat_category_usa_1" name="HazMat 1. Explosives" description="HazMat 1. Explosives" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_2" name="HazMat 2. Gases" description="HazMat 2. Gases" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_3" name="HazMat 3. Flammable liquids" description="HazMat 3. Flammable liquids" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_4" name="HazMat 4. Flammable solids" description="HazMat 4. Flammable solids" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_5" name="HazMat 5. Oxidizing agents and organic peroxides" description="HazMat 5. Oxidizing agents and organic peroxides" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_6" name="HazMat 6. Toxic and infectious substances" description="HazMat 6. Toxic and infectious substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_7" name="HazMat 7. Radioactive substances" description="HazMat 7. Radioactive substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_8" name="HazMat 8. Corrosive substances" description="HazMat 8. Corrosive substances" type="boolean" profiles="truck"/>
+		<parameter id="hazmat_category_usa_9" name="HazMat 9. Miscellaneous" description="HazMat 9. Miscellaneous" type="boolean" profiles="truck"/>
+		<parameter id="weight" name="Weight" description="Maximum vehicle weight to be permitted on the route" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t"/>
+		<parameter id="height" name="Height" description="Maximum vehicle height to be permitted on the route" type="numeric" values="0,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5" valueDescriptions="-,1.5m,2m,2.5m,3m,3.5m,4m,4.5m,5m,5.5m,6m,6.5m,7m,7.5m"/>
+		<parameter id="length" name="Length" description="Maximum vehicle length to be permitted on the route" type="numeric" values="0,5,6,6.5,7,8,9,9.5,10,11,12" valueDescriptions="-,5m,6m,6.5m,7m,8m,9m,9.5m,10m,11m,12m"/>
+		<parameter id="width" name="Width" description="Maximum vehicle width to be permitted on the route" type="numeric" values="0,1.5,2,2.3,2.5,3" valueDescriptions="-,1.5m,2m,2.3m,2.5m,3m"/>
+		<parameter id="maxaxleload" name="Max axle load" description="Maximum legal load weight limit per axle" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t" profiles="truck"/>
+		<parameter id="weightrating" name="Max weight at full load" description="Maximum permitted weight of the vehicle at full load" type="numeric" values="0,1.5,3,3.5,5,7.5,10,12,15,20,30,40" valueDescriptions="-,1.5t,3t,3.5t,5t,7.5t,10t,12t,15t,20t,30t,40t" profiles="truck"/>
+		<parameter id="motor_type" name="Motor type" description="For CO2 computation" type="numeric" values="0,1,2,3,4,5,6,7" valueDescriptions="-,Petrol,Diesel,Lpg,Gas,Electric,Hybrid,Ethanol"/>
+
+		<way attribute="access">
+			<select value="-1" t="osmand_change" v="delete"/>
+			<select value="-1" t="highway" v="proposed"/>
+			<select value="-1" t="highway" v="construction"/>
+			<select value="-1" t="construction" v="yes"/>
+			<if param="avoid_low_emission_zone">
+				<select value="-1" t="low_emission_zone" v="yes"/>
+			</if>
+			<if param="avoid_ice_roads_fords">
+				<select value="-1" t="ice_road" v="yes"/>
+				<select value="-1" t="winter_road" v="yes"/>
+				<select value="-1" t="ford" v="yes"/>
+			</if>
+			<if param="avoid_ferries">
+			    <select value="-1" t="route" v="ferry"/>
+			</if>
+			<if param="avoid_shuttle_train">
+			    <select value="-1" t="route" v="shuttle_train"/>
+			</if>
+			<if param="goods_restrictions">
+				<select value="-1" t="goods" v="no"/>
+			</if>
+			<if param="avoid_4wd_only">
+				<select value="-1" t="4wd_only" v="yes"/>
+				<select value="-1" t="4wd_only" v="recommended"/>
+			</if>
+			<if param="avoid_unpaved">
+				<select value="-1" t="highway" v="track"/>
+				<select value="-1" t="surface" v="unpaved"/>
+				<select value="-1" t="surface" v="compacted"/>
+				<select value="-1" t="surface" v="dirt"/>
+				<select value="-1" t="surface" v="gravel"/>
+				<select value="-1" t="surface" v="fine_gravel"/>
+				<select value="-1" t="surface" v="grass"/>
+				<select value="-1" t="surface" v="ground"/>
+				<select value="-1" t="surface" v="mud"/>
+				<select value="-1" t="surface" v="pebblestone"/>
+				<select value="-1" t="surface" v="sand"/>
+				<!--<select value="-1" t="surface" v="wood"/>-->
+				<select value="-1" t="smoothness" v="very_bad"/>
+				<select value="-1" t="smoothness" v="horrible"/>
+				<select value="-1" t="smoothness" v="very_horrible"/>
+				<select value="-1" t="smoothness" v="impassable"/>
+			</if>
+
+			<select value="-1" t="highway" v="steps"/>
+
+			<if param="profile_truck">
+				<select value="-1" t="hgv" v="no"/>
+				<select value="-1" t="hgv_articulated" v="no"/>
+				<if param="allow_private_for_truck">
+					<select value="1" t="hgv" v="private"/>
+					<select value="1" t="hgv_articulated" v="private"/>
+				</if>
+				<select value="-1"  t="hgv" v="private"/>
+				<select value="-1"  t="hgv_articulated" v="private"/>
+			</if>
+
+			<if param="profile_motorcycle">
+				<select value="-1" t="motorcycle" v="no"/>
+				<select value="-1" t="motorcycle" v="private"/>
+				<select value="-1" t="motorcycle" v="agricultural"/>
+				<select value="-1" t="motorcycle" v="forestry"/>
+				<select value="-1" t="motorcycle" v="agricultural;forestry"/>
+				<select value="-1" t="motorcycle" v="forestry;agricultural"/>
+				<select value="1" t="motorcycle" v="yes"/>
+				<select value="1" t="motorcycle" v="permissive"/>
+				<select value="1" t="motorcycle" v="designated"/>
+				<select value="1" t="motorcycle" v="destination"/>
+				<select value="1" t="motorcycle" v="customers"/>
+				<select value="1" t="motorcycle" v="official"/>
+			</if>
+
+			<select value="-1" t="motorcar" v="no"/>
+			<select value="-1" t="motorcar" v="agricultural"/>
+			<select value="-1" t="motorcar" v="forestry"/>
+			<select value="-1" t="motorcar" v="agricultural;forestry"/>
+			<select value="-1" t="motorcar" v="forestry;agricultural"/>
+			<select value="1"  t="motorcar" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="motorcar" v="private"/>
+			</if>
+			<select value="-1"  t="motorcar" v="private"/>
+			<select value="1"  t="motorcar" v="permissive"/>
+			<select value="1"  t="motorcar" v="designated"/>
+			<select value="1"  t="motorcar" v="destination"/>
+			<select value="1"  t="motorcar" v="customers"/>
+			<select value="1"  t="motorcar" v="official"/>
+
+			<select value="-1" t="motor_vehicle" v="no"/>
+			<select value="-1" t="motor_vehicle" v="agricultural"/>
+			<select value="-1" t="motor_vehicle" v="forestry"/>
+			<select value="-1" t="motor_vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="motor_vehicle" v="forestry;agricultural"/>
+			<select value="1"  t="motor_vehicle" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="motor_vehicle" v="private"/>
+			</if>
+			<select value="-1"  t="motor_vehicle" v="private"/>
+			<select value="1"  t="motor_vehicle" v="permissive"/>
+			<select value="1"  t="motor_vehicle" v="designated"/>
+			<select value="1"  t="motor_vehicle" v="destination"/>
+			<select value="1"  t="motor_vehicle" v="customers"/>
+			<select value="1"  t="motor_vehicle" v="official"/>
+
+			<select value="-1" t="vehicle" v="no"/>
+			<select value="-1" t="vehicle" v="agricultural"/>
+			<select value="-1" t="vehicle" v="forestry"/>
+			<select value="-1" t="vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="vehicle" v="forestry;agricultural"/>
+			<select value="1"  t="vehicle" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="vehicle" v="private"/>
+			</if>
+			<select value="-1"  t="vehicle" v="private"/>
+			<select value="1"  t="vehicle" v="permissive"/>
+			<select value="1"  t="vehicle" v="designated"/>
+			<select value="1"  t="vehicle" v="destination"/>
+			<select value="1"  t="vehicle" v="customers"/>
+
+			<select value="-1" t="highway" v="cycleway"/>
+			<select value="-1" t="highway" v="footway"/>
+			<select value="-1" t="highway" v="path"/>
+
+			<select value="-1" t="access" v="no"/>
+			<select value="-1" t="access" v="agricultural"/>
+			<select value="-1" t="access" v="forestry"/>
+			<select value="-1" t="access" v="agricultural;forestry"/>
+			<select value="-1" t="access" v="forestry;agricultural"/>
+			<select value="-1" t="access" v="emergency"/>
+			<select value="1"  t="access" v="yes"/>
+			<if param="allow_private">
+				<select value="1"  t="access" v="private"/>
+			</if>
+			<select value="-1"  t="access" v="private"/>
+			<select value="1"  t="access" v="permissive"/>
+			<select value="1"  t="access" v="destination"/>
+			<select value="1"  t="access" v="customers"/>
+
+			<if param="profile_truck">
+				<select value="-1" t="maxweight:hgv">
+					<gt value1=":weight" value2="$maxweight" type="weight"/>
+				</select>
+				<select value="-1" t="maxweightrating:hgv">
+					<gt value1=":weightrating" value2="$maxweightrating:hgv" type="weight"/>
+				</select>
+			</if>
+			<select value="-1" t="maxweight">
+				<gt value1=":weight" value2="$maxweight" type="weight"/>
+			</select>
+			<select value="-1" t="maxweightrating">
+				<gt value1=":weightrating" value2="$maxweightrating" type="weight"/>
+			</select>
+			<select value="-1" t="maxaxleload">
+				<gt value1=":maxaxleload" value2="$maxaxleload" type="weight"/>
+			</select>
+			<select value="-1" t="maxheight">
+				<gt value1=":height" value2="$maxheight" type="length"/>
+			</select>
+			<select value="-1" t="maxlength">
+				<gt value1=":length" value2="$maxlength" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth">
+				<gt value1=":width" value2="$maxwidth" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth:physical">
+				<gt value1=":width" value2="$maxwidth:physical" type="length"/>
+			</select>
+			<select value="-1" t="width">
+				<gt value1=":width" value2="$width" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:forward">
+				<gt value1=":height" value2="$maxheight:forward" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:backward">
+				<gt value1=":height" value2="$maxheight:backward" type="length"/>
+			</select>
+
+			<ge value1=":hazmat_category" value2="4"> <!-- E -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+				<select value="1" t="hazmat:d" v="yes"/>
+				<select value="-1" t="hazmat:d" v="no"/>
+				<select value="1" t="hazmat:e" v="yes"/>
+				<select value="-1" t="hazmat:e" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="3"> <!-- D -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+				<select value="1" t="hazmat:d" v="yes"/>
+				<select value="-1" t="hazmat:d" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="2"> <!-- C -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+				<select value="1" t="hazmat:c" v="yes"/>
+				<select value="-1" t="hazmat:c" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="1"> <!-- B -->
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+				<select value="1" t="hazmat:b" v="yes"/>
+				<select value="-1" t="hazmat:b" v="no"/>
+			</ge>
+			<ge value1=":hazmat_category" value2="0"> <!-- A -->
+				<select value="1" t="hazmat:a" v="yes"/>
+				<select value="-1" t="hazmat:a" v="no"/>
+			</ge>
+
+			<!--hazmat category usa-->
+			<if param="hazmat_category_usa_1">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:1" v="no"/>
+				<select value="-1" t="hazmat:1.1" v="no"/>
+				<select value="-1" t="hazmat:1.2" v="no"/>
+				<select value="-1" t="hazmat:1.3" v="no"/>
+				<select value="-1" t="hazmat:1.4" v="no"/>
+				<select value="-1" t="hazmat:1.5" v="no"/>
+				<select value="-1" t="hazmat:1.6" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_2">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:2" v="no"/>
+				<select value="-1" t="hazmat:2.1" v="no"/>
+				<select value="-1" t="hazmat:2.2" v="no"/>
+				<select value="-1" t="hazmat:2.3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_3">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_4">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:4" v="no"/>
+				<select value="-1" t="hazmat:4.1" v="no"/>
+				<select value="-1" t="hazmat:4.2" v="no"/>
+				<select value="-1" t="hazmat:4.3" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_5">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:5" v="no"/>
+				<select value="-1" t="hazmat:5.1" v="no"/>
+				<select value="-1" t="hazmat:5.2" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_6">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:6" v="no"/>
+				<select value="-1" t="hazmat:6.1" v="no"/>
+				<select value="-1" t="hazmat:6.2" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_7">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:7" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_8">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:8" v="no"/>
+			</if>
+
+			<if param="hazmat_category_usa_9">
+				<select value="-1" t="hazmat" v="no"/>
+				<select value="-1" t="hazmat:9" v="no"/>
+			</if>
+
+			<select value="1" t="highway" v="motorway"/>
+			<select value="1" t="highway" v="motorway_link"/>
+			<select value="1" t="highway" v="trunk"/>
+			<select value="1" t="highway" v="trunk_link"/>
+			<select value="1" t="highway" v="primary"/>
+			<select value="1" t="highway" v="primary_link"/>
+			<select value="1" t="highway" v="secondary"/>
+			<select value="1" t="highway" v="secondary_link"/>
+			<select value="1" t="highway" v="tertiary"/>
+			<select value="1" t="highway" v="tertiary_link"/>
+			<select value="1" t="highway" v="unclassified"/>
+			<select value="1" t="highway" v="road"/>
+			<select value="1" t="highway" v="residential"/>
+			<select value="1" t="highway" v="track"/>
+			<select value="1" t="highway" v="service"/>
+			<select value="1" t="highway" v="living_street"/>
+			<select value="1" t="route" v="ferry"/>
+			<select value="1" t="route" v="shuttle_train"/>
+			<select value="-1"/>
+		</way>
+
+		<way attribute="oneway">
+			<if param="profile_motorcycle">
+				<select value="1" t="oneway:motorcycle" v="yes"/>
+				<select value="1" t="oneway:motorcycle" v="1"/>
+				<select value="0" t="oneway:motorcycle" v="no"/>
+				<select value="-1" t="oneway:motorcycle" v="-1"/>
+			</if>
+			<select value="1" t="oneway:motorcar" v="yes"/>
+			<select value="0" t="oneway:motorcar" v="no"/>
+			<select value="-1" t="oneway:motorcar" v="-1"/>
+			
+			<select value="1" t="oneway:motor_vehicle" v="yes"/>
+			<select value="0" t="oneway:motor_vehicle" v="no"/>
+			<select value="-1" t="oneway:motor_vehicle" v="-1"/>
+
+			<select value="1" t="oneway:vehicle" v="yes"/>
+			<select value="0" t="oneway:vehicle" v="no"/>
+			<select value="-1" t="oneway:vehicle" v="-1"/>
+
+			<select value="1" t="oneway" v="yes"/>
+			<select value="1" t="oneway" v="1"/>
+			<select value="-1" t="oneway" v="-1"/>
+			<select value="1" t="roundabout"/>
+			<select value="1" t="junction" v="roundabout"/>
+			<select value="1" t="motor_vehicle:backward" v="no"/>
+			<select value="-1" t="motor_vehicle:forward" v="no"/>
+			<select value="1" t="vehicle:backward" v="no"/>
+			<select value="-1" t="vehicle:forward" v="no"/>
+		</way>
+
+		<way attribute="penalty_transition">
+			<!-- cost in time when you change the route from motorway to primary or from primary
+				 to living_street, but not other way around. Calculated as difference between values -->
+			<!-- 
+			<if param="no_new_routing">
+				<select value="0"/>
+			</if>
+			-->
+			<if param="short_way">
+				<select value="0" t="highway" v="motorway"/>
+				<select value="1" t="highway" v="motorway_link"/>
+				<select value="5" t="highway" v="trunk"/>
+				<select value="5" t="highway" v="trunk_link"/>
+				<select value="10" t="highway" v="primary"/>
+				<select value="10" t="highway" v="primary_link"/>
+				<select value="15" t="highway" v="secondary"/>
+				<select value="15" t="highway" v="secondary_link"/>
+				<select value="20" t="highway" v="tertiary"/>
+				<select value="20" t="highway" v="tertiary_link"/>
+				<select value="40" t="highway" v="service"/>
+				<select value="25"/>
+			</if>
+			
+			<if param="avoid_motorway">
+				<select value="100" t="highway" v="motorway"/>
+				<select value="90" t="highway" v="motorway_link"/>
+			</if>
+			<if param="avoid_tunnels">
+				<select value="200" t="tunnel" v="yes"/>
+				<select value="150" t="tunnel" v="avalanche_protector"/>
+			</if>
+			<select value="100" t="surface" v="gravel"/>
+
+			<select value="6" t="side_road" v="yes"/>
+			<select value="6" t="side_road" v="rotary"/>
+			<select value="6" t="side_road" v="double"/>
+
+			<select value="0" t="highway" v="motorway"/>
+			<select value="5" t="highway" v="motorway_link"/>
+			<select value="10" t="highway" v="trunk"/>
+			<select value="10" t="highway" v="trunk_link"/>
+			<select value="50" t="highway" v="primary"/>
+			<select value="51" t="highway" v="primary_link"/>
+			<select value="80" t="highway" v="secondary"/>
+			<select value="80" t="highway" v="secondary_link"/>
+			<select value="130" t="highway" v="tertiary"/>
+			<select value="130" t="highway" v="tertiary_link"/>
+			<select value="155" t="highway" v="unclassified"/>
+			<select value="167" t="highway" v="residential"/>
+			<select value="230" t="highway" v="service"/>
+			<select value="200"/>
+			
+			<!--
+			<select value="" t="highway" v="road"/>
+			<select value="" t="highway" v="residential"/>
+			<select value="" t="highway" v="track"/>
+			<select value="" t="highway" v="unclassified"/>
+			<select value="" t="highway" v="service"/>
+			
+			<select value="" t="highway" v="living_street"/>
+			<select value="" t="route" v="ferry"/>-->
+		</way>
+
+		<way attribute="speed" type="speed">
+			<!-- maxspeed doesn't affect on motorway_link and trunk_link -->
+			<select value="100" t="highway" v="motorway_link"/>
+			<select value="90" t="highway" v="trunk_link"/>
+
+			<if param="profile_truck">
+				<select value="$maxspeed:hgv" t="maxspeed:hgv"/>
+				<select value="$maxspeed:goods" t="maxspeed:goods"/>
+				<select value="$maxspeed:truck" t="maxspeed:truck"/>
+			</if>
+
+			<!-- shortway handled internally -->
+			<select value="$maxspeed:motorcar" t="maxspeed:motorcar"/>
+			<select value="$maxspeed:practical" t="maxspeed:practical"/>
+			<select value="$maxspeed:advisory" t="maxspeed:advisory"/>
+			<select value="$maxspeed" t="maxspeed"/>
+
+			<!-- most important backbone roads -->
+			<select value="110" t="highway" v="motorway"/>
+			<select value="100" t="highway" v="trunk"/>
+
+			<!-- generally linking larger towns -->
+			<select value="65" t="highway" v="primary"/>
+			<select value="65" t="highway" v="primary_link"/>
+			<!-- generally linking smaller towns and villages -->
+			<select value="60" t="highway" v="secondary"/>
+			<select value="60" t="highway" v="secondary_link"/>
+			
+			<!-- important urban roads -->
+			<select value="45" t="highway" v="tertiary"/>
+			<select value="45" t="highway" v="tertiary_link"/>
+			
+			<!-- Some values of "abutters" mean the road is inside a place,
+				 so cap the speed even if it is a high level road (below). -->
+			<!--
+			<select value="30" t="abutters" v="residential"/>
+			<select value="30" t="abutters" v="commercial"/>
+			<select value="30" t="abutters" v="retail"/>
+			<select value="30" t="abutters" v="industrial"/>
+			<select value="30" t="abutters" v="mixed"/>
+			-->
+			<!-- roads with speeds lower than 50 and those that we want to ignore abutters
+				 must be placed before the "abutters" block below. -->
+			
+			<!-- lowest form of grid network, usually 90% of urban roads -->
+			<select value="35" t="highway" v="unclassified"/>
+			<!-- road = no type, no review and may be not accurate -->
+			<select value="35" t="highway" v="road"/>
+			<select value="35" t="highway" v="residential"/>
+			<select value="15" t="highway" v="track"/>
+
+			<select value="30" t="highway" v="service"/>
+			<select value="25" t="highway" v="living_street"/>
+			<select value="15" t="route" v="ferry"/>
+			<select value="60" t="route" v="shuttle_train"/>
+
+		</way>
+
+		<way attribute="priority">
+			<!-- not working fine -->
+			<!--
+			<if param="prefer_motorway">
+				<select value="1.2" t="highway" v="motorway"/>
+				<select value="1.1" t="highway" v="motorway_link"/>
+				<select value="1.2" t="highway" v="trunk"/>
+				<select value="1.1" t="highway" v="trunk_link"/>
+			</if> -->
+			<!-- access deprioritize -->
+			<select t="motorcar" v="private" value="0.15"/>
+			<select t="motorcar" v="destination" value="0.15"/>
+			<select t="motorcar" v="delivery" value="0.15"/>
+			<select t="motorcar" v="customers" value="0.15"/>
+			<select t="motor_vehicle" v="private" value="0.15"/>
+			<select t="motor_vehicle" v="destination" value="0.15"/>
+			<select t="motor_vehicle" v="delivery" value="0.15"/>
+			<select t="motor_vehicle" v="customers" value="0.15"/>
+			<select t="vehicle" v="private" value="0.15"/>
+			<select t="vehicle" v="destination" value="0.15"/>
+			<select t="vehicle" v="delivery" value="0.15"/>
+			<select t="vehicle" v="customers" value="0.15"/>
+			<select t="access" v="private" value="0.15"/>
+			<select t="access" v="destination" value="0.15"/>
+			<select t="access" v="delivery" value="0.15"/>
+			<select t="access" v="customers" value="0.15"/>
+			<if param="profile_truck">
+				<select t="hgv" v="delivery" value="0.15"/>
+			</if>
+			<select t="oneway" v="reversible" value="0.01"/>
+
+			<select value="0.2" t="tracktype" v="grade5" />
+			<select value="0.5" t="smoothness" v="bad"/>
+			<select value="0.3" t="smoothness" v="very_bad"/>
+			<select value="0.15" t="smoothness" v="horrible"/>
+			<select value="0.1" t="smoothness" v="very_horrible"/>
+			<select value="0.05" t="smoothness" v="impassable"/>
+
+			<if param="prefer_unpaved">
+				<if param="avoid_motorway">
+					<select value="0.05" t="highway" v="motorway"/>
+					<select value="0.05" t="highway" v="motorway_link"/>
+				</if>
+				<select value="1.5" t="tracktype" v="grade2"/>
+				<select value="1.4" t="tracktype" v="grade3"/>
+				<select value="1.3" t="tracktype" v="grade4"/>
+				<select value="1.2" t="tracktype" v="grade5"/>
+				<select value="1.3" t="surface" v="unpaved"/>
+				<select value="0.6" t="surface" v="compacted"/>
+				<select value="1.3" t="surface" v="dirt"/>
+				<select value="1.5" t="surface" v="earth"/>
+				<select value="0.7" t="surface" v="gravel"/>
+				<select value="0.4" t="surface" v="fine_gravel"/>
+				<select value="1.1" t="surface" v="grass"/>
+				<select value="1.5" t="surface" v="ground"/>
+				<select value="0.5" t="surface" v="mud"/>
+				<select value="1.3" t="surface" v="pebblestone"/>
+				<select value="1.0" t="surface" v="sand"/>
+
+
+				<select value="0.1" t="surface" v="asphalt"/>
+				<select value="0.2" t="surface" v="chipseal"/>
+				<select value="0.1" t="surface" v="paved"/>
+				<select value="0.1" t="surface" v="concrete"/>
+				<select value="0.2" t="surface" v="paving_stones"/>
+
+				<select value="0.2" t="highway" v="motorway"/>
+				<select value="0.18" t="highway" v="motorway_link"/>
+				<select value="0.4" t="highway" v="trunk"/>
+				<select value="0.35" t="highway" v="trunk_link"/>
+				<select value="0.45" t="highway" v="primary"/>
+				<select value="0.4" t="highway" v="primary_link"/>
+				<select value="0.45" t="highway" v="secondary"/>
+				<select value="0.4" t="highway" v="secondary_link"/>
+				<select value="0.7" t="highway" v="tertiary"/>
+				<select value="0.65" t="highway" v="tertiary_link"/>
+				<select value="1.4" t="highway" v="unclassified"/>
+				<select value="1.3" t="highway" v="road"/>
+				<select value="1.3" t="highway" v="residential"/>
+
+				<select value="1.0" t="highway" v="track"/>
+
+				<select value="0.8" t="highway" v="service"/>
+				<select value="0.8" t="highway" v="living_street"/>
+			</if>
+			<if param="avoid_motorway">
+				<select value="0.05" t="highway" v="motorway"/>
+				<select value="0.05" t="highway" v="motorway_link"/>
+			</if>
+
+			<if param="avoid_tunnels">
+				<select value="0.02" t="tunnel" v="yes"/>
+			</if>
+			<if param="avoid_toll">
+				<select value="0.1" t="toll" v="yes"/>
+			</if>
+
+			<select value="0.5" t="surface" v="gravel"/>
+			<select value="0.5" t="surface" v="unpaved"/>
+
+			<!-- dedicated motorcycle lane, not an ordinary service road -->
+			<if param="profile_motorcycle">
+				<select value="1" t="motorcycle" v="designated"/>
+			</if>
+
+			<!-- NaviLas scenic: strong avoid fast roads, prefer secondary/tertiary/unclassified -->
+			<select value="0.05" t="highway" v="motorway"/>
+			<select value="0.08" t="highway" v="motorway_link"/>
+			<select value="0.15" t="highway" v="trunk"/>
+			<select value="0.18" t="highway" v="trunk_link"/>
+			<select value="0.45" t="highway" v="primary"/>
+			<select value="0.42" t="highway" v="primary_link"/>
+			<select value="1.05" t="highway" v="secondary"/>
+			<select value="1.00" t="highway" v="secondary_link"/>
+			<select value="1.25" t="highway" v="tertiary"/>
+			<select value="1.20" t="highway" v="tertiary_link"/>
+			<select value="1.30" t="highway" v="unclassified"/>
+			<select value="1.05" t="highway" v="road"/>
+			<select value="1.00" t="highway" v="residential"/>
+
+			<select value="0.30" t="highway" v="track"/>
+
+			<select value="0.60" t="highway" v="service"/>
+			<select value="0.65" t="highway" v="living_street"/>
+			<select value="1" t="route" v="ferry"/>
+			<select value="1" t="route" v="shuttle_train"/>
+
+			<select value="0.7"/>
+		</way>
+
+		<way attribute="destination_priority">
+			<select value="0.5" t="tunnel" v="yes"/>
+		</way>
+
+		<way attribute="obstacle_srtm_alt_speed">
+			<if param="short_way">
+				<ge value1="20" value2=":incline">
+					<select value="0.35"/>
+				</ge>
+			</if>
+		</way>
+
+		<point attribute="obstacle_time">
+			<select value="5"  t="barrier" v="entrance"/>
+			<select value="15" t="barrier" v="gate"/>
+			<select value="15" t="barrier" v="lift_gate"/>
+			<select value="30" t="barrier" v="swing_gate"/>
+			<select value="180" t="barrier" v="toll_booth"/>
+			<select value="25" t="barrier"/>
+			<select value="10" t="traffic_calming"/>
+			<select value="20" t="highway" v="traffic_signals"/>
+			<select value="1"  t="crossing" v="unmarked"/>
+			<select value="5"  t="crossing" v="uncontrolled"/>
+			<select value="15" t="highway" v="crossing"/>
+			<select value="15" t="highway" v="stop"/>
+			<select value="10" t="highway" v="give_way"/>
+			<select value="25" t="ford"/>
+
+			<select value="25" t="railway" v="crossing"/>
+			<select value="25" t="railway" v="level_crossing"/>
+		</point>
+
+		<point attribute="obstacle">
+			<if param="avoid_toll">
+				<select value="900" t="barrier" v="toll_booth"/>
+			</if>
+			<if param="avoid_borders">
+				<select value="-1" t="barrier" v="border_control"/>
+			</if>
+
+			<!-- Some barrier nodes are combined with maxheight or other size limits, e.g. height_restrictor or underground parking entrances. -->
+			<select value="-1" t="maxheight">
+				<gt value1=":height" value2="$maxheight" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth">
+				<gt value1=":width" value2="$maxwidth" type="length"/>
+			</select>
+			<select value="-1" t="maxwidth:physical">
+				<gt value1=":width" value2="$maxwidth:physical" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:forward">
+				<gt value1=":height" value2="$maxheight:forward" type="length"/>
+			</select>
+			<select value="-1" t="maxheight:backward">
+				<gt value1=":height" value2="$maxheight:backward" type="length"/>
+			</select>
+
+			<if param="avoid_ice_roads_fords">
+				<select value="-1" t="ford" v="yes"/>
+			</if>
+
+			<!-- If access for a car is explicitly marked, the barrier is passable,
+				 with a slight penalty.
+				 If no access for a car is explicitly marked, the barrier is impassable.
+				 Evaluate the keys in descending order of the specificity in the access hierarchy. -->
+			<select value="-1" t="motorcar" v="no"/>
+			<select value="-1" t="motorcar" v="agricultural"/>
+			<select value="-1" t="motorcar" v="forestry"/>
+			<select value="-1" t="motorcar" v="agricultural;forestry"/>
+			<select value="-1" t="motorcar" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="motorcar" v="private"/>
+			</if>
+			<select value="60"  t="motorcar" v="destination"/>
+			<select value="0"  t="motorcar" v="yes"/>
+			<select value="0"  t="motorcar" v="permissive"/>
+			<select value="0"  t="motorcar" v="designated"/>
+			<select value="0"  t="motorcar" v="customers"/>
+			<select value="0"  t="motorcar" v="official"/>
+			
+			<select value="-1" t="motor_vehicle" v="no"/>
+			<select value="-1" t="motor_vehicle" v="agricultural"/>
+			<select value="-1" t="motor_vehicle" v="forestry"/>
+			<select value="-1" t="motor_vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="motor_vehicle" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="motor_vehicle" v="private"/>
+			</if>
+			<select value="60"  t="motor_vehicle" v="destination"/>
+			<select value="0"  t="motor_vehicle" v="yes"/>
+			<select value="0"  t="motor_vehicle" v="permissive"/>
+			<select value="0"  t="motor_vehicle" v="designated"/>
+			<select value="0"  t="motor_vehicle" v="customers"/>
+			<select value="0"  t="motor_vehicle" v="official"/>
+
+			<select value="-1" t="vehicle" v="no"/>
+			<select value="-1" t="vehicle" v="agricultural"/>
+			<select value="-1" t="vehicle" v="forestry"/>
+			<select value="-1" t="vehicle" v="agricultural;forestry"/>
+			<select value="-1" t="vehicle" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="vehicle" v="private"/>
+			</if>
+			<select value="60"  t="vehicle" v="destination"/>
+			<select value="0"  t="vehicle" v="yes"/>
+			<select value="0"  t="vehicle" v="permissive"/>
+			<select value="0"  t="vehicle" v="designated"/>
+			<select value="0"  t="vehicle" v="customers"/>
+
+			<select value="-1" t="access" v="no"/>
+			<select value="-1" t="access" v="agricultural"/>
+			<select value="-1" t="access" v="forestry"/>
+			<select value="-1" t="access" v="agricultural;forestry"/>
+			<select value="-1" t="access" v="forestry;agricultural"/>
+			<if param="allow_private">
+				<select value="180"  t="access" v="private"/>
+			</if>
+			<select value="60"  t="access" v="destination"/>
+			<select value="0"  t="access" v="yes"/>
+			<select value="0"  t="access" v="permissive"/>
+			<select value="0"  t="access" v="customers"/>
+			<if param="allow_private">
+				<select value="1" t="bollard" v="removable"/>
+				<select value="1" t="bollard" v="rising"/>
+			</if>
+			<if param="profile_motorcycle">
+				<select value="-1" t="motorcycle" v="no"/>
+				<select value="-1" t="motorcycle" v="private"/>
+				<select value="-1" t="motorcycle" v="agricultural"/>
+				<select value="-1" t="motorcycle" v="forestry"/>
+				<select value="-1" t="motorcycle" v="agricultural;forestry"/>
+				<select value="-1" t="motorcycle" v="forestry;agricultural"/>
+				<select value="0" t="motorcycle" v="yes"/>
+				<select value="0" t="motorcycle" v="permissive"/>
+				<select value="0" t="motorcycle" v="designated"/>
+				<select value="0" t="motorcycle" v="destination"/>
+				<select value="0" t="motorcycle" v="customers"/>
+				<select value="0" t="motorcycle" v="official"/>
+			</if>
+			<select value="-1" t="barrier" v="bollard"/>
+			<select value="-1" t="barrier" v="chain"/>
+			<select value="-1" t="barrier" v="debris"/>
+			<select value="-1" t="barrier" v="jersey_barrier"/>
+			<select value="-1" t="barrier" v="block"/>
+			<select value="-1" t="barrier" v="turnstile"/>
+			<select value="-1" t="barrier" v="bus_trap"/>
+			<select value="-1" t="barrier" v="cycle_barrier"/>
+			<select value="-1" t="barrier" v="sump_buster"/>
+
+			<if param="short_way">
+				<select value="0" t="barrier" v="cattle_grid"/>
+				<select value="0" t="barrier" v="border_control"/>
+				<select value="0" t="barrier" v="bump_gate"/>
+				<select value="0" t="barrier" v="entrance"/>
+				<select value="0" t="barrier" v="sally_port"/>
+				<select value="0" t="barrier" v="toll_booth"/>
+				<select value="0" t="barrier" v="lift_gate"/>
+				<select value="0" t="barrier" v="swing_gate"/>
+				<select value="5" t="highway" v="traffic_signals"/>
+				<select value="0" t="highway" v="give_way"/>
+			</if>
+			<select value="5"   t="barrier" v="cattle_grid"/>
+			<select value="283" t="barrier" v="border_control"/>
+			<select value="300" t="barrier" v="bump_gate"/>
+			<select value="300" t="barrier" v="gate" /> <!-- could be on many ferries (make accessible) -->
+			<select value="1"   t="barrier" v="entrance"/>
+			<select value="100" t="barrier" v="sally_port"/>
+			<select value="1"   t="barrier" v="toll_booth"/>
+			<select value="1"   t="barrier" v="height_restrictor"/>
+			<select value="1"   t="barrier" v="coupure"/>
+			<!-- These 2 shouldn't be allowed per the wiki (access=no is assumed) but people often do not add the proper access tags. -->
+			<select value="300" t="barrier" v="lift_gate"/>
+			<select value="300" t="barrier" v="swing_gate"/>
+			<!-- Without explicit access marking, barriers other than the listed values above are impassable to a car. -->
+			<select value="10" t="traffic_calming"/>
+			<select value="5"  t="highway" v="give_way"/>
+			<select value="15"  t="highway" v="stop"/>
+			<!-- introduction to not drive through city -->
+			<select value="15" t="highway" v="traffic_signals"/>
+			<select value="300" t="amenity" v="ferry_terminal"/>
+
+			<select value="25" t="ford"/>
+		</point>
+	</routingProfile>
+
+</osmand_routing_config>

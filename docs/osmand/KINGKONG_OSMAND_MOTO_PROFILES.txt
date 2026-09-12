@@ -1,26 +1,20 @@
 OsmAnd — profile moto dla NaviLas (KINGKONG 8)
 ================================================
-Data: 2026-08-30 (opisy NaviLas: 2026-09-03, Nightly 0.5.52)
+Data: 2026-09-12 (OsmAnd offline, bez BRouter; Nightly 0.5.74+)
 
 CEL
 ---
-3 profile pod wybór stylu trasy w NaviLas (MOTOCYKL → OsmAnd):
+3 style trasy w NaviLas (MOTOCYKL → OsmAnd):
 
-  1. Brouter[moped]   — kręta (BRouter moped.brf)
-  2. Brouter[trekking] — krótka / szybsza (BRouter trekking.brf)
-  3. Motocykl          — standard OsmAnd (wbudowany profil motorcycle)
+  1. NaviLas krótka  — routing OsmAnd `navilas_short` (turystyczna, mniej autostrad)
+  2. NaviLas kręta   — routing OsmAnd `navilas_scenic` (mocniej drogi lokalne)
+  3. Motocykl        — standard OsmAnd (wbudowany)
 
-STAN BROUTER (sprawdzone ADB)
------------------------------
-  /Android/media/btools.routingapp/brouter/profiles2/moped.brf     OK
-  /Android/media/btools.routingapp/brouter/profiles2/trekking.brf  OK
-  serviceconfig.dat:
-    motorcar_fast  → moped
-    motorcar_short → trekking
+Bez BRouter. Wystarczy OsmAnd + mapa offline PL.
 
-IMPORT PROFILI OSMAND (1×, ~30 s)
-----------------------------------
-Telefon odblokowany. Najpierw uruchom BRouter (ikona aplikacji), potem:
+IMPORT PROFILI (1×)
+-------------------
+Telefon odblokowany. OsmAnd zainstalowany, mapa regionu pobrana.
 
   A) Z NaviLas: Ustawienia → Wgraj profile NaviLas do OsmAnd
      (albo dialog po pierwszej instalacji OsmAnd z NAWIGUJ)
@@ -29,43 +23,40 @@ Telefon odblokowany. Najpierw uruchom BRouter (ikona aplikacji), potem:
      (lub: OsmAnd → Menu ☰ → Ustawienia → Importuj → wybierz plik .osf)
 
   2. Zaznacz do importu:
-     - profile Brouter[moped], Brouter[trekking]
-     - ustawienia globalne (włącza profil Motocykl)
-     Przy duplikacie istniejącego Brouter[moped] → „Zastąp” lub usuń stary profil ręcznie.
+     - plik routingu (navilas_moto_routing.xml)
+     - profile NaviLas krótka, NaviLas kręta
+     - ustawienia globalne (włącza Motocykl)
+     Przy duplikacie (wcześniejsze profile NaviLas / Brouter[…]) → „Zastąp”.
+     Ten sam stringKey podmienia stare profile BRouter na nowe OsmAnd.
 
   3. Po imporcie: OsmAnd → Menu ☰ → Ustawienia → Profile aplikacji
      Sprawdź listę:
        ☑ Motocykl
-       ☑ Brouter[moped]
-       ☑ Brouter[trekking]
+       ☑ NaviLas krótka   (ikona enduro, zielona)
+       ☑ NaviLas kręta    (ikona offroad, fioletowa)
 
-WERYFIKACJA (2 min)
--------------------
-  a) BRouter działa w tle: uruchom BRouter przed testem.
-  b) OsmAnd, profil Brouter[moped]: dowolny punkt → Nawiguj → trasa liczy się offline.
-  c) Przełącz na Brouter[trekking] → inna trasa (mniej „kręta”).
-  d) Profil Motocykl → routing OsmAnd (nie BRouter).
-  e) NaviLas MOTOCYKL → NAWIGUJ → OsmAnd → Krótka / Kręta / Standardowa
+WERYFIKACJA
+-----------
+  a) Profil NaviLas krótka: punkt → Nawiguj → trasa offline, ETA zbliżone do Motocykla
+     (nie ~rowerowe 18 km/h).
+  b) NaviLas kręta → inna linia (bardziej lokalne drogi).
+  c) Profil Motocykl → fabryczny routing OsmAnd.
+  d) NaviLas MOTOCYKL → NAWIGUJ → OsmAnd → Krótka / Kręta / Standardowa
      → OsmAnd otwiera się z właściwym profilem (`profile=` w intencie API).
-
-RĘCZNY FALLBACK (gdy import .osf nie zadziała)
-----------------------------------------------
-Dla każdego profilu BRouter:
-  OsmAnd → Ustawienia → Profile aplikacji → + Dodaj profil
-  → skopiuj „Motocykl”
-  → nazwa dokładnie: Brouter[moped] lub Brouter[trekking]
-  → Nawigacja → Offline → Zewnętrzna → BRouter (offline)
-  (Opcja BRouter widoczna tylko gdy BRouter był uruchomiony przed OsmAnd)
-
-Włączenie wbudowanego Motocykl:
-  Profile aplikacji → Motocykl → włącz (pokaż na liście)
 
 MAPOWANIE → NaviLas
 -------------------
-  STATUS: w aplikacji od Nightly 0.5.47; opisy UI/docs od 0.5.52
-
-  Krótka      → Brouter[trekking]  (profile=brouter_trekking)
-  Kręta       → Brouter[moped]     (profile=brouter_moped)
+  Krótka      → NaviLas krótka   (profile=brouter_trekking)
+  Kręta       → NaviLas kręta    (profile=brouter_moped)
   Standardowa → motorcycle (Motocykl)
 
-  Szczegóły: docs/NAVIGATION_EXPORT.md, docs/STATUS.md
+  stringKey bez zmian względem starych profili BRouter → reimport = podmiana.
+  Świeży telefon → profile dodawane obok fabrycznego Motocykla.
+
+GENERATOR
+---------
+  docs/osmand/navilas_moto_routing.xml
+  docs/osmand/build_moto_profiles_osf.py → NaviLas_osmand_moto_profiles.osf
+  asset: app/src/main/assets/osmand/NaviLas_osmand_moto_profiles.osf
+
+  Szczegóły: docs/NAVIGATION_EXPORT.md
