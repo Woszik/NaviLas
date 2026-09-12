@@ -1,0 +1,17 @@
+---
+description: Przy zmianie zachowania planowania trasy aktualizuj docs i Issue #1
+globs: "**/Route*.kt,**/GpxRouteParser.kt,**/RouteGeometry.kt,**/dialog_map_point_actions.xml,docs/ROUTE_PLANNING.md"
+alwaysApply: false
+---
+
+# Planowanie trasy — dokumentacja użytkownika
+
+Gdy zmieniasz **sposób działania** planowania trasy (import/eksport GPX, gesty mapy, pas, persistencja, tryb ROUTE, etykiety widoczne użytkownikowi), zaktualizuj **oba**:
+
+1. [`docs/ROUTE_PLANNING.md`](../../docs/ROUTE_PLANNING.md)
+2. [Issue #1](https://github.com/Woszik/NaviLas/issues/1) — edytuj treść Issue (`gh issue edit 1 --body-file docs/ROUTE_PLANNING.md` albo UI), żeby zgadzała się z docs
+
+Dotyczy też zmian UX w `MainActivity` / `MapController` / `MainViewModel` / `strings.xml` / intentach GPX / `file_paths.xml` ścieżki `route/`, nawet jeśli ten plik nie jest w globs.
+
+Nie dotyczy czystych refaktorów wewnętrznych bez zmiany UX/zachowania.
+Nie twórz nowych plików docs „przy okazji” — tylko aktualizuj tę parę.

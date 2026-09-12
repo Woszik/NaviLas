@@ -214,6 +214,7 @@ Pomysł na przyszłość, **poniżej** listy Otwarte w [`TODO.md`](TODO.md). Jed
 | [`RELEASE_CHANNELS.md`](RELEASE_CHANNELS.md) | Nightly / Beta / Final |
 | [`BDL_POINT_CATEGORIES.md`](BDL_POINT_CATEGORIES.md) | Warstwy BDL + overlay browse |
 | [`NAVIGATION_EXPORT.md`](NAVIGATION_EXPORT.md) | Intenty, URL-e, checklist testów nawigacji |
+| [`ROUTE_PLANNING.md`](ROUTE_PLANNING.md) | Planowanie trasy OsmAnd ↔ NaviLas (instrukcja; Issue [#1](https://github.com/Woszik/NaviLas/issues/1)) |
 | [`OSM_ROADS.md`](OSM_ROADS.md) | Drogi OSM, Overpass, profil moto |
 | [`osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt`](osmand/KINGKONG_OSMAND_MOTO_PROFILES.txt) | Import profili OsmAnd (.osf) |
 | [`osmand_brouter_KINGKONG_2026-08-30.txt`](osmand_brouter_KINGKONG_2026-08-30.txt) | BRouter + segmenty na urządzeniu testowym |
