@@ -11,8 +11,8 @@ android {
         applicationId = "pl.navilas.finder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 84
-        versionName = "0.5.71-nightly"
+        versionCode = 85
+        versionName = "0.5.72-nightly"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // F-Droid ABI split: -PABI=armeabi-v7a|arm64-v8a|x86|x86_64
         // versionCode = 84*10 + {1,2,3,4}. GitHub builds omit -PABI (universal).
